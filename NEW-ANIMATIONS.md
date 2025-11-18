@@ -34,11 +34,15 @@ Added 4 new parametric animations to the screen saver, doubling the total count 
 - Wave propagation and interference patterns
 - Adjustable physics parameters
 
-**Parameters**:
-- **Wave Speed** (0.1 - 2.0): Propagation velocity
-- **Damping** (0.8 - 0.99): Energy dissipation (higher = less damping)
-- **Rain Rate** (0.0 - 1.0): Frequency of random drops
-- **Drop Power** (1 - 15): Impact strength of rain drops
+**Parameters** (Refined for better visibility):
+- **Rain Rate** (0.0 - 1.5): Frequency of random drops [Default: 0.35]
+  - UP/DOWN: Most visible control - more rain = more action!
+- **Wave Speed** (0.05 - 1.0): Propagation velocity [Default: 0.3]
+  - LEFT/RIGHT: Horizontal = speed - intuitive!
+- **Drop Power** (3 - 20): Impact strength of rain drops [Default: 8.0]
+  - UP-RIGHT/DOWN-LEFT: Bigger splashes!
+- **Damping** (0.85 - 0.995): Energy dissipation [Default: 0.97]
+  - UP-LEFT/DOWN-RIGHT: Higher = waves last longer
 
 **Visual**: Blue/Cyan waves with intensity-based characters (·○●█)
 
@@ -144,10 +148,11 @@ All new animations:
 
 ### Fluid Dynamics
 1. Select "Fluid Lattice" mode
-2. Increase rain rate (RIGHT) to see more ripples
-3. Decrease damping (LEFT on param 2) for longer waves
-4. Adjust wave speed for slow-motion or fast effects
-5. Max drop power for dramatic splashes
+2. **Increase rain rate** (UP) to see more ripples - most dramatic effect!
+3. **Adjust wave speed** (LEFT/RIGHT) - slower shows waves better
+4. **Increase drop power** (UP-RIGHT) for bigger splashes
+5. **Increase damping** (UP-LEFT) for waves that last longer
+6. Try: Max rain (UP), slow waves (LEFT), high damping (UP-LEFT) = beautiful ripples!
 
 ### Swarm Behavior
 1. Select "Particle Swarm" mode

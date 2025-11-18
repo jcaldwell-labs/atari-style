@@ -335,10 +335,15 @@ class FluidLattice(ParametricAnimation):
 
     def __init__(self, renderer: Renderer):
         super().__init__(renderer)
-        self.wave_speed = 0.5  # Wave propagation speed (param 1)
-        self.damping = 0.95  # Damping factor (param 2)
-        self.rain_rate = 0.1  # Rain drop frequency (param 3)
-        self.drop_strength = 5.0  # Drop impact strength (param 4)
+        # Remapped parameters for better intuitiveness:
+        # UP/DOWN: Rain frequency (most visible effect)
+        # LEFT/RIGHT: Wave speed (horizontal = speed)
+        # UP-RIGHT/DOWN-LEFT: Drop strength (splash size)
+        # UP-LEFT/DOWN-RIGHT: Damping (wave persistence)
+        self.rain_rate = 0.35  # Rain drop frequency (param 1) - MORE RAIN!
+        self.wave_speed = 0.3  # Wave propagation speed (param 2) - SLOWER for visibility
+        self.drop_strength = 8.0  # Drop impact strength (param 3) - STRONGER!
+        self.damping = 0.97  # Damping factor (param 4) - LESS damping (waves last longer)
 
         # Initialize lattice
         self.width = self.renderer.width // 2
@@ -348,22 +353,22 @@ class FluidLattice(ParametricAnimation):
 
     def adjust_params(self, param: int, delta: float):
         """Adjust parameters."""
-        if param == 1:
-            self.wave_speed = max(0.1, min(2.0, self.wave_speed + delta * 0.05))
-        elif param == 2:
-            self.damping = max(0.8, min(0.99, self.damping + delta * 0.01))
-        elif param == 3:
-            self.rain_rate = max(0.0, min(1.0, self.rain_rate + delta * 0.05))
-        elif param == 4:
-            self.drop_strength = max(1.0, min(15.0, self.drop_strength + delta * 0.5))
+        if param == 1:  # UP/DOWN: Rain frequency
+            self.rain_rate = max(0.0, min(1.5, self.rain_rate + delta * 0.05))
+        elif param == 2:  # LEFT/RIGHT: Wave speed
+            self.wave_speed = max(0.05, min(1.0, self.wave_speed + delta * 0.02))
+        elif param == 3:  # UP-RIGHT/DOWN-LEFT: Drop strength
+            self.drop_strength = max(3.0, min(20.0, self.drop_strength + delta * 0.5))
+        elif param == 4:  # UP-LEFT/DOWN-RIGHT: Damping
+            self.damping = max(0.85, min(0.995, self.damping + delta * 0.005))
 
     def get_param_info(self) -> list:
         """Return current parameter values for display."""
         return [
-            f"Wave Speed: {self.wave_speed:.2f}",
-            f"Damping: {self.damping:.2f}",
             f"Rain Rate: {self.rain_rate:.2f}",
-            f"Drop Power: {self.drop_strength:.1f}"
+            f"Wave Speed: {self.wave_speed:.2f}",
+            f"Drop Power: {self.drop_strength:.1f}",
+            f"Damping: {self.damping:.3f}"
         ]
 
     def update(self, dt: float):
@@ -405,17 +410,17 @@ class FluidLattice(ParametricAnimation):
             for x in range(self.width):
                 value = self.current[y][x]
 
-                # Map value to character and color
-                if abs(value) < 0.5:
+                # Map value to character and color - ADJUSTED THRESHOLDS
+                if abs(value) < 0.3:  # Lowered from 0.5
                     char = ' '
                     color = None
-                elif abs(value) < 2.0:
+                elif abs(value) < 1.5:  # Lowered from 2.0
                     char = '·'
                     color = Color.BLUE if value > 0 else Color.CYAN
-                elif abs(value) < 4.0:
+                elif abs(value) < 3.0:  # Lowered from 4.0
                     char = '○'
                     color = Color.CYAN if value > 0 else Color.GREEN
-                elif abs(value) < 6.0:
+                elif abs(value) < 5.0:  # Lowered from 6.0
                     char = '●'
                     color = Color.BRIGHT_CYAN if value > 0 else Color.BRIGHT_BLUE
                 else:

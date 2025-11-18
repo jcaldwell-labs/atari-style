@@ -137,10 +137,10 @@ antimicrox
    - Param 4: Detail/Iterations (10-200)
 
 6. **Fluid Lattice**
-   - Param 1: Wave speed (0.1-2.0)
-   - Param 2: Damping factor (0.8-0.99)
-   - Param 3: Rain drop rate (0.0-1.0)
-   - Param 4: Drop impact strength (1-15)
+   - Param 1: Rain drop rate (0.0-1.5) - UP/DOWN for more/less action
+   - Param 2: Wave speed (0.05-1.0) - LEFT/RIGHT for slower/faster
+   - Param 3: Drop impact strength (3-20) - Splash size
+   - Param 4: Damping factor (0.85-0.995) - Wave persistence
 
 7. **Particle Swarm**
    - Param 1: Number of particles (10-100)
