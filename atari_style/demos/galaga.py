@@ -2,7 +2,6 @@
 
 import time
 import random
-import math
 from ..core.renderer import Renderer, Color
 from ..core.input_handler import InputHandler, InputType
 
@@ -254,6 +253,9 @@ class Galaga:
         # Wave start delay
         self.wave_start_timer = 2.0
 
+        # Death timer
+        self.death_timer = 0
+
         # Stats
         self.shots_fired = 0
         self.shots_hit = 0
@@ -312,20 +314,22 @@ class Galaga:
             self._update_playing(dt)
 
         elif self.state == self.STATE_DEATH:
-            time.sleep(1)
-            self.lives -= 1
+            self.death_timer += dt
+            if self.death_timer >= 1.0:
+                self.death_timer = 0
+                self.lives -= 1
 
-            if self.lives <= 0:
-                self.state = self.STATE_GAME_OVER
-                if self.score > self.high_score:
-                    self.high_score = self.score
-            else:
-                # Reset
-                self.player.x = self.width // 2
-                self.player_bullets = []
-                self.enemy_bullets = []
-                self.explosions = []
-                self.state = self.STATE_PLAYING
+                if self.lives <= 0:
+                    self.state = self.STATE_GAME_OVER
+                    if self.score > self.high_score:
+                        self.high_score = self.score
+                else:
+                    # Reset
+                    self.player.x = self.width // 2
+                    self.player_bullets = []
+                    self.enemy_bullets = []
+                    self.explosions = []
+                    self.state = self.STATE_PLAYING
 
     def _update_playing(self, dt):
         """Update during active gameplay."""

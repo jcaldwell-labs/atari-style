@@ -164,6 +164,9 @@ class Breakout:
         # Auto-launch timer
         self.auto_launch_timer = 0
 
+        # Death timer
+        self.death_timer = 0
+
         # Frame timing
         self.last_time = time.time()
 
@@ -234,20 +237,22 @@ class Breakout:
 
         elif self.state == self.STATE_DEATH:
             # Wait a moment before respawning or game over
-            time.sleep(1)
-            self.lives -= 1
+            self.death_timer += dt
+            if self.death_timer >= 1.0:
+                self.death_timer = 0
+                self.lives -= 1
 
-            if self.lives <= 0:
-                self.state = self.STATE_GAME_OVER
-            else:
-                # Reset for next ball
-                self.balls = [Ball(self.width // 2, self.paddle_y - 1)]
-                self.powerups = []
-                self.lasers = []
-                self._reset_paddle()
-                self.active_powerups = {}
-                self.auto_launch_timer = 0
-                self.state = self.STATE_SERVING
+                if self.lives <= 0:
+                    self.state = self.STATE_GAME_OVER
+                else:
+                    # Reset for next ball
+                    self.balls = [Ball(self.width // 2, self.paddle_y - 1)]
+                    self.powerups = []
+                    self.lasers = []
+                    self._reset_paddle()
+                    self.active_powerups = {}
+                    self.auto_launch_timer = 0
+                    self.state = self.STATE_SERVING
 
         elif self.state == self.STATE_VICTORY:
             # Wait for input to advance to next level

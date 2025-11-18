@@ -133,21 +133,47 @@ class CircleTool(DrawingTool):
         self.center_pos = (x, y)
 
     def draw(self, canvas, x, y, char, color):
-        """Draw circle from center to radius point."""
+        """Draw circle from center to radius point using Bresenham's algorithm."""
         if self.center_pos is None:
             return
 
         cx, cy = self.center_pos
         radius = max(abs(x - cx), abs(y - cy) // 2)  # Aspect ratio correction
 
-        # Midpoint circle algorithm (simplified)
-        for angle in range(0, 360, 10):
-            rad = angle * 3.14159 / 180
-            px = int(cx + radius * 1.0 * (1 if angle % 180 < 90 else -1))
-            py = int(cy + radius * 0.5 * (1 if (angle + 90) % 360 < 180 else -1))
+        # Bresenham's Midpoint Circle Algorithm
+        # Draw 8 symmetric points for each calculated point
+        def draw_circle_points(xc, yc, x_offset, y_offset):
+            """Draw all 8 octants of the circle."""
+            points = [
+                (xc + x_offset, yc + y_offset),
+                (xc - x_offset, yc + y_offset),
+                (xc + x_offset, yc - y_offset),
+                (xc - x_offset, yc - y_offset),
+                (xc + y_offset, yc + x_offset),
+                (xc - y_offset, yc + x_offset),
+                (xc + y_offset, yc - x_offset),
+                (xc - y_offset, yc - x_offset),
+            ]
+            for px, py in points:
+                if 0 <= px < canvas.width and 0 <= py < canvas.height:
+                    canvas.set_pixel(px, py, char, color)
 
-            if 0 <= px < canvas.width and 0 <= py < canvas.height:
-                canvas.set_pixel(px, py, char, color)
+        x_offset = 0
+        y_offset = radius
+        d = 3 - 2 * radius
+
+        draw_circle_points(cx, cy, x_offset, y_offset)
+
+        while y_offset >= x_offset:
+            x_offset += 1
+
+            if d > 0:
+                y_offset -= 1
+                d = d + 4 * (x_offset - y_offset) + 10
+            else:
+                d = d + 4 * x_offset + 6
+
+            draw_circle_points(cx, cy, x_offset, y_offset)
 
 
 class FloodFillTool(DrawingTool):
@@ -627,7 +653,7 @@ class ASCIIPainter:
         # Controls hint
         hint = "H:Help  F:Save  G:Grid  C:Clear  Z:Undo  Y:Redo  1-6:Tools  []:<>:Char  ,.Color  -=:Brush  ESC:Exit"
         if len(hint) < self.renderer.width:
-            self.renderer.draw_text(2, self.renderer.height - 2, hint, Color.BRIGHT_BLACK if hasattr(Color, 'BRIGHT_BLACK') else Color.WHITE)
+            self.renderer.draw_text(2, self.renderer.height - 2, hint, Color.CYAN)
 
     def _draw_help(self):
         """Draw help overlay."""

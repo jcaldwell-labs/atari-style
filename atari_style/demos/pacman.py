@@ -149,7 +149,7 @@ class Ghost(Entity):
         self.path = []
         self.path_update_timer = 0
 
-    def update(self, dt, maze, player_pos, other_ghosts):
+    def update(self, dt, maze, player_pos, player_direction, other_ghosts):
         """Update ghost AI."""
         super().update(dt)
 
@@ -157,7 +157,7 @@ class Ghost(Entity):
         self.path_update_timer += dt
         if self.path_update_timer >= 0.5:  # Recalculate path every 0.5s
             self.path_update_timer = 0
-            target = self._get_target(player_pos, other_ghosts)
+            target = self._get_target(player_pos, player_direction, other_ghosts)
             self.path = self._find_path(maze, target)
 
         # Follow path
@@ -183,9 +183,10 @@ class Ghost(Entity):
             elif gy > ty:
                 self.direction = (0, -1)
 
-    def _get_target(self, player_pos, other_ghosts):
+    def _get_target(self, player_pos, player_direction, other_ghosts):
         """Get target tile based on ghost personality."""
         px, py = player_pos
+        dx, dy = player_direction
 
         if self.mode == self.MODE_SCATTER:
             return self.scatter_target
@@ -199,8 +200,8 @@ class Ghost(Entity):
                 # Direct chase
                 return player_pos
             elif self.name == 'Pinky':
-                # Ambush: 4 tiles ahead
-                return (px + 4 * player_pos[2] if len(player_pos) > 2 else px, py + 4 * player_pos[3] if len(player_pos) > 3 else py)
+                # Ambush: 4 tiles ahead of player
+                return (px + 4 * dx, py + 4 * dy)
             elif self.name == 'Inky':
                 # Flanking: use Blinky's position
                 blinky_pos = None
@@ -345,6 +346,9 @@ class PacMan:
         # Ready timer
         self.ready_timer = 2.0
 
+        # Death timer
+        self.death_timer = 0
+
         # Frame timing
         self.last_time = time.time()
 
@@ -359,15 +363,17 @@ class PacMan:
             self._update_playing(dt)
 
         elif self.state == self.STATE_DEATH:
-            time.sleep(1)
-            self.lives -= 1
+            self.death_timer += dt
+            if self.death_timer >= 1.0:
+                self.death_timer = 0
+                self.lives -= 1
 
-            if self.lives <= 0:
-                self.state = self.STATE_GAME_OVER
-            else:
-                self._reset_positions()
-                self.state = self.STATE_READY
-                self.ready_timer = 2.0
+                if self.lives <= 0:
+                    self.state = self.STATE_GAME_OVER
+                else:
+                    self._reset_positions()
+                    self.state = self.STATE_READY
+                    self.ready_timer = 2.0
 
     def _update_playing(self, dt):
         """Update during active gameplay."""
@@ -417,8 +423,9 @@ class PacMan:
 
         # Update ghosts
         player_pos = self.player.get_tile_pos()
+        player_direction = self.player.direction
         for ghost in self.ghosts:
-            ghost.update(dt, self.maze, player_pos, self.ghosts)
+            ghost.update(dt, self.maze, player_pos, player_direction, self.ghosts)
 
             # Check if ghost reached spawn (when dead)
             if ghost.mode == Ghost.MODE_DEAD:
