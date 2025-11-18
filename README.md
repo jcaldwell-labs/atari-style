@@ -11,7 +11,7 @@ A collection of terminal-based interactive demos and games inspired by classic A
 - **Menu System** - Interactive menu for demo selection with keyboard and joystick support
 - **Joystick Connection Verification** - Visual test utility showing real-time joystick state
 - **Starfield Demo** - 3D space flight simulation with joystick-controlled speed and multiple color modes
-- **Screen Saver** - Four parametric animations (Lissajous, Spirals, Wave Circles, Plasma) with real-time joystick control over animation parameters. 8-directional joystick input adjusts 4 parameters per animation using **opposite direction pairs** (UP↔DOWN, LEFT↔RIGHT, and 2 diagonal pairs). Runs at 60 FPS.
+- **Screen Saver** - Eight parametric animations (Lissajous, Spirals, Wave Circles, Plasma, Mandelbrot Zoomer, Fluid Lattice, Particle Swarm, Tunnel Vision) with real-time joystick control over animation parameters. 8-directional joystick input adjusts 4 parameters per animation using **opposite direction pairs** (UP↔DOWN, LEFT↔RIGHT, and 2 diagonal pairs). Runs at 60 FPS.
 
 ### Roadmap (Future Features)
 

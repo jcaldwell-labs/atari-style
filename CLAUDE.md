@@ -88,14 +88,21 @@ Each demo is self-contained with a `run_*()` function:
   - ~30 FPS animation loop
 
 - **`screensaver.py`**: Parametric animation collection with joystick control
-  - Four animation modes with 4 adjustable parameters each:
-    - Lissajous curves (frequency X/Y, phase, resolution)
-    - Spirals (count, speed, tightness, scale)
-    - Concentric wave circles (count, amplitude, frequency, spacing)
-    - Plasma effect (X/Y/diagonal/radial frequencies)
-  - 8-directional joystick control: UP/DOWN control param 1, LEFT/RIGHT param 2, diagonals params 3-4
+  - Eight animation modes with 4 adjustable parameters each:
+    1. Lissajous curves (frequency X/Y, phase, resolution)
+    2. Spirals (count, speed, tightness, scale)
+    3. Concentric wave circles (count, amplitude, frequency, spacing)
+    4. Plasma effect (X/Y/diagonal/radial frequencies)
+    5. Mandelbrot zoomer (zoom, center X/Y, detail)
+    6. Fluid lattice (wave speed, damping, rain rate, drop power)
+    7. Particle swarm (count, speed, cohesion, separation)
+    8. Tunnel vision (depth speed, rotation, size, color speed)
+  - 8-directional joystick control using opposite pairs
   - Real-time parameter display and adjustment
   - 60 FPS rendering with 2x animation speed multiplier
+  - Physics simulations: fluid dynamics, boid flocking
+  - Fractal rendering: Mandelbrot set with auto-zoom
+  - Classic demo-scene effects: tunnel vision
 
 - **`joystick_test.py`**: Joystick verification utility
   - Visual crosshair showing analog stick position

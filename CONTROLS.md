@@ -104,7 +104,7 @@ antimicrox
 - **↖ (Up-Left)**: Increase Parameter 4
 - **↘ (Down-Right)**: Decrease Parameter 4
 
-**Animation Modes** (each with 4 adjustable parameters):
+**Animation Modes** (8 total, each with 4 adjustable parameters):
 
 1. **Lissajous Curve**
    - Param 1: Frequency X (1-10)
@@ -129,6 +129,30 @@ antimicrox
    - Param 2: Y frequency (0.01-0.3)
    - Param 3: Diagonal frequency (0.01-0.3)
    - Param 4: Radial frequency (0.01-0.3)
+
+5. **Mandelbrot Zoomer**
+   - Param 1: Zoom level (0.1-1000x)
+   - Param 2: Center X (-2.0 to 1.0)
+   - Param 3: Center Y (-1.5 to 1.5)
+   - Param 4: Detail/Iterations (10-200)
+
+6. **Fluid Lattice**
+   - Param 1: Wave speed (0.1-2.0)
+   - Param 2: Damping factor (0.8-0.99)
+   - Param 3: Rain drop rate (0.0-1.0)
+   - Param 4: Drop impact strength (1-15)
+
+7. **Particle Swarm**
+   - Param 1: Number of particles (10-100)
+   - Param 2: Movement speed (0.5-5.0)
+   - Param 3: Cohesion/attraction (0.0-2.0)
+   - Param 4: Separation/repulsion (0.0-3.0)
+
+8. **Tunnel Vision**
+   - Param 1: Depth speed (0.1-5.0)
+   - Param 2: Rotation speed (-2.0 to 2.0)
+   - Param 3: Tunnel size (0.3-3.0)
+   - Param 4: Color cycle speed (0.1-3.0)
 
 **Performance**: Runs at ~60 FPS with 2x animation speed multiplier
 
