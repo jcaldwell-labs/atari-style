@@ -1,0 +1,28 @@
+{
+  "title": "Target Shooter",
+  "description": "First-person shooting gallery with moving targets and combo system",
+  "version": "1.0",
+  "author": "jcaldwell-labs",
+  "category": "arcade_game",
+  "tags": ["shooter", "arcade", "accuracy", "action"],
+  "run_function": {
+    "module": "terminal_arcade.games.targetshooter",
+    "function": "run_targetshooter"
+  },
+  "has_intro": true,
+  "has_attract_mode": false,
+  "joystick_support": true,
+  "keyboard_support": true,
+  "controls_hint": "Joystick to aim, Button0 to fire, SPACE to adjust",
+  "is_new": true,
+  "features": [
+    "4 target types: Normal, Fast, Large, Bonus",
+    "Moving targets from all directions",
+    "Combo system - consecutive hits multiply score",
+    "Accuracy tracking (shots fired vs hits)",
+    "Ammo management with auto-reload",
+    "Wave progression system",
+    "Dual-mode interface (Shoot vs Adjust)",
+    "Adjustable difficulty and spawn rate"
+  ]
+}

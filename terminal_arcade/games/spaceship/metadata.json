@@ -1,0 +1,28 @@
+{
+  "title": "Spaceship Flying",
+  "description": "3D space navigation with obstacles, gates, and fuel management",
+  "version": "1.0",
+  "author": "jcaldwell-labs",
+  "category": "arcade_game",
+  "tags": ["space", "flying", "3d", "simulation", "action"],
+  "run_function": {
+    "module": "terminal_arcade.games.spaceship",
+    "function": "run_spaceship"
+  },
+  "has_intro": true,
+  "has_attract_mode": false,
+  "joystick_support": true,
+  "keyboard_support": true,
+  "controls_hint": "Joystick to fly, Button0 to accelerate, SPACE to adjust",
+  "is_new": true,
+  "features": [
+    "Full 6DOF spaceship control",
+    "3-layer starfield with parallax",
+    "Asteroids to avoid (damage on impact)",
+    "Gates to fly through (bonus points)",
+    "Fuel and health management",
+    "Real-time physics simulation",
+    "Dual-mode interface (Flight vs Adjust)",
+    "Adjustable speed, sensitivity, star density"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "title": "Grand Prix",
+  "description": "First-person 3D racing with curves, hills, and AI opponents",
+  "version": "1.0",
+  "author": "jcaldwell-labs",
+  "category": "arcade_game",
+  "tags": ["racing", "3d", "driving", "action"],
+  "run_function": {
+    "module": "terminal_arcade.games.grandprix",
+    "function": "run_grandprix"
+  },
+  "has_intro": true,
+  "has_attract_mode": false,
+  "joystick_support": true,
+  "keyboard_support": true,
+  "controls_hint": "Arrow/WASD to steer, Button0 to accelerate",
+  "is_new": false
+}

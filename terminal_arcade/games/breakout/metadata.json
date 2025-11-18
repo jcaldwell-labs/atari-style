@@ -1,0 +1,18 @@
+{
+  "title": "Breakout",
+  "description": "Paddle game with power-ups and combo system",
+  "version": "1.0",
+  "author": "jcaldwell-labs",
+  "category": "arcade_game",
+  "tags": ["paddle", "arcade", "classic", "action"],
+  "run_function": {
+    "module": "terminal_arcade.games.breakout",
+    "function": "run_breakout"
+  },
+  "has_intro": true,
+  "has_attract_mode": false,
+  "joystick_support": true,
+  "keyboard_support": true,
+  "controls_hint": "Arrow/WASD to move paddle, power-ups drop automatically",
+  "is_new": false
+}

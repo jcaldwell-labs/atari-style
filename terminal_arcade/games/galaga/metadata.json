@@ -1,0 +1,18 @@
+{
+  "title": "Galaga",
+  "description": "Space shooter with dive attacks and bonus UFO ships",
+  "version": "1.0",
+  "author": "jcaldwell-labs",
+  "category": "arcade_game",
+  "tags": ["shooter", "space", "arcade", "classic"],
+  "run_function": {
+    "module": "terminal_arcade.games.galaga",
+    "function": "run_galaga"
+  },
+  "has_intro": true,
+  "has_attract_mode": false,
+  "joystick_support": true,
+  "keyboard_support": true,
+  "controls_hint": "Arrow/WASD to move, Space/Button0 to fire",
+  "is_new": false
+}

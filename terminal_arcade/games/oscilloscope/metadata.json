@@ -1,0 +1,27 @@
+{
+  "title": "Oscilloscope Functions",
+  "description": "Interactive oscilloscope with Lissajous curves, waveforms, and spectrum analyzer",
+  "version": "1.0",
+  "author": "jcaldwell-labs",
+  "category": "visual_demo",
+  "tags": ["oscilloscope", "lissajous", "waveform", "visualization", "audio"],
+  "run_function": {
+    "module": "terminal_arcade.games.oscilloscope",
+    "function": "run_oscilloscope"
+  },
+  "has_intro": true,
+  "has_attract_mode": false,
+  "joystick_support": true,
+  "keyboard_support": true,
+  "controls_hint": "SPACE=Mode toggle, Joystick adjusts parameters",
+  "is_new": true,
+  "features": [
+    "5 display modes: Lissajous, XY, Waveform, Dual Trace, Spectrum",
+    "4 waveform types: Sine, Square, Triangle, Sawtooth",
+    "Real-time parameter adjustment with joystick",
+    "Dual-mode interface (View vs Adjust)",
+    "Animated waveforms with adjustable speed",
+    "Grid overlay toggle",
+    "Professional parameter panel with boxes"
+  ]
+}

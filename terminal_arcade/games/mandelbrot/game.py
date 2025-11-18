@@ -301,10 +301,10 @@ class MandelbrotExplorer:
 
         # Show mode toggle hint at bottom
         if self.parameter_mode:
-            mode_hint = "[TAB] Pan/Zoom Mode | USE JOYSTICK: ↕ Select Param, ← → Adjust Value"
+            mode_hint = "[SPACE] Pan/Zoom Mode | JOYSTICK: ↕ Select Param, ← → Adjust Value"
             hint_color = Color.BRIGHT_GREEN
         else:
-            mode_hint = "[TAB] Parameter Mode | USE JOYSTICK: Pan & Zoom"
+            mode_hint = "[SPACE] Parameter Mode | JOYSTICK: Pan & Zoom  |  Z=Zoom+ X=Zoom-  S=Screenshot  H=Help  ESC=Exit"
             hint_color = Color.BRIGHT_CYAN
 
         hint_x = (self.renderer.width - len(mode_hint)) // 2
@@ -318,29 +318,30 @@ class MandelbrotExplorer:
                 "",
                 "CURRENT MODE: " + mode,
                 "",
-                "TAB - Toggle Mode:",
-                "  Pan/Zoom: Joystick pans, Button0 zooms in",
-                "  Parameter: Joystick adjusts settings",
+                "SPACE - Toggle Mode:",
+                "  Pan/Zoom: Navigate fractal",
+                "  Parameter: Adjust settings",
                 "",
                 "PAN/ZOOM MODE:",
-                "  Joystick/Arrow/WASD: Pan view",
-                "  Button0 or Z: Zoom IN",
-                "  Button1 or X: Zoom OUT",
+                "  Joystick/Arrow: Pan view",
+                "  Button0 / Z: Zoom IN",
+                "  Button1 / X: Zoom OUT",
                 "",
                 "PARAMETER MODE:",
                 "  Joystick ↕: Select parameter",
                 "  Joystick ← →: Adjust value",
-                "  See parameter box (top-right)",
+                "  Button0: Toggle ON/OFF",
+                "  See panel (top-right) →",
                 "",
-                "ALWAYS AVAILABLE:",
-                "  S or Button4: Screenshot",
+                "QUICK KEYS:",
+                "  S/Button4: Screenshot",
                 "  1-6: Bookmarks",
-                "  R: Reset",
-                "  H: Help",
+                "  R: Reset  H: Help",
                 "  ESC/Q: Exit",
                 "",
-                "Check ~/.terminal-arcade/",
-                "mandelbrot-screenshots/ for saves",
+                "Screenshots saved to:",
+                "~/.terminal-arcade/",
+                "mandelbrot-screenshots/",
             ]
 
             # Draw help box (sized for content)
@@ -486,8 +487,8 @@ class MandelbrotExplorer:
         """
         # Handle special keys first
         if raw_key:
-            # TAB = Toggle mode
-            if raw_key.name == 'KEY_TAB' or raw_key == '\t':
+            # SPACE = Toggle mode
+            if raw_key == ' ':
                 self.parameter_mode = not self.parameter_mode
                 self.needs_redraw = True
                 return
