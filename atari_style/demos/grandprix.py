@@ -245,42 +245,44 @@ class GrandPrix:
         # Get joystick state
         jx, jy = self.input_handler.get_joystick_state()
 
-        # Steering (X axis)
+        # Keyboard input (read once for better responsiveness)
+        accelerating = False
+        braking = False
+        turning_left = False
+        turning_right = False
+
+        with self.input_handler.term.cbreak():
+            key = self.input_handler.term.inkey(timeout=0.001)
+
+            if key:
+                # Check all keys in one pass
+                if key.name == 'KEY_LEFT' or key.lower() == 'a':
+                    turning_left = True
+                elif key.name == 'KEY_RIGHT' or key.lower() == 'd':
+                    turning_right = True
+
+                if key.name == 'KEY_UP' or key.lower() == 'w':
+                    accelerating = True
+                elif key.name == 'KEY_DOWN' or key.lower() == 's':
+                    braking = True
+
+        # Steering (joystick overrides keyboard)
         if abs(jx) > 0:
             self.lateral += jx * dt * 2  # Steering speed
-        else:
-            # Keyboard steering
-            with self.input_handler.term.cbreak():
-                key = self.input_handler.term.inkey(timeout=0.001)
-
-                if key:
-                    if key.name == 'KEY_LEFT' or key.lower() == 'a':
-                        self.lateral -= dt * 2
-                    elif key.name == 'KEY_RIGHT' or key.lower() == 'd':
-                        self.lateral += dt * 2
+        elif turning_left:
+            self.lateral -= dt * 2
+        elif turning_right:
+            self.lateral += dt * 2
 
         # Clamp lateral position
         self.lateral = max(-1.5, min(1.5, self.lateral))
 
-        # Acceleration/Braking (Y axis or keys)
-        accelerating = False
-        braking = False
-
+        # Acceleration/Braking (joystick overrides keyboard)
         if abs(jy) > 0:
             if jy < 0:  # Up
                 accelerating = True
             elif jy > 0:  # Down
                 braking = True
-        else:
-            # Keyboard
-            with self.input_handler.term.cbreak():
-                key = self.input_handler.term.inkey(timeout=0.001)
-
-                if key:
-                    if key.name == 'KEY_UP' or key.lower() == 'w':
-                        accelerating = True
-                    elif key.name == 'KEY_DOWN' or key.lower() == 's':
-                        braking = True
 
         # Update speed
         if accelerating:

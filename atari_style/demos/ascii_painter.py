@@ -381,106 +381,113 @@ class ASCIIPainter:
         """Handle user input."""
         # Get joystick state
         jx, jy = self.input_handler.get_joystick_state()
+        buttons = self.input_handler.get_joystick_buttons()
 
-        # Cursor movement
-        cursor_speed = 15  # chars per second
-        if abs(jx) > 0 or abs(jy) > 0:
+        # Read keyboard once per frame
+        key_pressed = False
+        draw_action = False
+
+        with self.input_handler.term.cbreak():
+            key = self.input_handler.term.inkey(timeout=0.001)
+
+            if key:
+                key_pressed = True
+
+                # Movement
+                if key.name == 'KEY_LEFT' or key.lower() == 'a':
+                    self.cursor_x -= 1
+                elif key.name == 'KEY_RIGHT' or key.lower() == 'd':
+                    self.cursor_x += 1
+                elif key.name == 'KEY_UP' or key.lower() == 'w':
+                    self.cursor_y -= 1
+                elif key.name == 'KEY_DOWN' or key.lower() == 's':
+                    self.cursor_y += 1
+
+                # Drawing action
+                elif key == ' ' or key.name == 'KEY_ENTER':
+                    draw_action = True
+
+                # Tool switching
+                elif key == '1':
+                    self.current_tool = 'freehand'
+                    self.show_message("Tool: Freehand")
+                elif key == '2':
+                    self.current_tool = 'line'
+                    self.show_message("Tool: Line")
+                elif key == '3':
+                    self.current_tool = 'rectangle'
+                    self.show_message("Tool: Rectangle")
+                elif key == '4':
+                    self.current_tool = 'filled_rect'
+                    self.show_message("Tool: Filled Rectangle")
+                elif key == '5':
+                    self.current_tool = 'circle'
+                    self.show_message("Tool: Circle")
+                elif key == '6':
+                    self.current_tool = 'flood_fill'
+                    self.show_message("Tool: Flood Fill")
+
+                # Character palette
+                elif key == '[':
+                    self.char_palette_index = (self.char_palette_index - 1) % len(self.palettes[self.current_palette])
+                    self.current_char = self.palettes[self.current_palette][self.char_palette_index]
+                elif key == ']':
+                    self.char_palette_index = (self.char_palette_index + 1) % len(self.palettes[self.current_palette])
+                    self.current_char = self.palettes[self.current_palette][self.char_palette_index]
+
+                # Color selection
+                elif key == ',':
+                    self.color_index = (self.color_index - 1) % len(self.COLORS)
+                    self.current_color = self.COLORS[self.color_index]
+                elif key == '.':
+                    self.color_index = (self.color_index + 1) % len(self.COLORS)
+                    self.current_color = self.COLORS[self.color_index]
+
+                # Brush size
+                elif key == '-':
+                    self.brush_size = max(1, self.brush_size - 2)
+                    self.show_message(f"Brush size: {self.brush_size}")
+                elif key == '=':
+                    self.brush_size = min(5, self.brush_size + 2)
+                    self.show_message(f"Brush size: {self.brush_size}")
+
+                # Undo/Redo
+                elif key.lower() == 'z':
+                    self.undo()
+                elif key.lower() == 'y':
+                    self.redo()
+
+                # Grid toggle
+                elif key.lower() == 'g':
+                    self.show_grid = not self.show_grid
+
+                # Help
+                elif key.lower() == 'h':
+                    self.show_help = not self.show_help
+
+                # Clear canvas
+                elif key.lower() == 'c':
+                    self.save_undo()
+                    self.canvas.clear()
+                    self.show_message("Canvas cleared")
+
+                # Save
+                elif key.lower() == 'f':
+                    self.save_drawing()
+
+        # Joystick cursor movement (only if no keyboard movement)
+        if not key_pressed and (abs(jx) > 0 or abs(jy) > 0):
+            cursor_speed = 15  # chars per second
             self.cursor_x += int(jx * cursor_speed * dt)
             self.cursor_y += int(jy * cursor_speed * dt)
-        else:
-            # Keyboard movement
-            with self.input_handler.term.cbreak():
-                key = self.input_handler.term.inkey(timeout=0.001)
-
-                if key:
-                    if key.name == 'KEY_LEFT' or key.lower() == 'a':
-                        self.cursor_x -= 1
-                    elif key.name == 'KEY_RIGHT' or key.lower() == 'd':
-                        self.cursor_x += 1
-                    elif key.name == 'KEY_UP' or key.lower() == 'w':
-                        self.cursor_y -= 1
-                    elif key.name == 'KEY_DOWN' or key.lower() == 's':
-                        self.cursor_y += 1
-
-                    # Tool switching
-                    elif key == '1':
-                        self.current_tool = 'freehand'
-                        self.show_message("Tool: Freehand")
-                    elif key == '2':
-                        self.current_tool = 'line'
-                        self.show_message("Tool: Line")
-                    elif key == '3':
-                        self.current_tool = 'rectangle'
-                        self.show_message("Tool: Rectangle")
-                    elif key == '4':
-                        self.current_tool = 'filled_rect'
-                        self.show_message("Tool: Filled Rectangle")
-                    elif key == '5':
-                        self.current_tool = 'circle'
-                        self.show_message("Tool: Circle")
-                    elif key == '6':
-                        self.current_tool = 'flood_fill'
-                        self.show_message("Tool: Flood Fill")
-
-                    # Character palette
-                    elif key == '[':
-                        self.char_palette_index = (self.char_palette_index - 1) % len(self.palettes[self.current_palette])
-                        self.current_char = self.palettes[self.current_palette][self.char_palette_index]
-                    elif key == ']':
-                        self.char_palette_index = (self.char_palette_index + 1) % len(self.palettes[self.current_palette])
-                        self.current_char = self.palettes[self.current_palette][self.char_palette_index]
-
-                    # Color selection
-                    elif key == ',':
-                        self.color_index = (self.color_index - 1) % len(self.COLORS)
-                        self.current_color = self.COLORS[self.color_index]
-                    elif key == '.':
-                        self.color_index = (self.color_index + 1) % len(self.COLORS)
-                        self.current_color = self.COLORS[self.color_index]
-
-                    # Brush size
-                    elif key == '-':
-                        self.brush_size = max(1, self.brush_size - 2)
-                        self.show_message(f"Brush size: {self.brush_size}")
-                    elif key == '=':
-                        self.brush_size = min(5, self.brush_size + 2)
-                        self.show_message(f"Brush size: {self.brush_size}")
-
-                    # Undo/Redo
-                    elif key.lower() == 'z':
-                        self.undo()
-                    elif key.lower() == 'y':
-                        self.redo()
-
-                    # Grid toggle
-                    elif key.lower() == 'g':
-                        self.show_grid = not self.show_grid
-
-                    # Help
-                    elif key.lower() == 'h':
-                        self.show_help = not self.show_help
-
-                    # Clear canvas
-                    elif key.lower() == 'c':
-                        self.save_undo()
-                        self.canvas.clear()
-                        self.show_message("Canvas cleared")
-
-                    # Save
-                    elif key.lower() == 'f':
-                        self.save_drawing()
 
         # Clamp cursor
         self.cursor_x = max(0, min(self.cursor_x, self.canvas.width - 1))
         self.cursor_y = max(0, min(self.cursor_y, self.canvas.height - 1))
 
-        # Drawing action (space or button 0)
-        buttons = self.input_handler.get_joystick_buttons()
-        with self.input_handler.term.cbreak():
-            key = self.input_handler.term.inkey(timeout=0.001)
-
-            if key == ' ' or key.name == 'KEY_ENTER' or buttons.get(0):
-                self.perform_drawing_action()
+        # Drawing action (keyboard or button 0)
+        if draw_action or buttons.get(0):
+            self.perform_drawing_action()
 
     def perform_drawing_action(self):
         """Perform drawing action with current tool."""

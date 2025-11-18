@@ -256,22 +256,44 @@ class MandelbrotZoomer(ParametricAnimation):
         self.center_x = -0.5  # Center X coordinate (param 2)
         self.center_y = 0.0  # Center Y coordinate (param 3)
         self.max_iterations = 50  # Detail level (param 4)
+        self.zoom_mode = False  # Toggle for zoom mode (button 2)
 
     def adjust_params(self, param: int, delta: float):
-        """Adjust parameters."""
-        if param == 1:
-            self.zoom = max(0.1, min(1000.0, self.zoom * (1.1 if delta > 0 else 0.9)))
-        elif param == 2:
-            self.center_x = max(-2.0, min(1.0, self.center_x + delta * 0.05))
-        elif param == 3:
-            self.center_y = max(-1.5, min(1.5, self.center_y + delta * 0.05))
-        elif param == 4:
-            self.max_iterations = int(max(10, min(200, self.max_iterations + delta * 5)))
+        """Adjust parameters.
+
+        When zoom_mode is True:
+        - UP/DOWN controls zoom (param 1)
+        - LEFT/RIGHT/DIAGONALS control panning (params 2 & 3)
+
+        When zoom_mode is False:
+        - Standard 4-parameter diagonal control
+        """
+        if self.zoom_mode:
+            # Zoom mode: UP/DOWN = zoom, X/Y axis = pan
+            if param == 1:  # UP/DOWN
+                self.zoom = max(0.1, min(1000.0, self.zoom * (1.1 if delta > 0 else 0.9)))
+            elif param == 2:  # LEFT/RIGHT
+                self.center_x = max(-2.0, min(1.0, self.center_x + delta * 0.05))
+            elif param == 3:  # UP-RIGHT/DOWN-LEFT (diagonal treated as Y-pan)
+                self.center_y = max(-1.5, min(1.5, self.center_y + delta * 0.05))
+            elif param == 4:  # UP-LEFT/DOWN-RIGHT (diagonal treated as Y-pan)
+                self.center_y = max(-1.5, min(1.5, self.center_y + delta * 0.05))
+        else:
+            # Standard mode: all 4 parameters
+            if param == 1:
+                self.zoom = max(0.1, min(1000.0, self.zoom * (1.1 if delta > 0 else 0.9)))
+            elif param == 2:
+                self.center_x = max(-2.0, min(1.0, self.center_x + delta * 0.05))
+            elif param == 3:
+                self.center_y = max(-1.5, min(1.5, self.center_y + delta * 0.05))
+            elif param == 4:
+                self.max_iterations = int(max(10, min(200, self.max_iterations + delta * 5)))
 
     def get_param_info(self) -> list:
         """Return current parameter values for display."""
+        mode_str = "[ZOOM MODE]" if self.zoom_mode else ""
         return [
-            f"Zoom: {self.zoom:.1f}x",
+            f"Zoom: {self.zoom:.1f}x {mode_str}",
             f"Center X: {self.center_x:.3f}",
             f"Center Y: {self.center_y:.3f}",
             f"Detail: {self.max_iterations}"
@@ -933,14 +955,37 @@ class ScreenSaver:
             # Keyboard ESC/Q or X: Exit
             self.running = False
 
+        # Special handling for Mandelbrot zoom mode toggle (button 2)
+        if self.input_handler.joystick_initialized and self.current_animation == 4:  # Mandelbrot is index 4
+            pygame.event.pump()
+            buttons = self.input_handler.get_joystick_buttons()
+
+            # Check button 2 for zoom mode toggle (only for Mandelbrot)
+            if not hasattr(self, '_last_btn2_state'):
+                self._last_btn2_state = False
+
+            btn2_pressed = buttons.get(2, False)
+            if btn2_pressed and not self._last_btn2_state:
+                # Toggle zoom mode on button press
+                anim = self.animations[self.current_animation]
+                if hasattr(anim, 'zoom_mode'):
+                    anim.zoom_mode = not anim.zoom_mode
+                    self.save_feedback = f"Zoom Mode: {'ON' if anim.zoom_mode else 'OFF'}"
+                    self.save_feedback_time = time.time()
+                    time.sleep(0.2)  # Debounce
+
+            self._last_btn2_state = btn2_pressed
+
         # Save/Load system with buttons 2-5 (separate from main input to avoid conflicts)
+        # Skip button 2 for Mandelbrot (used for zoom mode toggle)
         if self.input_handler.joystick_initialized:
             pygame.event.pump()  # Update joystick state
             buttons = self.input_handler.get_joystick_buttons()
             current_time = time.time()
 
-            # Check buttons 2-5 (slots 0-3)
-            for btn_id in [2, 3, 4, 5]:
+            # Check buttons 2-5 (slots 0-3), but skip button 2 for Mandelbrot
+            button_range = [3, 4, 5] if self.current_animation == 4 else [2, 3, 4, 5]
+            for btn_id in button_range:
                 if btn_id >= len(buttons):
                     continue
 
