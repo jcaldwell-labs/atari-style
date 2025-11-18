@@ -301,10 +301,13 @@ class MandelbrotExplorer:
 
         # Show mode toggle hint at bottom
         if self.parameter_mode:
-            mode_hint = "BTN2=View Mode  BTN1=Exit Params | JOYSTICK: ↕ Select Param, ← → Adjust | BTN3=Help  ESC=Exit"
+            mode_hint = "BTN2=View Mode | JOYSTICK: ↕ Select Param, ← → Adjust | BTN3=Help ESC=Exit"
             hint_color = Color.BRIGHT_GREEN
         else:
-            mode_hint = "BTN2=Adjust Mode | JOYSTICK: Pan  BTN0=Zoom+  BTN1=Zoom-  BTN3=Help  BTN4=Screenshot  ESC/Q=Exit"
+            if self.input_handler.joystick_initialized:
+                mode_hint = "BTN2=Adjust Mode | JOYSTICK: Pan  BTN0=Zoom+  BTN1=Zoom-  BTN4=Screenshot  ESC/Q=Exit"
+            else:
+                mode_hint = "KEYBOARD MODE: Arrow/WASD=Pan  Enter=Zoom+  ESC/Q=Exit (Joystick needed for parameters)"
             hint_color = Color.BRIGHT_CYAN
 
         hint_x = (self.renderer.width - len(mode_hint)) // 2
@@ -484,12 +487,18 @@ class MandelbrotExplorer:
         Args:
             input_type: InputType from input handler
         """
-        # Exit handling
-        if input_type == InputType.QUIT or input_type == InputType.BACK:
+        # Exit handling (ESC/Q ONLY, never Button 1!)
+        if input_type == InputType.QUIT:
             self.running = False
             return
 
-        # Check for joystick buttons FIRST
+        # ENTER key = Mode toggle (keyboard fallback for Button 2)
+        if input_type == InputType.SELECT and not self.parameter_mode:
+            # In pan/zoom mode, SELECT could be mode toggle OR zoom
+            # Use it for zoom (Button 0 primary action)
+            pass  # Handle below
+
+        # Check for joystick buttons
         if self.input_handler.joystick_initialized:
             buttons = self.input_handler.get_joystick_buttons()
 
@@ -518,14 +527,9 @@ class MandelbrotExplorer:
                 self.needs_redraw = True
                 return
 
-            # Button 1 = Context-dependent
-            if buttons.get(1, False):
-                if self.parameter_mode:
-                    # In parameter mode, Button 1 exits parameter mode
-                    self.parameter_mode = False
-                else:
-                    # In pan/zoom mode, Button 1 zooms out
-                    self.zoom = min(5.0, self.zoom * 1.3)
+            # Button 1 = Zoom OUT (pan/zoom mode only, NEVER exit!)
+            if buttons.get(1, False) and not self.parameter_mode:
+                self.zoom = min(5.0, self.zoom * 1.3)
                 self.needs_redraw = True
                 time.sleep(0.15)
                 return
