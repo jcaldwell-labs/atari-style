@@ -5,6 +5,7 @@ Aim and shoot moving targets for points and combos!
 
 import time
 import random
+import math
 from ...engine.renderer import Renderer, Color
 from ...engine.input_handler import InputHandler, InputType
 
