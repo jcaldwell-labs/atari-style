@@ -3,6 +3,7 @@
 import math
 import time
 import random
+import pygame
 from ..core.renderer import Renderer, Color
 from ..core.input_handler import InputHandler, InputType
 
@@ -623,6 +624,7 @@ class ScreenSaver:
         # Save slot system (buttons 2-5 = slots 0-3)
         self.save_slots = {0: None, 1: None, 2: None, 3: None}
         self.button_press_times = {}  # Track when buttons were pressed
+        self.previous_save_buttons = {2: False, 3: False, 4: False, 5: False}  # Track button states
         self.hold_threshold = 0.5  # Seconds to hold for save
         self.save_feedback = None  # Message to show when saving/loading
         self.save_feedback_time = 0  # Time when feedback was set
@@ -823,25 +825,79 @@ class ScreenSaver:
 
         # Draw controls
         control_y = 1
-        self.renderer.draw_text(self.renderer.width - 30, control_y, "H: Help", Color.BRIGHT_YELLOW)
-        self.renderer.draw_text(self.renderer.width - 30, control_y + 1, "SPACE/BTN0: Next Mode", Color.CYAN)
-        self.renderer.draw_text(self.renderer.width - 30, control_y + 2, "ESC/Q/BTN1: Exit", Color.CYAN)
+        self.renderer.draw_text(self.renderer.width - 32, control_y, "H: Help", Color.BRIGHT_YELLOW)
+        self.renderer.draw_text(self.renderer.width - 32, control_y + 1, "SPACE/BTN0: Next Mode", Color.CYAN)
+        self.renderer.draw_text(self.renderer.width - 32, control_y + 2, "BTN2-5: Save/Load (Hold/Tap)", Color.CYAN)
+        self.renderer.draw_text(self.renderer.width - 32, control_y + 3, "ESC/Q/BTN1: Exit", Color.CYAN)
 
-        # Draw save slot indicators at bottom
+        # Draw legend for slot colors
+        legend_y = self.renderer.height - 3
+        legend = "Green=Saved Yellow=Pressing Red=Saving"
+        self.renderer.draw_text(self.renderer.width - len(legend) - 2, legend_y, legend, Color.WHITE)
+
+        # Draw save slot indicators at bottom with press and hold states
         slot_y = self.renderer.height - 2
         slot_text = "Slots: "
         self.renderer.draw_text(2, slot_y, slot_text, Color.YELLOW)
         x_offset = 2 + len(slot_text)
+
+        # Check current button states
+        current_time = time.time()
+        if self.input_handler.joystick_initialized:
+            buttons = self.input_handler.get_joystick_buttons()
+        else:
+            buttons = {}
+
         for i in range(4):
-            slot_label = f"[{i+2}]"
-            color = Color.BRIGHT_GREEN if self.save_slots[i] is not None else Color.WHITE
+            btn_id = i + 2
+            slot_label = f"[{btn_id}]"
+
+            # Determine color based on state
+            is_pressed = buttons.get(btn_id, False)
+            has_save = self.save_slots[i] is not None
+            is_holding = btn_id in self.button_press_times
+
+            # Color logic:
+            # - Pressing (no hold yet): YELLOW
+            # - Holding (progress to save): BRIGHT_YELLOW + progress bar
+            # - Has save: BRIGHT_GREEN
+            # - Empty: WHITE
+            if is_pressed and is_holding:
+                hold_duration = current_time - self.button_press_times[btn_id]
+                if hold_duration >= self.hold_threshold:
+                    # About to save (or just saved)
+                    color = Color.BRIGHT_RED
+                else:
+                    # Holding, not there yet
+                    color = Color.BRIGHT_YELLOW
+                    # Draw progress bar
+                    progress = int((hold_duration / self.hold_threshold) * 3)
+                    progress_bar = "=" * progress
+                    self.renderer.draw_text(x_offset + len(slot_label) + 1, slot_y, progress_bar, Color.YELLOW)
+            elif has_save:
+                color = Color.BRIGHT_GREEN
+            else:
+                color = Color.WHITE
+
             self.renderer.draw_text(x_offset, slot_y, slot_label, color)
-            x_offset += len(slot_label) + 1
+            x_offset += len(slot_label) + 5  # Extra space for progress bar
 
         # Draw save/load feedback
         if self.save_feedback and time.time() - self.save_feedback_time < 2.0:
             feedback_x = (self.renderer.width - len(self.save_feedback)) // 2
             self.renderer.draw_text(feedback_x, self.renderer.height - 4, self.save_feedback, Color.BRIGHT_YELLOW)
+
+        # Draw button press debug info (second row for status)
+        if self.input_handler.joystick_initialized:
+            status_y = self.renderer.height - 3
+            status_parts = []
+            for btn_id in [2, 3, 4, 5]:
+                if btn_id in self.button_press_times:
+                    hold_time = current_time - self.button_press_times[btn_id]
+                    status_parts.append(f"BTN{btn_id}:{hold_time:.1f}s")
+            if status_parts:
+                status_text = " ".join(status_parts)
+                self.renderer.draw_text(2, status_y, status_text, Color.CYAN)
 
         # Draw help modal (on top of everything)
         if self.show_help:
@@ -871,8 +927,9 @@ class ScreenSaver:
         elif input_type == InputType.QUIT or input_type == InputType.BACK:
             self.running = False
 
-        # Save/Load system with buttons 2-5
+        # Save/Load system with buttons 2-5 (separate from main input to avoid conflicts)
         if self.input_handler.joystick_initialized:
+            pygame.event.pump()  # Update joystick state
             buttons = self.input_handler.get_joystick_buttons()
             current_time = time.time()
 
@@ -883,11 +940,13 @@ class ScreenSaver:
 
                 slot = btn_id - 2
                 is_pressed = buttons.get(btn_id, False)
-                was_pressed = self.input_handler.previous_buttons.get(btn_id, False)
+                was_pressed = self.previous_save_buttons[btn_id]
 
                 # Button just pressed - start tracking
                 if is_pressed and not was_pressed:
                     self.button_press_times[btn_id] = current_time
+                    self.save_feedback = f"Button {btn_id} pressed..."
+                    self.save_feedback_time = current_time
 
                 # Button just released - check if hold or tap
                 elif not is_pressed and was_pressed:
@@ -903,6 +962,9 @@ class ScreenSaver:
 
                         del self.button_press_times[btn_id]
                         time.sleep(0.1)  # Debounce
+
+                # Update previous state
+                self.previous_save_buttons[btn_id] = is_pressed
 
         # Get joystick state for parameter control
         # Opposite directions control the same parameter (one increases, one decreases)
