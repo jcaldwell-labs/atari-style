@@ -1,0 +1,2 @@
+pygame>=2.5.0
+blessed>=1.20.0
