@@ -1,0 +1,16 @@
+{
+  "title": "ASCII Painter",
+  "description": "Full-featured drawing program with 6 tools and 4 palettes",
+  "version": "1.0",
+  "author": "jcaldwell-labs",
+  "category": "creative_tool",
+  "tags": ["ascii", "art", "drawing", "creative", "tool"],
+  "run_function": {
+    "module": "terminal_arcade.tools.asciipainter",
+    "function": "run_ascii_painter"
+  },
+  "has_intro": false,
+  "joystick_support": true,
+  "keyboard_support": true,
+  "is_new": false
+}

@@ -1,0 +1,15 @@
+{
+  "title": "Screensaver",
+  "description": "8 parametric animations with real-time joystick control",
+  "version": "1.0",
+  "author": "jcaldwell-labs",
+  "category": "visual_demo",
+  "tags": ["screensaver", "animation", "parametric", "visualization"],
+  "run_function": {
+    "module": "terminal_arcade.demos.screensaver",
+    "function": "run_screensaver"
+  },
+  "has_intro": false,
+  "joystick_support": true,
+  "is_new": false
+}

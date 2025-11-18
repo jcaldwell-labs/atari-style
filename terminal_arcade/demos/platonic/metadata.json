@@ -1,0 +1,15 @@
+{
+  "title": "Platonic Solids",
+  "description": "Interactive 3D viewer for all 5 Platonic solids with rotation",
+  "version": "1.0",
+  "author": "jcaldwell-labs",
+  "category": "visual_demo",
+  "tags": ["3d", "geometry", "mathematics", "visualization"],
+  "run_function": {
+    "module": "terminal_arcade.demos.platonic",
+    "function": "run_platonic_solids"
+  },
+  "has_intro": false,
+  "joystick_support": true,
+  "is_new": false
+}

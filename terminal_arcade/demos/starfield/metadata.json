@@ -1,0 +1,17 @@
+{
+  "title": "Starfield",
+  "description": "Enhanced 3D starfield with nebulae, warp tunnel, and hyperspace",
+  "version": "1.0",
+  "author": "jcaldwell-labs",
+  "category": "visual_demo",
+  "tags": ["space", "visualization", "3d", "animation"],
+  "run_function": {
+    "module": "terminal_arcade.demos.starfield",
+    "function": "run_starfield"
+  },
+  "has_intro": false,
+  "has_attract_mode": false,
+  "joystick_support": true,
+  "keyboard_support": true,
+  "is_new": false
+}
