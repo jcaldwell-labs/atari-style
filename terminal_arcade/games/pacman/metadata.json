@@ -1,0 +1,37 @@
+{
+  "title": "Pac-Man",
+  "description": "Classic maze chase game with ghost AI and power-ups",
+  "version": "1.0",
+  "author": "jcaldwell-labs",
+  "category": "arcade_game",
+  "tags": ["maze", "arcade", "classic", "action"],
+  "run_function": {
+    "module": "terminal_arcade.games.pacman",
+    "function": "run_pacman"
+  },
+  "has_intro": true,
+  "has_attract_mode": false,
+  "joystick_support": true,
+  "keyboard_support": true,
+  "controls_hint": "Arrow Keys/WASD to move, ESC to quit",
+  "is_new": false,
+  "gameplay": {
+    "players": 1,
+    "difficulty": "medium",
+    "estimated_time": "5-10 minutes per game"
+  },
+  "features": [
+    "Classic maze layout with 240 pellets and 4 power pellets",
+    "4 ghost enemies with distinct AI personalities",
+    "BFS pathfinding for intelligent ghost behavior",
+    "Power-up system with escalating ghost points (200/400/800/1600)",
+    "Lives system and level progression",
+    "Wrap-around tunnels on edges"
+  ],
+  "ghost_ai": {
+    "blinky": "Direct chase - targets player's current position",
+    "pinky": "Ambush - targets ahead of player",
+    "inky": "Flanking - uses Blinky's position for complex targeting",
+    "clyde": "Shy - chases when far, retreats when close"
+  }
+}

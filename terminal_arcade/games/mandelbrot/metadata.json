@@ -1,0 +1,47 @@
+{
+  "title": "Mandelbrot Explorer",
+  "description": "Interactive fractal viewer - explore the infinite complexity of the Mandelbrot set",
+  "version": "1.0",
+  "author": "jcaldwell-labs",
+  "category": "visual_demo",
+  "tags": ["fractal", "mathematics", "visualization", "interactive", "mandelbrot"],
+  "run_function": {
+    "module": "terminal_arcade.games.mandelbrot",
+    "function": "run_mandelbrot"
+  },
+  "has_intro": true,
+  "has_attract_mode": false,
+  "joystick_support": true,
+  "keyboard_support": true,
+  "controls_hint": "Arrow/WASD=Pan, Z/X=Zoom, C=Palette, 1-6=Bookmarks",
+  "is_new": true,
+  "gameplay": {
+    "players": 1,
+    "difficulty": "easy",
+    "estimated_time": "Open-ended exploration"
+  },
+  "features": [
+    "Real-time Mandelbrot set rendering",
+    "Smooth zooming and panning (infinite zoom)",
+    "5 color palettes (classic, fire, ocean, monochrome, rainbow)",
+    "Adjustable iteration depth for detail control",
+    "6 preset bookmarks to interesting locations",
+    "Smooth coloring algorithm for gradient effects",
+    "Coordinate display and viewport info",
+    "Interactive help overlay"
+  ],
+  "bookmarks": {
+    "1": "Overview - Full set view",
+    "2": "Valley - Detailed valley structure",
+    "3": "Spiral - Triple spiral formation",
+    "4": "Seahorse - Classic seahorse valley",
+    "5": "Triple Spiral - Complex spiral detail",
+    "6": "Elephant - Elephant valley pattern"
+  },
+  "technical": {
+    "algorithm": "Classic escape-time algorithm with smooth coloring",
+    "max_iterations": "50-500 (user adjustable)",
+    "rendering": "Character density mapping with color gradients",
+    "aspect_correction": "Terminal 2:1 ratio compensation"
+  }
+}
