@@ -330,7 +330,7 @@ class GrandPrix:
             segment = self.track.segments[segment_index]
 
             # 3D projection
-            z = n * self.segment_length
+            z = n * self.track.segment_length
             if z == 0:
                 z = 1  # Avoid division by zero
 

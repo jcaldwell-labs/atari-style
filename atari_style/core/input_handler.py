@@ -148,7 +148,11 @@ class InputHandler:
         return info
 
     def cleanup(self):
-        """Clean up resources."""
-        if self.joystick_initialized:
-            pygame.joystick.quit()
-        pygame.quit()
+        """Clean up resources.
+
+        Note: We don't call pygame.quit() here because pygame is shared
+        across all demos and the menu. Calling quit() would break joystick
+        input when returning to the menu.
+        """
+        # Don't quit pygame - it's shared across demos
+        pass
