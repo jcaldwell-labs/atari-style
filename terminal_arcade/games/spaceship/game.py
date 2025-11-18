@@ -368,20 +368,22 @@ class Spaceship:
                 elif target < current:
                     self.stars = self.stars[:target]
 
-    def handle_input(self, input_type, raw_key):
+    def handle_input(self, input_type):
         """Handle input."""
-        # Special keys
-        if raw_key:
-            if raw_key == ' ':
-                self.parameter_mode = not self.parameter_mode
-                return
-            if raw_key.name == 'KEY_ESCAPE':
-                self.running = False
-                return
-
-        if input_type == InputType.QUIT:
+        # Exit
+        if input_type == InputType.QUIT or input_type == InputType.BACK:
             self.running = False
             return
+
+        # Button controls
+        if self.input_handler.joystick_initialized:
+            buttons = self.input_handler.get_joystick_buttons()
+
+            # Button 2 = Toggle mode
+            if buttons.get(2, False):
+                self.parameter_mode = not self.parameter_mode
+                time.sleep(0.2)
+                return
 
         # Parameter mode
         if self.parameter_mode:
@@ -415,17 +417,6 @@ class Spaceship:
             if input_type == InputType.SELECT:
                 self.speed = min(self.max_speed, self.speed + 0.2)
 
-        # Keyboard shortcuts
-        if raw_key:
-            key_lower = raw_key.lower()
-
-            if key_lower == 'h':
-                self.show_help = not self.show_help
-            elif key_lower == '+' or key_lower == '=':
-                self.speed = min(self.max_speed, self.speed + 0.5)
-            elif key_lower == '-':
-                self.speed = max(self.min_speed, self.speed - 0.5)
-
     def run(self):
         """Main game loop."""
         try:
@@ -448,13 +439,9 @@ class Spaceship:
                 self.draw_ui()
                 self.renderer.render()
 
-                # Input
+                # Input (NO custom keyboard!)
                 input_type = self.input_handler.get_input(timeout=0.05)
-                raw_key = None
-                with self.input_handler.term.cbreak():
-                    raw_key = self.input_handler.term.inkey(timeout=0)
-
-                self.handle_input(input_type, raw_key)
+                self.handle_input(input_type)
 
                 time.sleep(0.033)  # ~30 FPS
 

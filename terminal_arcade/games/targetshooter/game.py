@@ -322,19 +322,22 @@ class TargetShooter:
         elif param['name'] == 'Spawn Rate':
             self.spawn_rate = param['value']
 
-    def handle_input(self, input_type, raw_key):
+    def handle_input(self, input_type):
         """Handle input."""
-        if raw_key:
-            if raw_key == ' ':
-                self.parameter_mode = not self.parameter_mode
-                return
-            if raw_key.name == 'KEY_ESCAPE':
-                self.running = False
-                return
-
-        if input_type == InputType.QUIT:
+        # Exit
+        if input_type == InputType.QUIT or input_type == InputType.BACK:
             self.running = False
             return
+
+        # Button controls
+        if self.input_handler.joystick_initialized:
+            buttons = self.input_handler.get_joystick_buttons()
+
+            # Button 2 = Toggle mode
+            if buttons.get(2, False):
+                self.parameter_mode = not self.parameter_mode
+                time.sleep(0.2)
+                return
 
         # Parameter mode
         if self.parameter_mode:
@@ -354,8 +357,6 @@ class TargetShooter:
             if abs(joy_x) > 0.1 or abs(joy_y) > 0.1:
                 self.aim_x += joy_x * 15
                 self.aim_y += joy_y * 10
-
-                # Clamp to screen
                 self.aim_x = max(0, min(self.renderer.width - 1, self.aim_x))
                 self.aim_y = max(0, min(self.renderer.height - 1, self.aim_y))
 
@@ -368,15 +369,9 @@ class TargetShooter:
                 self.aim_x = max(0, self.aim_x - 5)
             elif input_type == InputType.RIGHT:
                 self.aim_x = min(self.renderer.width - 1, self.aim_x + 5)
-
             # Shoot
             elif input_type == InputType.SELECT:
                 self.shoot()
-
-        # Keyboard shortcuts
-        if raw_key:
-            if raw_key.lower() == 'h':
-                self.show_help = not self.show_help
 
     def run(self):
         """Main game loop."""
@@ -400,13 +395,9 @@ class TargetShooter:
                 self.draw_ui()
                 self.renderer.render()
 
-                # Input
+                # Input (NO custom keyboard!)
                 input_type = self.input_handler.get_input(timeout=0.05)
-                raw_key = None
-                with self.input_handler.term.cbreak():
-                    raw_key = self.input_handler.term.inkey(timeout=0)
-
-                self.handle_input(input_type, raw_key)
+                self.handle_input(input_type)
 
                 time.sleep(0.033)
 

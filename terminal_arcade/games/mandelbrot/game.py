@@ -301,10 +301,10 @@ class MandelbrotExplorer:
 
         # Show mode toggle hint at bottom
         if self.parameter_mode:
-            mode_hint = "[SPACE] Pan/Zoom Mode | JOYSTICK: ↕ Select Param, ← → Adjust Value"
+            mode_hint = "BTN2=View Mode  BTN1=Exit Params | JOYSTICK: ↕ Select Param, ← → Adjust | BTN3=Help  ESC=Exit"
             hint_color = Color.BRIGHT_GREEN
         else:
-            mode_hint = "[SPACE] Parameter Mode | JOYSTICK: Pan & Zoom  |  Z=Zoom+ X=Zoom-  S=Screenshot  H=Help  ESC=Exit"
+            mode_hint = "BTN2=Adjust Mode | JOYSTICK: Pan  BTN0=Zoom+  BTN1=Zoom-  BTN3=Help  BTN4=Screenshot  ESC/Q=Exit"
             hint_color = Color.BRIGHT_CYAN
 
         hint_x = (self.renderer.width - len(mode_hint)) // 2
@@ -478,37 +478,59 @@ class MandelbrotExplorer:
 
         self.needs_redraw = True
 
-    def handle_input(self, input_type, raw_key):
+    def handle_input(self, input_type):
         """Handle user input.
 
         Args:
             input_type: InputType from input handler
-            raw_key: Raw key from blessed terminal (or None)
         """
-        # Handle special keys first
-        if raw_key:
-            # SPACE = Toggle mode
-            if raw_key == ' ':
+        # Exit handling
+        if input_type == InputType.QUIT or input_type == InputType.BACK:
+            self.running = False
+            return
+
+        # Check for joystick buttons FIRST
+        if self.input_handler.joystick_initialized:
+            buttons = self.input_handler.get_joystick_buttons()
+
+            # Button 2 = Toggle parameter mode
+            if buttons.get(2, False):
                 self.parameter_mode = not self.parameter_mode
+                self.needs_redraw = True
+                time.sleep(0.2)  # Debounce
+                return
+
+            # Button 3 = Toggle help
+            if buttons.get(3, False):
+                self.show_help = not self.show_help
+                self.needs_redraw = True
+                time.sleep(0.2)
+                return
+
+            # Button 4 = Screenshot
+            if buttons.get(4, False):
+                filename = self.save_screenshot()
+                msg = f"Screenshot saved: {filename}"
+                msg_x = (self.renderer.width - len(msg)) // 2
+                self.renderer.draw_text(msg_x, self.renderer.height - 3, msg, Color.BRIGHT_GREEN)
+                self.renderer.render()
+                time.sleep(1.0)
                 self.needs_redraw = True
                 return
 
-            # ESC = Exit
-            if raw_key.name == 'KEY_ESCAPE':
-                self.running = False
+            # Button 1 = Context-dependent
+            if buttons.get(1, False):
+                if self.parameter_mode:
+                    # In parameter mode, Button 1 exits parameter mode
+                    self.parameter_mode = False
+                else:
+                    # In pan/zoom mode, Button 1 zooms out
+                    self.zoom = min(5.0, self.zoom * 1.3)
+                self.needs_redraw = True
+                time.sleep(0.15)
                 return
 
-        # Handle Q key exit (comes through InputType.QUIT)
-        if input_type == InputType.QUIT:
-            self.running = False
-            return
-
-        # Handle ESC via InputType.BACK as well
-        if input_type == InputType.BACK:
-            self.running = False
-            return
-
-        # MODE 1: Parameter visitor mode (joystick navigates parameters)
+        # MODE 1: Parameter visitor mode
         if self.parameter_mode:
             if input_type == InputType.UP:
                 self.selected_param = (self.selected_param - 1) % len(self.parameters)
@@ -521,14 +543,15 @@ class MandelbrotExplorer:
             elif input_type == InputType.RIGHT:
                 self._adjust_parameter(1)
             elif input_type == InputType.SELECT:
-                # Toggle boolean parameters
+                # Button 0 = Toggle boolean or adjust
                 param = self.parameters[self.selected_param]
                 if param['type'] == 'bool':
                     self._adjust_parameter(1)
+                else:
+                    self._adjust_parameter(1)  # Increment
 
-        # MODE 2: Pan/zoom mode (joystick pans and zooms)
+        # MODE 2: Pan/zoom mode
         else:
-            # Pan movement (scaled by zoom level)
             pan_speed = self.zoom * 0.1
 
             if input_type == InputType.UP:
@@ -544,81 +567,11 @@ class MandelbrotExplorer:
                 self.center_x += pan_speed
                 self.needs_redraw = True
             elif input_type == InputType.SELECT:
-                # Button 0 / Enter = Zoom IN
+                # Button 0 = Zoom IN
                 self.zoom = max(self.min_zoom, self.zoom * 0.7)
-                # Increase iterations when zooming deep
                 if self.zoom < 1e-6:
                     self.max_iterations = min(500, max(100, self.max_iterations))
                 self.needs_redraw = True
-
-        # Check for joystick buttons (work in both modes)
-        if self.input_handler.joystick_initialized:
-            buttons = self.input_handler.get_joystick_buttons()
-
-            # Button 1 = Zoom OUT (in pan/zoom mode only)
-            if buttons.get(1, False) and not self.parameter_mode:
-                self.zoom = min(5.0, self.zoom * 1.3)
-                self.needs_redraw = True
-                time.sleep(0.15)  # Debounce
-
-            # Button 4 = Screenshot (works in both modes)
-            if buttons.get(4, False):
-                filename = self.save_screenshot()
-                # Show brief message
-                msg = f"Screenshot saved: {filename}"
-                msg_x = (self.renderer.width - len(msg)) // 2
-                self.renderer.draw_text(msg_x, self.renderer.height - 3, msg, Color.BRIGHT_GREEN)
-                self.renderer.render()
-                time.sleep(1.0)
-                self.needs_redraw = True
-
-        # Process keyboard shortcuts (raw_key passed from run loop)
-        if raw_key:
-            key_lower = raw_key.lower()
-
-            # Zoom controls (keyboard always works in both modes)
-            if key_lower == 'z':
-                self.zoom = max(self.min_zoom, self.zoom * 0.7)  # Zoom in
-                # Auto-increase iterations when zooming deep
-                if self.zoom < 1e-6:
-                    self.max_iterations = min(500, max(100, self.max_iterations))
-                self.needs_redraw = True
-            elif key_lower == 'x' or key_lower == 'o':
-                # X or O = Zoom out
-                self.zoom = min(5.0, self.zoom * 1.3)  # Zoom out (capped)
-                self.needs_redraw = True
-
-            # Screenshot
-            elif key_lower == 's':
-                filename = self.save_screenshot()
-                # Show brief message
-                msg = f"Screenshot saved: {filename}"
-                msg_x = (self.renderer.width - len(msg)) // 2
-                self.renderer.draw_text(msg_x, self.renderer.height - 3, msg, Color.BRIGHT_GREEN)
-                self.renderer.render()
-                time.sleep(1.0)
-                self.needs_redraw = True
-
-            # Help toggle
-            elif key_lower == 'h':
-                self.show_help = not self.show_help
-                self.needs_redraw = True
-
-            # Reset
-            elif key_lower == 'r':
-                self.center_x, self.center_y, self.zoom = -0.5, 0.0, 1.5
-                self.max_iterations = 50
-                self.needs_redraw = True
-
-            # Bookmarks
-            elif raw_key in '123456':
-                bookmark_names = list(self.bookmarks.keys())
-                bookmark_index = int(raw_key) - 1
-                if bookmark_index < len(bookmark_names):
-                    bookmark = bookmark_names[bookmark_index]
-                    self.center_x, self.center_y, self.zoom = self.bookmarks[bookmark]
-                    self.max_iterations = max(100, self.max_iterations)
-                    self.needs_redraw = True
 
     def run(self):
         """Main game loop."""
@@ -642,16 +595,9 @@ class MandelbrotExplorer:
                     self.renderer.render()
                     self.needs_redraw = False
 
-                # Get input (InputType from joystick/arrows)
+                # Get input (NO custom keyboard handling!)
                 input_type = self.input_handler.get_input(timeout=0.05)
-
-                # Get raw keyboard key for special handling (TAB, ESC, letters)
-                raw_key = None
-                with self.input_handler.term.cbreak():
-                    raw_key = self.input_handler.term.inkey(timeout=0)
-
-                # Handle input
-                self.handle_input(input_type, raw_key)
+                self.handle_input(input_type)
 
                 time.sleep(0.033)  # ~30 FPS
 
