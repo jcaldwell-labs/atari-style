@@ -799,7 +799,7 @@ class ScreenSaver:
         # Draw instructions
         instructions = [
             "Press H again to close",
-            "BTN 2-5: Save/Load (Hold=Save, Tap=Load)"
+            "BTN0/1: Next/Prev | BTN2-5: Save/Load"
         ]
         for i, inst in enumerate(instructions):
             self.renderer.draw_text(modal_x + 2, modal_y + modal_height - 3 + i, inst, Color.CYAN)
@@ -826,9 +826,9 @@ class ScreenSaver:
         # Draw controls
         control_y = 1
         self.renderer.draw_text(self.renderer.width - 32, control_y, "H: Help", Color.BRIGHT_YELLOW)
-        self.renderer.draw_text(self.renderer.width - 32, control_y + 1, "SPACE/BTN0: Next Mode", Color.CYAN)
+        self.renderer.draw_text(self.renderer.width - 32, control_y + 1, "BTN0: Next  BTN1: Prev", Color.CYAN)
         self.renderer.draw_text(self.renderer.width - 32, control_y + 2, "BTN2-5: Save/Load (Hold/Tap)", Color.CYAN)
-        self.renderer.draw_text(self.renderer.width - 32, control_y + 3, "ESC/Q/BTN1: Exit", Color.CYAN)
+        self.renderer.draw_text(self.renderer.width - 32, control_y + 3, "ESC/Q/X: Exit", Color.CYAN)
 
         # Draw legend for slot colors
         legend_y = self.renderer.height - 3
@@ -920,11 +920,17 @@ class ScreenSaver:
 
         input_type = self.input_handler.get_input(timeout=0.01)
 
-        # Mode switching with buttons only
+        # Mode switching with buttons
         if input_type == InputType.SELECT:
+            # Button 0: Next animation (forward)
             self.current_animation = (self.current_animation + 1) % len(self.animations)
             time.sleep(0.2)  # Debounce
-        elif input_type == InputType.QUIT or input_type == InputType.BACK:
+        elif input_type == InputType.BACK:
+            # Button 1: Previous animation (back)
+            self.current_animation = (self.current_animation - 1) % len(self.animations)
+            time.sleep(0.2)  # Debounce
+        elif input_type == InputType.QUIT:
+            # Keyboard ESC/Q or X: Exit
             self.running = False
 
         # Save/Load system with buttons 2-5 (separate from main input to avoid conflicts)

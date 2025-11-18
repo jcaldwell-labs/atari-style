@@ -60,8 +60,9 @@ antimicrox
 **Screen Saver:**
 | Button | Action | Notes |
 |--------|--------|-------|
-| Button 0 | Next Animation Mode | Cycles through 4 animations |
-| Button 1 | Exit to Menu | Returns to main menu |
+| Button 0 | Next Animation Mode | Forward through 8 animations |
+| Button 1 | Previous Animation Mode | Backward through 8 animations |
+| Button 2-5 | Save/Load Presets | Hold=Save, Tap=Load |
 | Analog Stick (All 8 dirs) | Adjust Parameters | See opposite pairs below |
 
 ### Joystick Test (Special Case)
@@ -83,13 +84,15 @@ antimicrox
 - **ESC/Q or Button 1**: Exit to menu
 
 ### Screen Saver
-- **Space or Button 0**: Next animation mode
-- **ESC/Q or Button 1**: Exit to menu
+- **Button 0**: Next animation mode (forward)
+- **Button 1**: Previous animation mode (backward)
+- **ESC/Q/X (keyboard)**: Exit to menu
 - **H (keyboard)**: Toggle help modal
 - **Buttons 2-5**: Save/Load parameter presets
   - **Quick tap** (< 0.5s): Load saved parameters
   - **Hold** (>= 0.5s): Save current parameters
-  - Visual indicators at bottom: [2] [3] [4] [5] (green = saved)
+  - Visual indicators at bottom: [2] [3] [4] [5]
+  - Colors: White=Empty, Yellow=Pressing, Red=Saving, Green=Saved
 
 **Joystick Directional Controls** (Opposite directions control same parameter):
 

@@ -10,11 +10,12 @@
 - `ESC`/`Q` - Exit
 
 **Joystick Buttons**
-- `BTN 0` - Next animation
-- `BTN 1` - Exit
+- `BTN 0` - Next animation (forward)
+- `BTN 1` - Previous animation (backward)
 - `BTN 2-5` - Save/Load slots
   - **Tap**: Load
   - **Hold 0.5s**: Save
+- **Exit**: Keyboard ESC/Q/X only
 
 **Joystick Directions** (All 8 Animations)
 - `↑↓` - Parameter 1

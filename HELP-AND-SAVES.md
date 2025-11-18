@@ -166,12 +166,14 @@ save_slot = {
 
 | Button | Action |
 |--------|--------|
-| 0 | Next animation mode |
-| 1 | Exit to menu |
+| 0 | Next animation mode (forward) |
+| 1 | Previous animation mode (backward) |
 | 2 | Save/Load Slot [2] |
 | 3 | Save/Load Slot [3] |
 | 4 | Save/Load Slot [4] |
 | 5 | Save/Load Slot [5] |
+
+**Exit**: Use keyboard ESC, Q, or X only
 
 ---
 
