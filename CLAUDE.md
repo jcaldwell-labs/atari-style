@@ -94,9 +94,11 @@ Each demo is self-contained with a `run_*()` function:
     3. Concentric wave circles (count, amplitude, frequency, spacing)
     4. Plasma effect (X/Y/diagonal/radial frequencies)
     5. Mandelbrot zoomer (zoom, center X/Y, detail)
-    6. Fluid lattice (wave speed, damping, rain rate, drop power)
+    6. Fluid lattice (rain rate, wave speed, drop power, damping)
     7. Particle swarm (count, speed, cohesion, separation)
     8. Tunnel vision (depth speed, rotation, size, color speed)
+  - **Help System**: Press 'H' for parameter descriptions modal
+  - **Save Slots**: Buttons 2-5 for parameter presets (hold=save, tap=load)
   - 8-directional joystick control using opposite pairs
   - Real-time parameter display and adjustment
   - 60 FPS rendering with 2x animation speed multiplier

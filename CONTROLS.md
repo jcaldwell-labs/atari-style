@@ -85,6 +85,11 @@ antimicrox
 ### Screen Saver
 - **Space or Button 0**: Next animation mode
 - **ESC/Q or Button 1**: Exit to menu
+- **H (keyboard)**: Toggle help modal
+- **Buttons 2-5**: Save/Load parameter presets
+  - **Quick tap** (< 0.5s): Load saved parameters
+  - **Hold** (>= 0.5s): Save current parameters
+  - Visual indicators at bottom: [2] [3] [4] [5] (green = saved)
 
 **Joystick Directional Controls** (Opposite directions control same parameter):
 

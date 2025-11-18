@@ -618,6 +618,14 @@ class ScreenSaver:
         self.input_handler = InputHandler()
         self.running = True
         self.show_params = True  # Show parameter values
+        self.show_help = False  # Help modal state
+
+        # Save slot system (buttons 2-5 = slots 0-3)
+        self.save_slots = {0: None, 1: None, 2: None, 3: None}
+        self.button_press_times = {}  # Track when buttons were pressed
+        self.hold_threshold = 0.5  # Seconds to hold for save
+        self.save_feedback = None  # Message to show when saving/loading
+        self.save_feedback_time = 0  # Time when feedback was set
 
         # Animation modes
         self.animations = [
@@ -643,6 +651,157 @@ class ScreenSaver:
         self.current_animation = 0
         self.speed_multiplier = 2.0  # Increased animation speed
 
+    def get_param_descriptions(self):
+        """Get parameter descriptions for current animation."""
+        descriptions = {
+            "Lissajous Curve": [
+                "Freq X: Horizontal frequency (1-10)",
+                "Freq Y: Vertical frequency (1-10)",
+                "Phase: Curve shape offset (0-2π)",
+                "Points: Smoothness/detail (100-1000)"
+            ],
+            "Spiral": [
+                "Spirals: Number of arms (1-8)",
+                "Speed: Rotation speed (0.1-5.0x)",
+                "Tightness: Coil density (2-15)",
+                "Scale: Overall size (0.2-0.8)"
+            ],
+            "Wave Circles": [
+                "Circles: Number of rings (5-30)",
+                "Amplitude: Wave height (0.5-8.0)",
+                "Wave Freq: Oscillation rate (0.1-2.0)",
+                "Spacing: Ring distance (1-6)"
+            ],
+            "Plasma": [
+                "Freq X: Horizontal pattern (0.01-0.3)",
+                "Freq Y: Vertical pattern (0.01-0.3)",
+                "Freq Diag: Diagonal waves (0.01-0.3)",
+                "Freq Rad: Radial pulses (0.01-0.3)"
+            ],
+            "Mandelbrot Zoomer": [
+                "Zoom: Magnification level (0.1-1000x)",
+                "Center X: Horizontal position (-2 to 1)",
+                "Center Y: Vertical position (-1.5 to 1.5)",
+                "Detail: Calculation depth (10-200)"
+            ],
+            "Fluid Lattice": [
+                "Rain Rate: Drop frequency (0-1.5)",
+                "Wave Speed: Propagation rate (0.05-1.0)",
+                "Drop Power: Impact strength (3-20)",
+                "Damping: Wave persistence (0.85-0.995)"
+            ],
+            "Particle Swarm": [
+                "Particles: Swarm size (10-100)",
+                "Speed: Movement rate (0.5-5.0)",
+                "Cohesion: Attraction force (0-2.0)",
+                "Separation: Repulsion force (0-3.0)"
+            ],
+            "Tunnel Vision": [
+                "Depth Speed: Forward motion (0.1-5.0)",
+                "Rotation: Spin rate (-2 to 2)",
+                "Size: Tunnel diameter (0.3-3.0)",
+                "Color Speed: Rainbow cycle (0.1-3.0)"
+            ]
+        }
+        return descriptions.get(self.animation_names[self.current_animation], [])
+
+    def save_parameters(self, slot: int):
+        """Save current animation parameters to slot."""
+        anim = self.animations[self.current_animation]
+        if hasattr(anim, 'get_param_info'):
+            # Store animation index and parameters
+            param_values = {}
+            # Extract actual values from the animation
+            if hasattr(anim, 'a'):  # Lissajous
+                param_values = {'a': anim.a, 'b': anim.b, 'delta': anim.delta, 'points': anim.points}
+            elif hasattr(anim, 'num_spirals'):  # Spiral
+                param_values = {'num_spirals': anim.num_spirals, 'rotation_speed': anim.rotation_speed,
+                               'tightness': anim.tightness, 'radius_scale': anim.radius_scale}
+            elif hasattr(anim, 'num_circles'):  # Wave Circles
+                param_values = {'num_circles': anim.num_circles, 'wave_amplitude': anim.wave_amplitude,
+                               'wave_frequency': anim.wave_frequency, 'spacing': anim.spacing}
+            elif hasattr(anim, 'freq_x'):  # Plasma
+                param_values = {'freq_x': anim.freq_x, 'freq_y': anim.freq_y,
+                               'freq_diag': anim.freq_diag, 'freq_radial': anim.freq_radial}
+            elif hasattr(anim, 'zoom'):  # Mandelbrot
+                param_values = {'zoom': anim.zoom, 'center_x': anim.center_x,
+                               'center_y': anim.center_y, 'max_iterations': anim.max_iterations}
+            elif hasattr(anim, 'rain_rate'):  # Fluid Lattice
+                param_values = {'rain_rate': anim.rain_rate, 'wave_speed': anim.wave_speed,
+                               'drop_strength': anim.drop_strength, 'damping': anim.damping}
+            elif hasattr(anim, 'num_particles'):  # Particle Swarm
+                param_values = {'num_particles': anim.num_particles, 'speed': anim.speed,
+                               'cohesion': anim.cohesion, 'separation': anim.separation}
+            elif hasattr(anim, 'depth_speed'):  # Tunnel
+                param_values = {'depth_speed': anim.depth_speed, 'rotation_speed': anim.rotation_speed,
+                               'tunnel_size': anim.tunnel_size, 'color_cycle_speed': anim.color_cycle_speed}
+
+            self.save_slots[slot] = {
+                'animation_index': self.current_animation,
+                'parameters': param_values
+            }
+            self.save_feedback = f"Saved to Slot {slot + 2}"
+            self.save_feedback_time = time.time()
+
+    def load_parameters(self, slot: int):
+        """Load parameters from slot."""
+        if self.save_slots[slot] is None:
+            self.save_feedback = f"Slot {slot + 2} empty"
+            self.save_feedback_time = time.time()
+            return
+
+        saved = self.save_slots[slot]
+        # Switch to saved animation if different
+        if saved['animation_index'] != self.current_animation:
+            self.current_animation = saved['animation_index']
+
+        # Restore parameters
+        anim = self.animations[self.current_animation]
+        params = saved['parameters']
+        for key, value in params.items():
+            if hasattr(anim, key):
+                setattr(anim, key, value)
+
+        self.save_feedback = f"Loaded Slot {slot + 2}"
+        self.save_feedback_time = time.time()
+
+    def draw_help_modal(self):
+        """Draw help modal overlay."""
+        # Calculate modal dimensions
+        modal_width = 60
+        modal_height = 14
+        modal_x = (self.renderer.width - modal_width) // 2
+        modal_y = (self.renderer.height - modal_height) // 2
+
+        # Draw background box
+        for y in range(modal_height):
+            for x in range(modal_width):
+                self.renderer.set_pixel(modal_x + x, modal_y + y, ' ' if y > 0 and y < modal_height-1 and x > 0 and x < modal_width-1 else '█', Color.BLUE)
+
+        # Draw border
+        self.renderer.draw_border(modal_x, modal_y, modal_width, modal_height, Color.BRIGHT_CYAN)
+
+        # Draw title
+        title = f" {self.animation_names[self.current_animation]} - Parameters "
+        title_x = modal_x + (modal_width - len(title)) // 2
+        self.renderer.draw_text(title_x, modal_y, title, Color.BRIGHT_YELLOW)
+
+        # Draw parameter descriptions
+        descriptions = self.get_param_descriptions()
+        for i, desc in enumerate(descriptions):
+            # Show which joystick direction controls this param
+            controls = ["UP/DOWN", "LEFT/RIGHT", "UP-RIGHT/DOWN-LEFT", "UP-LEFT/DOWN-RIGHT"]
+            control_text = f"{controls[i]}: {desc}"
+            self.renderer.draw_text(modal_x + 2, modal_y + 3 + i * 2, control_text, Color.WHITE)
+
+        # Draw instructions
+        instructions = [
+            "Press H again to close",
+            "BTN 2-5: Save/Load (Hold=Save, Tap=Load)"
+        ]
+        for i, inst in enumerate(instructions):
+            self.renderer.draw_text(modal_x + 2, modal_y + modal_height - 3 + i, inst, Color.CYAN)
+
     def draw(self):
         """Render the current animation."""
         self.renderer.clear_buffer()
@@ -664,9 +823,29 @@ class ScreenSaver:
 
         # Draw controls
         control_y = 1
-        self.renderer.draw_text(self.renderer.width - 30, control_y, "SPACE/BTN0: Next Mode", Color.CYAN)
-        self.renderer.draw_text(self.renderer.width - 30, control_y + 1, "Joystick: Adjust Params", Color.CYAN)
+        self.renderer.draw_text(self.renderer.width - 30, control_y, "H: Help", Color.BRIGHT_YELLOW)
+        self.renderer.draw_text(self.renderer.width - 30, control_y + 1, "SPACE/BTN0: Next Mode", Color.CYAN)
         self.renderer.draw_text(self.renderer.width - 30, control_y + 2, "ESC/Q/BTN1: Exit", Color.CYAN)
+
+        # Draw save slot indicators at bottom
+        slot_y = self.renderer.height - 2
+        slot_text = "Slots: "
+        self.renderer.draw_text(2, slot_y, slot_text, Color.YELLOW)
+        x_offset = 2 + len(slot_text)
+        for i in range(4):
+            slot_label = f"[{i+2}]"
+            color = Color.BRIGHT_GREEN if self.save_slots[i] is not None else Color.WHITE
+            self.renderer.draw_text(x_offset, slot_y, slot_label, color)
+            x_offset += len(slot_label) + 1
+
+        # Draw save/load feedback
+        if self.save_feedback and time.time() - self.save_feedback_time < 2.0:
+            feedback_x = (self.renderer.width - len(self.save_feedback)) // 2
+            self.renderer.draw_text(feedback_x, self.renderer.height - 4, self.save_feedback, Color.BRIGHT_YELLOW)
+
+        # Draw help modal (on top of everything)
+        if self.show_help:
+            self.draw_help_modal()
 
         self.renderer.render()
 
@@ -676,6 +855,13 @@ class ScreenSaver:
 
     def handle_input(self):
         """Handle user input and joystick directions for parameter control."""
+        # Check for H key (help) - need to check keyboard directly
+        with self.input_handler.term.cbreak():
+            key = self.input_handler.term.inkey(timeout=0.001)
+            if key and key.lower() == 'h':
+                self.show_help = not self.show_help
+                time.sleep(0.2)  # Debounce
+
         input_type = self.input_handler.get_input(timeout=0.01)
 
         # Mode switching with buttons only
@@ -684,6 +870,39 @@ class ScreenSaver:
             time.sleep(0.2)  # Debounce
         elif input_type == InputType.QUIT or input_type == InputType.BACK:
             self.running = False
+
+        # Save/Load system with buttons 2-5
+        if self.input_handler.joystick_initialized:
+            buttons = self.input_handler.get_joystick_buttons()
+            current_time = time.time()
+
+            # Check buttons 2-5 (slots 0-3)
+            for btn_id in [2, 3, 4, 5]:
+                if btn_id >= len(buttons):
+                    continue
+
+                slot = btn_id - 2
+                is_pressed = buttons.get(btn_id, False)
+                was_pressed = self.input_handler.previous_buttons.get(btn_id, False)
+
+                # Button just pressed - start tracking
+                if is_pressed and not was_pressed:
+                    self.button_press_times[btn_id] = current_time
+
+                # Button just released - check if hold or tap
+                elif not is_pressed and was_pressed:
+                    if btn_id in self.button_press_times:
+                        press_duration = current_time - self.button_press_times[btn_id]
+
+                        if press_duration >= self.hold_threshold:
+                            # Hold = Save
+                            self.save_parameters(slot)
+                        else:
+                            # Quick tap = Load
+                            self.load_parameters(slot)
+
+                        del self.button_press_times[btn_id]
+                        time.sleep(0.1)  # Debounce
 
         # Get joystick state for parameter control
         # Opposite directions control the same parameter (one increases, one decreases)
