@@ -49,6 +49,7 @@ class Oscilloscope:
         # Signal parameters
         self.freq_a = 3.0    # Frequency A (Hz)
         self.freq_b = 2.0    # Frequency B (Hz)
+        self.freq_lock = False  # Lock frequencies together
         self.phase = 0.0     # Phase offset (0-2π)
         self.amplitude = 0.8 # Amplitude (0-1)
         self.wave_type_a = self.WAVE_SINE
@@ -67,6 +68,7 @@ class Oscilloscope:
         # Parameters list for visitor mode
         self.parameters = [
             {'name': 'Mode', 'value': self.current_mode, 'type': 'mode'},
+            {'name': 'Freq Lock', 'value': self.freq_lock, 'type': 'bool'},
             {'name': 'Freq A', 'value': self.freq_a, 'type': 'float', 'min': 0.5, 'max': 10.0, 'step': 0.5},
             {'name': 'Freq B', 'value': self.freq_b, 'type': 'float', 'min': 0.5, 'max': 10.0, 'step': 0.5},
             {'name': 'Phase', 'value': self.phase, 'type': 'float', 'min': 0.0, 'max': 6.28, 'step': 0.1},
@@ -267,15 +269,16 @@ class Oscilloscope:
     def _sync_parameters(self):
         """Sync parameter values."""
         self.parameters[0]['value'] = self.current_mode
-        self.parameters[1]['value'] = self.freq_a
-        self.parameters[2]['value'] = self.freq_b
-        self.parameters[3]['value'] = self.phase
-        self.parameters[4]['value'] = self.amplitude
-        self.parameters[5]['value'] = self.wave_type_a
-        self.parameters[6]['value'] = self.wave_type_b
-        self.parameters[7]['value'] = self.animating
-        self.parameters[8]['value'] = self.speed
-        self.parameters[9]['value'] = self.show_grid
+        self.parameters[1]['value'] = self.freq_lock
+        self.parameters[2]['value'] = self.freq_a
+        self.parameters[3]['value'] = self.freq_b
+        self.parameters[4]['value'] = self.phase
+        self.parameters[5]['value'] = self.amplitude
+        self.parameters[6]['value'] = self.wave_type_a
+        self.parameters[7]['value'] = self.wave_type_b
+        self.parameters[8]['value'] = self.animating
+        self.parameters[9]['value'] = self.speed
+        self.parameters[10]['value'] = self.show_grid
 
     def draw_ui(self):
         """Draw UI with parameter panel."""
@@ -418,8 +421,16 @@ class Oscilloscope:
             # Sync back to instance variables
             if param['name'] == 'Freq A':
                 self.freq_a = param['value']
+                # If freq lock is on, sync Freq B to match
+                if self.freq_lock:
+                    self.freq_b = self.freq_a
+                    self.parameters[3]['value'] = self.freq_b  # Update Freq B param
             elif param['name'] == 'Freq B':
                 self.freq_b = param['value']
+                # If freq lock is on, sync Freq A to match
+                if self.freq_lock:
+                    self.freq_a = self.freq_b
+                    self.parameters[2]['value'] = self.freq_a  # Update Freq A param
             elif param['name'] == 'Phase':
                 self.phase = param['value']
             elif param['name'] == 'Amplitude':
@@ -428,7 +439,13 @@ class Oscilloscope:
                 self.speed = param['value']
         elif param['type'] == 'bool':
             param['value'] = not param['value']
-            if param['name'] == 'Animate':
+            if param['name'] == 'Freq Lock':
+                self.freq_lock = param['value']
+                # When locking, immediately sync frequencies
+                if self.freq_lock:
+                    self.freq_b = self.freq_a
+                    self.parameters[3]['value'] = self.freq_b
+            elif param['name'] == 'Animate':
                 self.animating = param['value']
             elif param['name'] == 'Show Grid':
                 self.show_grid = param['value']
