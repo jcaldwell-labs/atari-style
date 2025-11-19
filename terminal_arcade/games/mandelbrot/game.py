@@ -5,6 +5,7 @@ Navigate and zoom into the infinite complexity of the Mandelbrot set.
 
 import time
 import subprocess
+import signal
 from datetime import datetime
 from pathlib import Path
 from ...engine.renderer import Renderer, Color
@@ -579,6 +580,12 @@ class MandelbrotExplorer:
 
     def run(self):
         """Main game loop."""
+        # Set up signal handler for clean Ctrl+C exit
+        def signal_handler(sig, frame):
+            self.running = False
+
+        old_handler = signal.signal(signal.SIGINT, signal_handler)
+
         try:
             self.renderer.enter_fullscreen()
             last_cycle_time = time.time()
@@ -608,6 +615,7 @@ class MandelbrotExplorer:
         finally:
             self.renderer.exit_fullscreen()
             self.input_handler.cleanup()
+            signal.signal(signal.SIGINT, old_handler)  # Restore old handler
 
 
 def run_mandelbrot():

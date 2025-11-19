@@ -4,6 +4,7 @@ Pilot a spaceship through space with full 6DOF control.
 """
 
 import time
+import signal
 import random
 import math
 from ...engine.renderer import Renderer, Color
@@ -419,6 +420,10 @@ class Spaceship:
 
     def run(self):
         """Main game loop."""
+        def signal_handler(sig, frame):
+            self.running = False
+        old_handler = signal.signal(signal.SIGINT, signal_handler)
+
         try:
             self.renderer.enter_fullscreen()
             last_time = time.time()
@@ -448,6 +453,7 @@ class Spaceship:
         finally:
             self.renderer.exit_fullscreen()
             self.input_handler.cleanup()
+            signal.signal(signal.SIGINT, old_handler)
 
 
 def run_spaceship():

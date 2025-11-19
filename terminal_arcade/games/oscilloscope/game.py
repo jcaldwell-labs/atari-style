@@ -4,6 +4,7 @@ Interactive oscilloscope simulator with multiple display modes.
 """
 
 import time
+import signal
 import math
 from ...engine.renderer import Renderer, Color
 from ...engine.input_handler import InputHandler, InputType
@@ -472,6 +473,10 @@ class Oscilloscope:
 
     def run(self):
         """Main loop."""
+        def signal_handler(sig, frame):
+            self.running = False
+        old_handler = signal.signal(signal.SIGINT, signal_handler)
+
         try:
             self.renderer.enter_fullscreen()
 
@@ -507,6 +512,7 @@ class Oscilloscope:
         finally:
             self.renderer.exit_fullscreen()
             self.input_handler.cleanup()
+            signal.signal(signal.SIGINT, old_handler)
 
 
 def run_oscilloscope():
