@@ -3,6 +3,7 @@
 import random
 import time
 import math
+import signal
 from ...engine.renderer import Renderer, Color
 from ...engine.input_handler import InputHandler, InputType
 
@@ -530,6 +531,10 @@ class StarfieldDemo:
 
     def run(self):
         """Run the starfield demo."""
+        def signal_handler(sig, frame):
+            self.running = False
+        old_handler = signal.signal(signal.SIGINT, signal_handler)
+
         try:
             self.renderer.enter_fullscreen()
             self.renderer.clear_screen()
@@ -551,6 +556,7 @@ class StarfieldDemo:
         finally:
             self.renderer.exit_fullscreen()
             self.input_handler.cleanup()
+            signal.signal(signal.SIGINT, old_handler)
 
 
 def run_starfield():

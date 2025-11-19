@@ -3,6 +3,7 @@
 import time
 import random
 from ...engine.renderer import Renderer, Color
+import signal
 from ...engine.input_handler import InputHandler, InputType
 
 
@@ -634,6 +635,7 @@ class Galaga:
         finally:
             self.renderer.exit_fullscreen()
             self.input_handler.cleanup()
+            signal.signal(signal.SIGINT, old_handler)
 
 
 def run_galaga():

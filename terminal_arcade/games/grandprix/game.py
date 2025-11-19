@@ -3,6 +3,7 @@
 import time
 import random
 import math
+import signal
 from ...engine.renderer import Renderer, Color
 from ...engine.input_handler import InputHandler, InputType
 
@@ -504,6 +505,7 @@ class GrandPrix:
         finally:
             self.renderer.exit_fullscreen()
             self.input_handler.cleanup()
+            signal.signal(signal.SIGINT, old_handler)
 
 
 def run_grandprix():

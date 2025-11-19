@@ -3,6 +3,7 @@
 import math
 import time
 import random
+import signal
 import pygame
 from ...engine.renderer import Renderer, Color
 from ...engine.input_handler import InputHandler, InputType
@@ -1066,6 +1067,10 @@ class ScreenSaver:
 
     def run(self):
         """Run the screen saver."""
+        def signal_handler(sig, frame):
+            self.running = False
+        old_handler = signal.signal(signal.SIGINT, signal_handler)
+
         try:
             self.renderer.enter_fullscreen()
             self.renderer.clear_screen()
@@ -1083,6 +1088,7 @@ class ScreenSaver:
 
         finally:
             self.renderer.exit_fullscreen()
+            signal.signal(signal.SIGINT, old_handler)
 
 
 def run_screensaver():

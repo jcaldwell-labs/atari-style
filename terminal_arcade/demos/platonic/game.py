@@ -3,6 +3,7 @@
 import time
 import math
 from ...engine.renderer import Renderer, Color
+import signal
 from ...engine.input_handler import InputHandler, InputType
 
 
@@ -453,6 +454,7 @@ class PlatonicSolidsViewer:
         finally:
             self.renderer.exit_fullscreen()
             self.input_handler.cleanup()
+            signal.signal(signal.SIGINT, old_handler)
 
 
 def run_platonic_solids():
