@@ -136,7 +136,7 @@ class InputHandler:
             try:
                 self.joystick.quit()
             except Exception:
-                pass
+                pass  # Ignore joystick.quit() errors during health check cleanup
 
             self.joystick = None
             return False
@@ -160,7 +160,7 @@ class InputHandler:
                     try:
                         self.joystick.quit()
                     except:
-                        pass
+                        pass  # Ignore joystick.quit() errors during reconnection cleanup
                     self.joystick = None
 
                 # Reinitialize pygame joystick subsystem
@@ -321,13 +321,13 @@ class InputHandler:
             try:
                 self.joystick.quit()
             except Exception:
-                pass
+                pass  # Ignore cleanup errors during emergency shutdown
             self.joystick = None
 
         try:
             pygame.joystick.quit()
         except Exception:
-            pass
+            pass  # Ignore cleanup errors during emergency shutdown
 
         self.joystick_initialized = False
 
@@ -347,7 +347,7 @@ class InputHandler:
                 try:
                     self.joystick.quit()
                 except Exception:
-                    pass
+                    pass  # Ignore cleanup errors; joystick may already be disconnected
                 self.joystick = None
 
             # Quit joystick subsystem if no other handlers exist
@@ -355,7 +355,7 @@ class InputHandler:
                 try:
                     pygame.joystick.quit()
                 except Exception:
-                    pass
+                    pass  # Ignore cleanup errors; subsystem may already be shut down
 
             self.joystick_initialized = False
             self._joystick_healthy = False
