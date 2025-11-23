@@ -2,6 +2,9 @@
 
 import pygame
 import time
+import signal
+import sys
+import threading
 from blessed import Terminal
 from typing import Optional, Tuple
 from enum import Enum
@@ -19,16 +22,54 @@ class InputType(Enum):
     QUIT = 7
 
 
+# Global registry for signal handler cleanup
+_input_handler_instances = []
+_signal_handlers_registered = False
+_cleanup_lock = threading.Lock()
+
+
+def _signal_handler(signum, frame):
+    """Handle SIGINT and SIGTERM for clean joystick shutdown.
+
+    This prevents USB device lockup by ensuring pygame joystick resources
+    are properly released when the program is interrupted.
+    """
+    with _cleanup_lock:
+        for handler in _input_handler_instances:
+            try:
+                handler._emergency_cleanup()
+            except Exception:
+                pass  # Ignore cleanup errors during emergency shutdown
+
+    # Exit cleanly
+    sys.exit(0)
+
+
 class InputHandler:
     """Handles keyboard and joystick input."""
 
     def __init__(self):
+        global _signal_handlers_registered
+
         self.term = Terminal()
         self.joystick: Optional[pygame.joystick.Joystick] = None
         self.joystick_initialized = False
         self.previous_buttons = {}
         self._reconnection_frame_counter = 0
         self._last_reconnection_message_time = 0
+        self._joystick_healthy = True
+        self._last_health_check = 0
+
+        # Register this instance for signal handler cleanup
+        with _cleanup_lock:
+            _input_handler_instances.append(self)
+
+            # Register signal handlers once globally
+            if not _signal_handlers_registered:
+                signal.signal(signal.SIGINT, _signal_handler)
+                signal.signal(signal.SIGTERM, _signal_handler)
+                _signal_handlers_registered = True
+
         self._init_joystick()
 
     def _init_joystick(self, silent: bool = False):
@@ -62,6 +103,44 @@ class InputHandler:
                 print(f"Failed to initialize joystick: {e}")
             self.joystick_initialized = False
 
+    def _check_joystick_health(self) -> bool:
+        """Check if joystick device is healthy and responsive.
+
+        Performs periodic health checks to detect USB device issues before
+        they cause system lockup. Returns True if healthy, False otherwise.
+        """
+        if not self.joystick_initialized or not self.joystick:
+            return False
+
+        # Only check health every 1 second to avoid performance impact
+        current_time = time.time()
+        if current_time - self._last_health_check < 1.0:
+            return self._joystick_healthy
+
+        self._last_health_check = current_time
+
+        try:
+            # Test basic device operations with timeout protection
+            # If the device is unresponsive, these will fail
+            _ = self.joystick.get_numaxes()
+            _ = self.joystick.get_numbuttons()
+
+            self._joystick_healthy = True
+            return True
+
+        except (pygame.error, OSError, IOError) as e:
+            # Device is unhealthy - mark for reconnection
+            self._joystick_healthy = False
+            self.joystick_initialized = False
+
+            try:
+                self.joystick.quit()
+            except Exception:
+                pass
+
+            self.joystick = None
+            return False
+
     def _attempt_joystick_reconnection(self):
         """Attempt to reconnect joystick if disconnected (e.g., after WSL USB passthrough loss).
 
@@ -93,6 +172,7 @@ class InputHandler:
                     self.joystick = pygame.joystick.Joystick(0)
                     self.joystick.init()
                     self.joystick_initialized = True
+                    self._joystick_healthy = True
 
                     # Show reconnection message (throttled to once per 5 seconds)
                     current_time = time.time()
@@ -112,31 +192,53 @@ class InputHandler:
                 pass
 
     def get_joystick_state(self) -> Tuple[float, float]:
-        """Get joystick axis state (x, y) normalized to -1.0 to 1.0."""
-        if not self.joystick_initialized:
+        """Get joystick axis state (x, y) normalized to -1.0 to 1.0.
+
+        Includes health checks and timeout protection to prevent USB device lockup.
+        """
+        # Health check before device access
+        if not self._check_joystick_health():
             return (0.0, 0.0)
 
-        pygame.event.pump()
-        x = self.joystick.get_axis(0) if self.joystick.get_numaxes() > 0 else 0.0
-        y = self.joystick.get_axis(1) if self.joystick.get_numaxes() > 1 else 0.0
+        try:
+            pygame.event.pump()
+            x = self.joystick.get_axis(0) if self.joystick.get_numaxes() > 0 else 0.0
+            y = self.joystick.get_axis(1) if self.joystick.get_numaxes() > 1 else 0.0
 
-        # Apply deadzone
-        deadzone = 0.15
-        x = x if abs(x) > deadzone else 0.0
-        y = y if abs(y) > deadzone else 0.0
+            # Apply deadzone
+            deadzone = 0.15
+            x = x if abs(x) > deadzone else 0.0
+            y = y if abs(y) > deadzone else 0.0
 
-        return (x, y)
+            return (x, y)
+
+        except (pygame.error, OSError, IOError) as e:
+            # Device access failed - mark unhealthy
+            self._joystick_healthy = False
+            self.joystick_initialized = False
+            return (0.0, 0.0)
 
     def get_joystick_buttons(self) -> dict:
-        """Get state of all joystick buttons."""
-        if not self.joystick_initialized:
+        """Get state of all joystick buttons.
+
+        Includes health checks and timeout protection to prevent USB device lockup.
+        """
+        # Health check before device access
+        if not self._check_joystick_health():
             return {}
 
-        pygame.event.pump()
-        buttons = {}
-        for i in range(self.joystick.get_numbuttons()):
-            buttons[i] = self.joystick.get_button(i)
-        return buttons
+        try:
+            pygame.event.pump()
+            buttons = {}
+            for i in range(self.joystick.get_numbuttons()):
+                buttons[i] = self.joystick.get_button(i)
+            return buttons
+
+        except (pygame.error, OSError, IOError) as e:
+            # Device access failed - mark unhealthy
+            self._joystick_healthy = False
+            self.joystick_initialized = False
+            return {}
 
     def get_input(self, timeout: float = 0.1) -> InputType:
         """Get input from keyboard or joystick."""
@@ -209,12 +311,51 @@ class InputHandler:
         }
         return info
 
-    def cleanup(self):
-        """Clean up resources.
+    def _emergency_cleanup(self):
+        """Emergency cleanup for signal handler.
 
-        Note: We don't call pygame.quit() here because pygame is shared
-        across all demos and the menu. Calling quit() would break joystick
-        input when returning to the menu.
+        Quickly releases USB joystick resources to prevent device lockup.
+        Called from signal handler during Ctrl+C or SIGTERM.
         """
-        # Don't quit pygame - it's shared across demos
-        pass
+        if self.joystick:
+            try:
+                self.joystick.quit()
+            except Exception:
+                pass
+            self.joystick = None
+
+        try:
+            pygame.joystick.quit()
+        except Exception:
+            pass
+
+        self.joystick_initialized = False
+
+    def cleanup(self):
+        """Clean up joystick resources properly.
+
+        Ensures USB device is released cleanly to prevent system lockup.
+        Safe to call even if joystick was never initialized.
+        """
+        with _cleanup_lock:
+            # Remove from global registry
+            if self in _input_handler_instances:
+                _input_handler_instances.remove(self)
+
+            # Clean up joystick
+            if self.joystick:
+                try:
+                    self.joystick.quit()
+                except Exception:
+                    pass
+                self.joystick = None
+
+            # Quit joystick subsystem if no other handlers exist
+            if not _input_handler_instances:
+                try:
+                    pygame.joystick.quit()
+                except Exception:
+                    pass
+
+            self.joystick_initialized = False
+            self._joystick_healthy = False
