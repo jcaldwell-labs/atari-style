@@ -17,63 +17,16 @@ def main():
     """Main entry point."""
     # Create menu items
     menu_items = [
-        # Games
-        MenuItem(
-            "Pac-Man",
-            run_pacman,
-            "Classic maze chase game with ghost AI and power-ups"
-        ),
-        MenuItem(
-            "Galaga",
-            run_galaga,
-            "Space shooter with wave-based enemies and dive attacks"
-        ),
-        MenuItem(
-            "Grand Prix",
-            run_grandprix,
-            "First-person 3D racing with curves, hills, and opponents"
-        ),
-        MenuItem(
-            "Breakout",
-            run_breakout,
-            "Paddle game with power-ups, multiple brick types, and combos"
-        ),
-
-        # Creative Tools
-        MenuItem(
-            "ASCII Painter",
-            run_ascii_painter,
-            "Joystick-controlled ASCII art editor with tools and palettes"
-        ),
-
-        # Demos
-        MenuItem(
-            "Starfield",
-            run_starfield,
-            "Fly through space with joystick-controlled speed and effects"
-        ),
-        MenuItem(
-            "Screen Saver",
-            run_screensaver,
-            "8 parametric animations with real-time parameter control"
-        ),
-        MenuItem(
-            "Platonic Solids",
-            run_platonic_solids,
-            "Interactive 3D viewer for the five Platonic solids"
-        ),
-
-        # Utilities
-        MenuItem(
-            "Joystick Test",
-            run_joystick_test,
-            "Verify joystick connection and test all axes and buttons"
-        ),
-        MenuItem(
-            "Exit",
-            sys.exit,
-            "Exit the application"
-        ),
+        MenuItem("Pac-Man", run_pacman),
+        MenuItem("Galaga", run_galaga),
+        MenuItem("Grand Prix", run_grandprix),
+        MenuItem("Breakout", run_breakout),
+        MenuItem("ASCII Painter", run_ascii_painter),
+        MenuItem("Starfield", run_starfield),
+        MenuItem("Screen Saver", run_screensaver),
+        MenuItem("Platonic Solids", run_platonic_solids),
+        MenuItem("Joystick Test", run_joystick_test),
+        MenuItem("Exit", sys.exit),
     ]
 
     # Create and run menu
