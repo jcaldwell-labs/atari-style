@@ -166,6 +166,7 @@ class GrandPrix:
 
         # Frame timing
         self.last_time = time.time()
+        self.running = True
 
     def update(self, dt):
         """Update game state."""
@@ -467,12 +468,14 @@ class GrandPrix:
 
     def run(self):
         """Main game loop."""
-        self.renderer.enter_fullscreen()
+        def signal_handler(sig, frame):
+            self.running = False
+        old_handler = signal.signal(signal.SIGINT, signal_handler)
 
         try:
-            running = True
+            self.renderer.enter_fullscreen()
 
-            while running:
+            while self.running:
                 current_time = time.time()
                 dt = current_time - self.last_time
                 self.last_time = current_time
@@ -484,7 +487,7 @@ class GrandPrix:
                 input_type = self.input_handler.get_input(timeout=0.001)
 
                 if input_type == InputType.BACK or input_type == InputType.QUIT:
-                    running = False
+                    self.running = False
                 elif input_type == InputType.SELECT:
                     if self.state == self.STATE_FINISHED:
                         self.__init__()  # Restart
