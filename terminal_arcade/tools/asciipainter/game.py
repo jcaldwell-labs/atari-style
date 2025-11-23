@@ -377,6 +377,7 @@ class ASCIIPainter:
         self.last_time = time.time()
         self.cursor_blink = True
         self.blink_timer = 0
+        self.running = True
 
     def handle_input(self, dt):
         """Handle user input."""
@@ -709,17 +710,14 @@ class ASCIIPainter:
 
     def run(self):
         """Main application loop."""
-        # Set up signal handler for clean Ctrl+C exit
         def signal_handler(sig, frame):
-            pass  # Will exit naturally via the running flag
-
+            self.running = False
         old_handler = signal.signal(signal.SIGINT, signal_handler)
 
         try:
             self.renderer.enter_fullscreen()
-            running = True
 
-            while running:
+            while self.running:
                 current_time = time.time()
                 dt = current_time - self.last_time
                 self.last_time = current_time
@@ -731,7 +729,7 @@ class ASCIIPainter:
                 input_type = self.input_handler.get_input(timeout=0.001)
 
                 if input_type == InputType.BACK or input_type == InputType.QUIT:
-                    running = False
+                    self.running = False
 
                 # Continuous input
                 self.handle_input(dt)

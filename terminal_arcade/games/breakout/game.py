@@ -170,6 +170,7 @@ class Breakout:
 
         # Frame timing
         self.last_time = time.time()
+        self.running = True
 
     def _create_level(self, level):
         """Create brick layout for level."""
@@ -616,17 +617,14 @@ class Breakout:
 
     def run(self):
         """Main game loop."""
-        # Set up signal handler for clean Ctrl+C exit
         def signal_handler(sig, frame):
-            pass  # Will exit naturally via the running flag
-
+            self.running = False
         old_handler = signal.signal(signal.SIGINT, signal_handler)
 
         try:
             self.renderer.enter_fullscreen()
-            running = True
 
-            while running:
+            while self.running:
                 current_time = time.time()
                 dt = current_time - self.last_time
                 self.last_time = current_time
@@ -638,10 +636,10 @@ class Breakout:
                 input_type = self.input_handler.get_input(timeout=0.001)
 
                 if input_type == InputType.BACK or input_type == InputType.QUIT:
-                    running = False
+                    self.running = False
                 else:
                     if not self.handle_input(input_type):
-                        running = False
+                        self.running = False
 
                 # Update paddle (needs continuous input)
                 if self.state in [self.STATE_SERVING, self.STATE_PLAYING]:

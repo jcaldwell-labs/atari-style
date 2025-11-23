@@ -352,6 +352,7 @@ class PacMan:
 
         # Frame timing
         self.last_time = time.time()
+        self.running = True
 
     def update(self, dt):
         """Update game state."""
@@ -593,17 +594,14 @@ class PacMan:
 
     def run(self):
         """Main game loop."""
-        # Set up signal handler for clean Ctrl+C exit
         def signal_handler(sig, frame):
-            pass  # Will exit naturally via the running flag
-
+            self.running = False
         old_handler = signal.signal(signal.SIGINT, signal_handler)
 
         try:
             self.renderer.enter_fullscreen()
-            running = True
 
-            while running:
+            while self.running:
                 current_time = time.time()
                 dt = current_time - self.last_time
                 self.last_time = current_time
@@ -615,7 +613,7 @@ class PacMan:
                 input_type = self.input_handler.get_input(timeout=0.001)
 
                 if input_type == InputType.BACK or input_type == InputType.QUIT:
-                    running = False
+                    self.running = False
                 elif input_type == InputType.SELECT:
                     if self.state == self.STATE_GAME_OVER:
                         self.__init__()  # Restart
