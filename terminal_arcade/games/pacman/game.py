@@ -352,6 +352,7 @@ class PacMan:
 
         # Frame timing
         self.last_time = time.time()
+        self.running = True
 
     def update(self, dt):
         """Update game state."""
@@ -599,7 +600,6 @@ class PacMan:
 
         try:
             self.renderer.enter_fullscreen()
-            self.running = True
 
             while self.running:
                 current_time = time.time()

@@ -377,6 +377,7 @@ class ASCIIPainter:
         self.last_time = time.time()
         self.cursor_blink = True
         self.blink_timer = 0
+        self.running = True
 
     def handle_input(self, dt):
         """Handle user input."""
@@ -715,7 +716,6 @@ class ASCIIPainter:
 
         try:
             self.renderer.enter_fullscreen()
-            self.running = True
 
             while self.running:
                 current_time = time.time()

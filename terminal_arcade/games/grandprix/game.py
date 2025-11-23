@@ -166,6 +166,7 @@ class GrandPrix:
 
         # Frame timing
         self.last_time = time.time()
+        self.running = True
 
     def update(self, dt):
         """Update game state."""
@@ -473,7 +474,6 @@ class GrandPrix:
 
         try:
             self.renderer.enter_fullscreen()
-            self.running = True
 
             while self.running:
                 current_time = time.time()

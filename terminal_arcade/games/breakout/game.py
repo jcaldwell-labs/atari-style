@@ -170,6 +170,7 @@ class Breakout:
 
         # Frame timing
         self.last_time = time.time()
+        self.running = True
 
     def _create_level(self, level):
         """Create brick layout for level."""
@@ -622,7 +623,6 @@ class Breakout:
 
         try:
             self.renderer.enter_fullscreen()
-            self.running = True
 
             while self.running:
                 current_time = time.time()

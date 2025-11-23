@@ -237,6 +237,7 @@ class PlatonicSolidsViewer:
 
         # Frame timing
         self.last_time = time.time()
+        self.running = True
 
     def handle_input(self, dt):
         """Handle user input."""
@@ -426,7 +427,6 @@ class PlatonicSolidsViewer:
 
         try:
             self.renderer.enter_fullscreen()
-            self.running = True
 
             while self.running:
                 current_time = time.time()

@@ -266,6 +266,7 @@ class Galaga:
 
         # Frame timing
         self.last_time = time.time()
+        self.running = True
 
     def _create_wave(self, wave):
         """Create enemy formation for wave."""
@@ -599,7 +600,6 @@ class Galaga:
 
         try:
             self.renderer.enter_fullscreen()
-            self.running = True
 
             while self.running:
                 current_time = time.time()
