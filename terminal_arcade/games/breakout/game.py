@@ -616,12 +616,15 @@ class Breakout:
 
     def run(self):
         """Main game loop."""
-        self.renderer.enter_fullscreen()
+        def signal_handler(sig, frame):
+            self.running = False
+        old_handler = signal.signal(signal.SIGINT, signal_handler)
 
         try:
-            running = True
+            self.renderer.enter_fullscreen()
+            self.running = True
 
-            while running:
+            while self.running:
                 current_time = time.time()
                 dt = current_time - self.last_time
                 self.last_time = current_time
@@ -633,10 +636,10 @@ class Breakout:
                 input_type = self.input_handler.get_input(timeout=0.001)
 
                 if input_type == InputType.BACK or input_type == InputType.QUIT:
-                    running = False
+                    self.running = False
                 else:
                     if not self.handle_input(input_type):
-                        running = False
+                        self.running = False
 
                 # Update paddle (needs continuous input)
                 if self.state in [self.STATE_SERVING, self.STATE_PLAYING]:
