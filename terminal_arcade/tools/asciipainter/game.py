@@ -709,9 +709,14 @@ class ASCIIPainter:
 
     def run(self):
         """Main application loop."""
-        self.renderer.enter_fullscreen()
+        # Set up signal handler for clean Ctrl+C exit
+        def signal_handler(sig, frame):
+            pass  # Will exit naturally via the running flag
+
+        old_handler = signal.signal(signal.SIGINT, signal_handler)
 
         try:
+            self.renderer.enter_fullscreen()
             running = True
 
             while running:
