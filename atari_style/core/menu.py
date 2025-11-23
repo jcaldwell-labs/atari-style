@@ -35,7 +35,7 @@ class Menu:
         self.renderer.draw_text(title_x, 3, self.title, Color.BRIGHT_CYAN)
 
         # Draw subtitle/instructions
-        instructions = "Use Arrow Keys/WASD or Joystick | ENTER/SPACE to Select | Q/ESC to Exit"
+        instructions = "↑↓ Select  Enter  Q Quit"
         inst_x = (self.renderer.width - len(instructions)) // 2
         self.renderer.draw_text(inst_x, 5, instructions, Color.YELLOW)
 
@@ -44,28 +44,15 @@ class Menu:
         max_width = max(len(item.title) for item in self.items) + 4
 
         for i, item in enumerate(self.items):
-            y = menu_start_y + i * 2
+            y = menu_start_y + i
             x = (self.renderer.width - max_width) // 2
 
             if i == self.selected_index:
                 # Highlight selected item
                 self.renderer.draw_text(x - 2, y, '>', Color.BRIGHT_GREEN)
                 self.renderer.draw_text(x, y, item.title, Color.BRIGHT_GREEN)
-                self.renderer.draw_text(x + len(item.title) + 2, y, '<', Color.BRIGHT_GREEN)
-
-                # Draw description if available
-                if item.description:
-                    desc_x = (self.renderer.width - len(item.description)) // 2
-                    self.renderer.draw_text(desc_x, self.renderer.height - 3, item.description, Color.CYAN)
             else:
                 self.renderer.draw_text(x, y, item.title, Color.WHITE)
-
-        # Draw decorative border
-        border_width = max_width + 8
-        border_height = len(self.items) * 2 + 4
-        border_x = (self.renderer.width - border_width) // 2
-        border_y = menu_start_y - 2
-        self.renderer.draw_border(border_x, border_y, border_width, border_height, Color.MAGENTA)
 
         self.renderer.render()
 
