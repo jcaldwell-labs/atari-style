@@ -424,6 +424,10 @@ class FluidLattice(ParametricAnimation):
                 # Apply damping
                 new_value *= self.damping
 
+                # Zero out small values to prevent accumulation
+                if abs(new_value) < 0.2:
+                    new_value = 0.0
+
                 # Update
                 self.previous[y][x] = self.current[y][x]
                 self.current[y][x] = new_value
@@ -1040,12 +1044,26 @@ class ScreenSaver:
 
     def handle_input(self):
         """Handle user input and joystick directions for parameter control."""
-        # Check for H key (help) - need to check keyboard directly
+        # Check for H key (help) and D key (drain for Fluid Lattice)
         with self.input_handler.term.cbreak():
             key = self.input_handler.term.inkey(timeout=0.001)
             if key and key.lower() == 'h':
                 self.show_help = not self.show_help
                 time.sleep(0.2)  # Debounce
+            elif key and key.lower() == 'd' and self.current_animation == 5:
+                # Drain: multiply all values toward zero (like a global damping pulse)
+                anim = self.animations[5]
+                for y in range(anim.height):
+                    for x in range(anim.width):
+                        anim.current[y][x] *= 0.3  # Reduce all values by 70%
+                        anim.previous[y][x] *= 0.3
+            elif key and key.lower() == 'c' and self.current_animation == 5:
+                # Full clear: reset the entire lattice
+                anim = self.animations[5]
+                for y in range(anim.height):
+                    for x in range(anim.width):
+                        anim.current[y][x] = 0.0
+                        anim.previous[y][x] = 0.0
 
         input_type = self.input_handler.get_input(timeout=0.01)
 

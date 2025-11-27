@@ -215,6 +215,12 @@ FLUID_LATTICE_PRESETS = {
         'wave_speed': 0.25,
         'drop_strength': 10.0,
         'damping': 0.995
+    },
+    'dramatic_drops': {
+        'rain_rate': 0.08,       # Very sparse - each drop is an event
+        'wave_speed': 0.45,      # Good ripple speed
+        'drop_strength': 14.0,   # Strong visible splash
+        'damping': 0.82          # Fast decay - clears for next drop
     }
 }
 
