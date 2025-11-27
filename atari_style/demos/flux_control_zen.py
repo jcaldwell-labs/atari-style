@@ -293,9 +293,9 @@ class FluxControlZen:
                     self.handle_drain()
 
                 # Get joystick state for panning
-                joy_state = self.input_handler.get_joystick_state()
-                if joy_state:
-                    self.handle_pan(joy_state.get('x', 0), joy_state.get('y', 0))
+                jx, jy = self.input_handler.get_joystick_state()
+                if abs(jx) > 0.1 or abs(jy) > 0.1:
+                    self.handle_pan(jx, jy)
 
                 # Keyboard panning fallback
                 if input_event == InputType.UP:
