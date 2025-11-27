@@ -14,6 +14,7 @@ from .demos.platonic_solids import run_platonic_solids
 from .demos.flux_control import run_flux_control
 from .demos.flux_control_patterns import run_pattern_flux
 from .demos.flux_control_rhythm import run_rhythm_flux
+from .demos.flux_control_zen import run_flux_zen
 
 
 def main():
@@ -27,6 +28,7 @@ def main():
         MenuItem("Flux Control", run_flux_control),
         MenuItem("Flux Control: Patterns", run_pattern_flux),
         MenuItem("Flux Control: Rhythm", run_rhythm_flux),
+        MenuItem("Flux Control: Zen", run_flux_zen),
         MenuItem("ASCII Painter", run_ascii_painter),
         MenuItem("Starfield", run_starfield),
         MenuItem("Screen Saver", run_screensaver),
