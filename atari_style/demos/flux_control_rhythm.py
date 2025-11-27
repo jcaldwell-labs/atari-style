@@ -17,8 +17,8 @@ class BeatSystem:
             initial_interval: Time between beats in seconds
         """
         self.beat_interval = initial_interval  # Seconds per beat
-        self.beat_window = 0.3  # Perfect/Good timing window (seconds)
-        self.perfect_window = 0.1  # Perfect timing window (seconds)
+        self.beat_window = 0.5  # Good timing window (seconds) - more forgiving
+        self.perfect_window = 0.2  # Perfect timing window (seconds)
 
         self.last_beat_time = 0.0
         self.next_beat_time = 0.0
@@ -195,8 +195,8 @@ class RhythmFluxControl:
         self.game_width = self.renderer.width // 2
         self.game_height = self.renderer.height - 10  # Leave room for UI
 
-        # Game systems
-        self.beat_system = BeatSystem(initial_interval=2.0)
+        # Game systems - start slow (24 BPM) to learn the rhythm
+        self.beat_system = BeatSystem(initial_interval=2.5)
         self.fluid = FluidLattice(self.game_width, self.game_height)
 
         # Game state
@@ -360,37 +360,85 @@ class RhythmFluxControl:
 
     def _draw_beat_indicator(self):
         """Draw the visual beat indicator."""
-        # Draw pulsing border that contracts on beat
         progress = self.beat_system.beat_progress
-
-        # Calculate border inset based on beat progress
-        # Progress goes 0->1, we want border to pulse inward near 1
-        pulse_strength = math.sin(progress * math.pi * 2) * 0.5 + 0.5
-        max_inset = 3
-        inset = int(pulse_strength * max_inset)
 
         width = self.game_width * 2
         height = self.game_height
 
         # Determine color based on proximity to beat
-        if progress > 0.85:  # Near the beat
+        if progress > 0.8:  # Near the beat - HIT NOW!
+            border_color = Color.BRIGHT_WHITE
+        elif progress > 0.6:
             border_color = Color.BRIGHT_YELLOW
-        elif progress > 0.7:
-            border_color = Color.YELLOW
         else:
             border_color = Color.CYAN
 
-        # Draw the border with inset
-        for x in range(inset, width - inset):
-            self.renderer.set_pixel(x, inset, '─', border_color)
-            self.renderer.set_pixel(x, height - 1 - inset, '─', border_color)
+        # Draw static border
+        for x in range(width):
+            self.renderer.set_pixel(x, 0, '─', border_color)
+            self.renderer.set_pixel(x, height - 1, '─', border_color)
+        for y in range(height):
+            self.renderer.set_pixel(0, y, '│', border_color)
+            self.renderer.set_pixel(width - 1, y, '│', border_color)
 
-        for y in range(inset, height - inset):
-            self.renderer.set_pixel(inset, y, '│', border_color)
-            self.renderer.set_pixel(width - 1 - inset, y, '│', border_color)
+        # Draw beat timeline at top
+        self._draw_beat_timeline(progress)
 
-        # Draw beat marker (shrinking ring)
+        # Draw beat marker (shrinking ring) in center
         self._draw_beat_marker(progress)
+
+    def _draw_beat_timeline(self, progress):
+        """Draw a horizontal timeline showing beat approach."""
+        # Timeline spans most of the width
+        timeline_y = 2
+        timeline_start = 10
+        timeline_end = self.game_width * 2 - 10
+        timeline_width = timeline_end - timeline_start
+        target_x = (timeline_start + timeline_end) // 2  # Center target
+
+        # Draw timeline track
+        for x in range(timeline_start, timeline_end):
+            self.renderer.set_pixel(x, timeline_y, '─', Color.BLUE)
+
+        # Draw target zone (where to hit)
+        target_zone_half = 5  # Width of target zone
+        for x in range(target_x - target_zone_half, target_x + target_zone_half):
+            self.renderer.set_pixel(x, timeline_y, '═', Color.BRIGHT_GREEN)
+        self.renderer.set_pixel(target_x, timeline_y, '╬', Color.BRIGHT_WHITE)
+
+        # Draw approaching beat markers (show 3 upcoming beats)
+        for beat_offset in range(3):
+            # Calculate position for this beat
+            # progress 0->1 means beat moves from right to center
+            beat_progress = progress + beat_offset
+            if beat_progress > 3:
+                continue
+
+            # Map progress to x position (0 = right edge, 1 = center/target)
+            normalized = 1.0 - (beat_progress % 1.0)  # 0 at start, 1 at beat
+            beat_x = int(timeline_end - normalized * (timeline_end - target_x))
+
+            if timeline_start <= beat_x <= timeline_end:
+                # Color based on how close to target
+                if beat_offset == 0:
+                    if normalized > 0.8:
+                        marker_color = Color.BRIGHT_WHITE
+                        marker = '█'
+                    elif normalized > 0.6:
+                        marker_color = Color.BRIGHT_YELLOW
+                        marker = '●'
+                    else:
+                        marker_color = Color.YELLOW
+                        marker = '●'
+                else:
+                    marker_color = Color.CYAN
+                    marker = '○'
+
+                self.renderer.set_pixel(beat_x, timeline_y - 1, marker, marker_color)
+                self.renderer.set_pixel(beat_x, timeline_y + 1, marker, marker_color)
+
+        # Label
+        self.renderer.draw_text(timeline_start - 8, timeline_y, "BEAT:", Color.WHITE)
 
     def _draw_beat_marker(self, progress):
         """Draw a shrinking ring that indicates when to press."""
