@@ -267,6 +267,7 @@ python -c "from atari_style.demos.pacman import run_pacman; run_pacman()"
 python -c "from atari_style.demos.galaga import run_galaga; run_galaga()"
 python -c "from atari_style.demos.grandprix import run_grandprix; run_grandprix()"
 python -c "from atari_style.demos.breakout import run_breakout; run_breakout()"
+python -c "from atari_style.demos.flux_control_patterns import run_pattern_flux; run_pattern_flux()"
 
 # Creative Tools
 python -c "from atari_style.demos.ascii_painter import run_ascii_painter; run_ascii_painter()"
