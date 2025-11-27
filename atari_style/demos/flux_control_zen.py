@@ -16,14 +16,14 @@ class FluidLattice:
 
         # Fluid properties
         self.wave_speed = 0.3
-        self.damping = 0.94
+        self.damping = 0.85  # Much faster decay - waves fade naturally
 
         # Lattice grids
         self.current = [[0.0 for _ in range(width)] for _ in range(height)]
         self.previous = [[0.0 for _ in range(width)] for _ in range(height)]
 
-        # Rain system
-        self.rain_rate = 2.0  # drops per second
+        # Rain system - very gentle
+        self.rain_rate = 0.8  # ~1 drop per second - sparse and beautiful
 
     def add_drop(self, x, y, strength=10.0):
         """Add a water drop at position."""
@@ -112,9 +112,10 @@ class FluxControlZen:
         self.drains_used = 0
         self.drops_witnessed = 0
 
-        # Drain cooldown (gentle limit)
+        # Drain cooldown (very short - drain freely)
         self.drain_cooldown = 0.0
         self.drain_ready = True
+        self.drain_cooldown_time = 0.5  # Only 0.5 second cooldown
 
     def update(self, dt):
         """Update game state."""
@@ -140,9 +141,9 @@ class FluxControlZen:
     def handle_drain(self):
         """Perform a drain action."""
         if self.drain_ready:
-            self.fluid.drain_global(0.6)
+            self.fluid.drain_global(0.8)  # 80% drain - very effective
             self.drains_used += 1
-            self.drain_cooldown = 1.5  # 1.5 second cooldown
+            self.drain_cooldown = self.drain_cooldown_time
             self.drain_ready = False
 
     def draw(self):
@@ -259,9 +260,9 @@ class FluxControlZen:
             self.renderer.draw_text(controls_x, panel_y + 2,
                                    "SPACE/BTN: DRAIN", Color.BRIGHT_GREEN)
         else:
-            cooldown_pct = int((self.drain_cooldown / 1.5) * 100)
+            cooldown_pct = int((self.drain_cooldown / self.drain_cooldown_time) * 100)
             self.renderer.draw_text(controls_x, panel_y + 2,
-                                   f"Drain cooling... {cooldown_pct}%", Color.YELLOW)
+                                   f"Drain: {cooldown_pct}%", Color.YELLOW)
 
         self.renderer.draw_text(controls_x, panel_y + 3,
                                "ESC: Exit", Color.CYAN)
