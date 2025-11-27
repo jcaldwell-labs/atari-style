@@ -102,40 +102,50 @@ class FluidLattice:
 
         # Fluid properties
         self.wave_speed = 0.3
-        self.damping = 0.97
+        self.damping = 0.92  # Lower = faster decay, more forgiving
 
         # Lattice grids
         self.current = [[0.0 for _ in range(width)] for _ in range(height)]
         self.previous = [[0.0 for _ in range(width)] for _ in range(height)]
 
-        # Rain system
-        self.rain_rate = 0.4
+        # Rain system - drops per second (not per frame!)
+        self.rain_rate = 3.0  # ~3 drops per second
 
     def add_drop(self, x, y, strength=8.0):
         """Add a water drop at position."""
         if 0 <= x < self.width and 0 <= y < self.height:
             self.current[y][x] += strength
 
-    def drain_at(self, x, y, effectiveness):
-        """Drain fluid at position based on effectiveness (0.0 to 1.0)."""
-        if 0 <= x < self.width and 0 <= y < self.height:
-            drain_amount = effectiveness * 15.0
-            self.current[y][x] = max(0, self.current[y][x] - drain_amount)
+    def drain_global(self, effectiveness):
+        """Drain all fluid globally based on effectiveness (0.0 to 1.0).
 
-            # Drain neighbors too
-            for dy in range(-1, 2):
-                for dx in range(-1, 2):
-                    ny, nx = y + dy, x + dx
-                    if 0 <= nx < self.width and 0 <= ny < self.height:
-                        self.current[ny][nx] = max(0, self.current[ny][nx] - drain_amount * 0.5)
+        Args:
+            effectiveness: 0.0 to 1.0, how much to reduce all values
+        """
+        # effectiveness 0.9 = reduce to 10% (multiply by 0.1)
+        # effectiveness 0.6 = reduce to 40% (multiply by 0.4)
+        # effectiveness 0.3 = reduce to 70% (multiply by 0.7)
+        multiplier = 1.0 - effectiveness
+        for y in range(self.height):
+            for x in range(self.width):
+                self.current[y][x] *= multiplier
+                self.previous[y][x] *= multiplier
 
     def update(self, dt):
         """Update fluid simulation."""
-        # Add random rain drops
-        if random.random() < self.rain_rate * dt:
+        # Add random rain drops (rate is drops per second)
+        # Use Poisson-like spawning: expected drops = rate * dt
+        expected_drops = self.rain_rate * dt
+        # Always spawn if >= 1 expected, otherwise probabilistic
+        while expected_drops >= 1.0:
             x = random.randint(1, self.width - 2)
             y = random.randint(1, self.height - 2)
-            self.add_drop(x, y, 8.0)
+            self.add_drop(x, y, 10.0)
+            expected_drops -= 1.0
+        if random.random() < expected_drops:
+            x = random.randint(1, self.width - 2)
+            y = random.randint(1, self.height - 2)
+            self.add_drop(x, y, 10.0)
 
         # Wave equation simulation
         for y in range(1, self.height - 1):
@@ -207,8 +217,8 @@ class RhythmFluxControl:
         self.last_feedback = ""
         self.feedback_timer = 0.0
 
-        # Difficulty threshold
-        self.max_energy = 800.0  # Game over if fluid energy exceeds this
+        # Difficulty threshold - higher = more forgiving
+        self.max_energy = 2500.0  # Game over if fluid energy exceeds this
 
     def update(self, dt):
         """Update game state."""
@@ -278,12 +288,8 @@ class RhythmFluxControl:
         self.drain_flash = 1.0
         self.feedback_timer = 1.0
 
-        # Apply drain effect to fluid
-        # Drain from multiple random points for dramatic effect
-        for _ in range(5):
-            x = random.randint(0, self.fluid.width - 1)
-            y = random.randint(0, self.fluid.height - 1)
-            self.fluid.drain_at(x, y, effectiveness)
+        # Apply global drain effect based on timing accuracy
+        self.fluid.drain_global(effectiveness)
 
     def draw(self):
         """Draw the game."""
