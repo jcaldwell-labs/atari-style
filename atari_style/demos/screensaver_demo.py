@@ -246,5 +246,118 @@ def run_tunnelvision_demo(duration: int = 60):
     demo.run_single_mode_demo(7, duration)
 
 
+def capture_thumbnail(mode: int, output_path: str, setup_time: float = 2.0) -> bool:
+    """Capture a single frame thumbnail for a screensaver mode.
+
+    This function runs a specific animation mode for a brief setup time to let it
+    reach an interesting state, then captures the current frame as a PNG image.
+
+    Args:
+        mode: Animation mode index (0-7):
+            0 - Lissajous Curve
+            1 - Spiral
+            2 - Wave Circles
+            3 - Plasma
+            4 - Mandelbrot
+            5 - Fluid Lattice
+            6 - Particle Swarm
+            7 - Tunnel Vision
+        output_path: Path where the PNG thumbnail will be saved
+        setup_time: How long to run the animation before capturing (default: 2.0 seconds)
+
+    Returns:
+        True if capture was successful, False otherwise
+
+    Example:
+        >>> capture_thumbnail(0, "thumbnails/lissajous.png", setup_time=3.0)
+        >>> capture_thumbnail(4, "thumbnails/mandelbrot.png", setup_time=5.0)
+    """
+    if not 0 <= mode < 8:
+        print(f"Error: mode must be 0-7, got {mode}")
+        return False
+
+    try:
+        demo = ScreenSaverDemo()
+        demo.current_animation = mode
+        demo.running = True
+
+        # Run the animation for setup_time to get an interesting state
+        start_time = time.time()
+        last_time = start_time
+
+        while time.time() - start_time < setup_time:
+            current_time = time.time()
+            dt = current_time - last_time
+            last_time = current_time
+
+            # Auto-adjust parameters
+            demo.auto_adjust_params(dt)
+
+            # Clear and draw the frame
+            demo.renderer.clear_buffer()
+            demo.draw()
+            demo.update(dt)
+
+            time.sleep(0.016)  # ~60 FPS
+
+        # Capture the current frame
+        success = demo.renderer.save_screenshot(output_path)
+
+        if success:
+            print(f"Thumbnail captured: {output_path}")
+        else:
+            print(f"Failed to capture thumbnail for mode {mode}")
+
+        return success
+
+    except Exception as e:
+        print(f"Error capturing thumbnail: {e}")
+        return False
+
+
+def capture_all_thumbnails(output_dir: str = "thumbnails", setup_time: float = 3.0) -> int:
+    """Capture thumbnails for all 8 screensaver modes.
+
+    Args:
+        output_dir: Directory where thumbnails will be saved (default: "thumbnails")
+        setup_time: How long to run each animation before capturing (default: 3.0 seconds)
+
+    Returns:
+        Number of thumbnails successfully captured
+
+    Example:
+        >>> capture_all_thumbnails("./screenshots", setup_time=2.5)
+    """
+    mode_names = [
+        "lissajous",
+        "spiral",
+        "wave_circles",
+        "plasma",
+        "mandelbrot",
+        "fluid_lattice",
+        "particle_swarm",
+        "tunnel_vision"
+    ]
+
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+
+    success_count = 0
+    for mode, name in enumerate(mode_names):
+        output_path = os.path.join(output_dir, f"{name}.png")
+        print(f"Capturing {name} (mode {mode})...")
+
+        if capture_thumbnail(mode, output_path, setup_time):
+            success_count += 1
+        else:
+            print(f"Failed to capture {name}")
+
+        # Small delay between captures
+        time.sleep(0.5)
+
+    print(f"\nCaptured {success_count}/{len(mode_names)} thumbnails")
+    return success_count
+
+
 if __name__ == "__main__":
     run_demo()
