@@ -359,122 +359,58 @@ class RhythmFluxControl:
             self.renderer.set_pixel(width - 1, y, '║', self.drain_flash_color)
 
     def _draw_beat_indicator(self):
-        """Draw the visual beat indicator - clear countdown to hit moment."""
+        """Draw ONE simple beat indicator - screen border pulses."""
         progress = self.beat_system.beat_progress
-
         width = self.game_width * 2
         height = self.game_height
 
-        # Simple border
-        for x in range(width):
-            self.renderer.set_pixel(x, 0, '─', Color.BLUE)
-            self.renderer.set_pixel(x, height - 1, '─', Color.BLUE)
-        for y in range(height):
-            self.renderer.set_pixel(0, y, '│', Color.BLUE)
-            self.renderer.set_pixel(width - 1, y, '│', Color.BLUE)
-
-        # Draw the main beat indicator - large and obvious
-        self._draw_countdown_bar(progress)
-
-        # Draw hit zone flash when in timing window
-        self._draw_hit_zone(progress)
-
-    def _draw_countdown_bar(self, progress):
-        """Draw a large horizontal countdown bar - fills up, HIT when full!"""
-        # Position: top area, very prominent
-        bar_y = 3
-        bar_start = 15
-        bar_end = self.game_width * 2 - 15
-        bar_width = bar_end - bar_start
-
-        # Calculate fill amount (0 to 1)
-        fill_width = int(progress * bar_width)
-
-        # Draw background track
-        self.renderer.draw_text(2, bar_y, "DRAIN NOW:", Color.WHITE)
-
-        # Draw empty part
-        for x in range(bar_start, bar_end):
-            self.renderer.set_pixel(x, bar_y, '░', Color.BLUE)
-
-        # Draw filled part with color gradient
-        for x in range(bar_start, bar_start + fill_width):
-            fill_pct = (x - bar_start) / bar_width
-            if fill_pct > 0.85:
-                char = '█'
-                color = Color.BRIGHT_WHITE
-            elif fill_pct > 0.7:
-                char = '▓'
-                color = Color.BRIGHT_YELLOW
-            elif fill_pct > 0.5:
-                char = '▓'
-                color = Color.YELLOW
-            else:
-                char = '▒'
-                color = Color.CYAN
-            self.renderer.set_pixel(x, bar_y, char, color)
-
-        # Draw "HIT!" zone marker at the end
-        hit_zone_start = bar_end - 8
-        for x in range(hit_zone_start, bar_end):
-            self.renderer.set_pixel(x, bar_y - 1, '▼', Color.BRIGHT_GREEN)
-            self.renderer.set_pixel(x, bar_y + 1, '▲', Color.BRIGHT_GREEN)
-
-        # Flash "HIT NOW!" when in timing window
-        if progress > 0.8:
-            flash_on = int(time.time() * 8) % 2 == 0  # 8Hz flash
-            if flash_on:
-                self.renderer.draw_text(bar_end + 2, bar_y, ">>> HIT! <<<", Color.BRIGHT_WHITE)
-            else:
-                self.renderer.draw_text(bar_end + 2, bar_y, ">>> HIT! <<<", Color.BRIGHT_YELLOW)
-        elif progress > 0.6:
-            self.renderer.draw_text(bar_end + 2, bar_y, "  READY...", Color.YELLOW)
-
-    def _draw_hit_zone(self, progress):
-        """Draw a pulsing hit zone indicator in the center."""
-        center_x = self.game_width
-        center_y = self.game_height // 2 + 2
-
-        # Target ring (fixed size) - this is where you want the approach to land
-        target_radius = 4
-        for angle in range(0, 360, 20):
-            rad = math.radians(angle)
-            x = int(center_x + target_radius * math.cos(rad))
-            y = int(center_y + target_radius * 0.5 * math.sin(rad))
-            if 0 <= x < self.renderer.width and 0 <= y < self.game_height:
-                self.renderer.set_pixel(x, y, '●', Color.BRIGHT_GREEN)
-
-        # Approach ring (shrinks toward target)
-        # When progress=0, ring is far out. When progress=1, ring matches target
-        approach_radius = int(20 - progress * 16)  # 20 -> 4
-
-        # Color intensifies as it approaches
+        # The WHOLE BORDER is the indicator
+        # It gets brighter as beat approaches, FLASH on hit window
         if progress > 0.85:
-            ring_color = Color.BRIGHT_WHITE
-            ring_char = '█'
+            # HIT WINDOW - bright flashing border
+            flash = int(time.time() * 10) % 2 == 0
+            border_color = Color.BRIGHT_WHITE if flash else Color.BRIGHT_YELLOW
+            border_char = '█'
         elif progress > 0.7:
-            ring_color = Color.BRIGHT_YELLOW
-            ring_char = '▓'
+            border_color = Color.BRIGHT_YELLOW
+            border_char = '▓'
         elif progress > 0.5:
-            ring_color = Color.YELLOW
-            ring_char = '▒'
+            border_color = Color.YELLOW
+            border_char = '▒'
+        elif progress > 0.3:
+            border_color = Color.CYAN
+            border_char = '░'
         else:
-            ring_color = Color.CYAN
-            ring_char = '░'
+            border_color = Color.BLUE
+            border_char = ' '
 
-        # Draw approach ring
-        for angle in range(0, 360, 15):
-            rad = math.radians(angle)
-            x = int(center_x + approach_radius * math.cos(rad))
-            y = int(center_y + approach_radius * 0.5 * math.sin(rad))
-            if 0 <= x < self.renderer.width and 0 <= y < self.game_height:
-                self.renderer.set_pixel(x, y, ring_char, ring_color)
+        # Draw border (thicker = 2 chars deep when in hit zone)
+        thickness = 2 if progress > 0.85 else 1
 
-        # Center crosshair
-        self.renderer.set_pixel(center_x, center_y, '╋', Color.WHITE)
+        for t in range(thickness):
+            # Top and bottom
+            for x in range(width):
+                self.renderer.set_pixel(x, t, border_char, border_color)
+                self.renderer.set_pixel(x, height - 1 - t, border_char, border_color)
+            # Left and right
+            for y in range(height):
+                self.renderer.set_pixel(t, y, border_char, border_color)
+                self.renderer.set_pixel(width - 1 - t, y, border_char, border_color)
 
-        # Instructions below
-        self.renderer.draw_text(center_x - 15, center_y + 6, "Hit SPACE when ring meets circle!", Color.CYAN)
+        # Simple text cue in center top
+        if progress > 0.85:
+            msg = ">>> SPACE NOW! <<<"
+            color = Color.BRIGHT_WHITE
+        elif progress > 0.6:
+            msg = "    get ready...   "
+            color = Color.YELLOW
+        else:
+            msg = ""
+            color = Color.CYAN
+
+        if msg:
+            msg_x = (width - len(msg)) // 2
+            self.renderer.draw_text(msg_x, 3, msg, color)
 
     def _draw_ui(self):
         """Draw game UI."""
