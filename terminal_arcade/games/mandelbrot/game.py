@@ -113,6 +113,9 @@ class MandelbrotExplorer:
         self.screenshot_dir.mkdir(parents=True, exist_ok=True)
         self.last_screenshot = None
 
+        # Fill percentage tracking (for automated video monitoring)
+        self.fill_percentage = 0.0  # Percentage of screen with non-black pixels (0.0-100.0)
+
         # Interesting locations (zoom targets)
         self.bookmarks = {
             'overview': (-0.5, 0.0, 1.5),
@@ -200,13 +203,27 @@ class MandelbrotExplorer:
         return real, imag
 
     def draw_fractal(self):
-        """Render the Mandelbrot set to the buffer."""
+        """Render the Mandelbrot set to the buffer.
+
+        Also calculates fill_percentage - the percentage of pixels that are
+        NOT inside the Mandelbrot set (i.e., have visible fractal detail).
+        """
+        total_pixels = self.renderer.width * self.renderer.height
+        filled_pixels = 0
+
         for y in range(self.renderer.height):
             for x in range(self.renderer.width):
                 c_real, c_imag = self.screen_to_complex(x, y)
                 iterations = self.mandelbrot_iterations(c_real, c_imag)
                 char, color = self.get_char_and_color(iterations)
                 self.renderer.set_pixel(x, y, char, color)
+
+                # Count pixels that are NOT inside the set (visible detail)
+                if iterations < self.max_iterations:
+                    filled_pixels += 1
+
+        # Calculate fill percentage (0.0 to 100.0)
+        self.fill_percentage = (filled_pixels / total_pixels) * 100.0 if total_pixels > 0 else 0.0
 
     def _sync_parameters(self):
         """Sync parameter values from game state."""
@@ -252,6 +269,7 @@ class MandelbrotExplorer:
         param_lines.append("")
         param_lines.append("Center: ({:.6f}, {:.6f}i)".format(self.center_x, self.center_y))
         param_lines.append("Zoom: {:.6e}".format(self.zoom))
+        param_lines.append("Fill: {:.1f}%".format(self.fill_percentage))
 
         # Use boxes to create bordered text with double-line border
         param_text = "\n".join(param_lines)
