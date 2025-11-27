@@ -1,23 +1,21 @@
-"""Enhanced main menu system with game registry and sections.
+"""Simplified main menu system with clean navigation.
 
-Provides organized navigation through games, tools, and demos with
-visual indicators and section headers.
+Provides a minimal, scannable menu for games, tools, and demos
+with keyboard and joystick support.
 """
 
 import sys
 from pathlib import Path
 from ..engine.renderer import Renderer, Color
 from ..engine.input_handler import InputHandler, InputType
-from ..engine.menu import Menu, MenuItem
-from ..engine.branding import Brand
 from .game_registry import GameRegistry, GameCategory
 
 
 class EnhancedMenu:
-    """Enhanced menu with section headers and game registry integration."""
+    """Clean menu with category grouping and simple navigation."""
 
     def __init__(self, registry: GameRegistry):
-        """Initialize enhanced menu.
+        """Initialize menu.
 
         Args:
             registry: Game registry with discovered games
@@ -39,43 +37,39 @@ class EnhancedMenu:
         """
         items = []
 
-        # Add section headers and games for each category
+        # Add games for each category with simple category labels
         for category in GameCategory:
             games = self.registry.get_games_by_category(category)
             if not games:
                 continue
 
-            # Section header (non-selectable)
-            header_lines = Brand.get_section_header(category.value)
+            # Category label (non-selectable)
             items.append({
-                'type': 'header',
-                'lines': header_lines,
+                'type': 'category',
+                'name': category.value.upper(),
             })
 
             # Games in this category
             for game in games:
-                indicator = "⭐" if game.is_new else ("🎮" if game.joystick_support else "⌨️ ")
-                title = f"{indicator} {game.title}"
-
                 items.append({
                     'type': 'game',
-                    'title': title,
+                    'title': game.title,
                     'description': game.description,
                     'action': game.run_function,
-                    'metadata': game,
+                    'joystick': game.joystick_support,
                 })
 
         # Add exit option
         items.append({
-            'type': 'header',
-            'lines': Brand.get_section_header("SYSTEM"),
+            'type': 'category',
+            'name': 'SYSTEM',
         })
         items.append({
             'type': 'game',
-            'title': "❌ Exit",
-            'description': "Exit Terminal Arcade",
+            'title': 'Exit',
+            'description': 'Exit Terminal Arcade',
             'action': self._exit_menu,
-            'metadata': None,
+            'joystick': False,
         })
 
         return items
@@ -96,73 +90,75 @@ class EnhancedMenu:
         """Draw the menu."""
         self.renderer.clear_buffer()
 
-        # Draw title
-        Brand.draw_logo_compact(self.renderer, y=2)
+        # Title - simple centered text
+        title = "TERMINAL ARCADE"
+        title_x = (self.renderer.width - len(title)) // 2
+        self.renderer.draw_text(title_x, 1, title, Color.BRIGHT_CYAN)
 
-        # Draw subtitle
-        subtitle = f"Terminal Arcade v2.0 - {self.registry.get_game_count()} Games Available"
+        # Subtitle with game count
+        count = self.registry.get_game_count()
+        subtitle = f"{count} items available"
         subtitle_x = (self.renderer.width - len(subtitle)) // 2
-        self.renderer.draw_text(subtitle_x, 6, subtitle, Color.DARK_GRAY)
+        self.renderer.draw_text(subtitle_x, 2, subtitle, Color.DARK_GRAY)
 
-        # Draw menu items
-        current_y = 9
+        # Menu list - left aligned with consistent indentation
+        current_y = 4
         selectable_indices = self._get_selectable_items()
-        selectable_position = selectable_indices.index(self.selected_index) if self.selected_index in selectable_indices else 0
+        menu_x = 4  # Left margin
 
         for i, item in enumerate(self.menu_items):
-            if item['type'] == 'header':
-                # Draw section header
-                if current_y > 9:  # Add spacing before headers (except first)
-                    current_y += 1
+            if current_y >= self.renderer.height - 5:
+                break  # Leave room for footer
 
-                for line in item['lines']:
-                    x = (self.renderer.width - len(line)) // 2
-                    self.renderer.draw_text(x, current_y, line, Color.BRIGHT_YELLOW)
-                    current_y += 1
-
-                current_y += 1  # Spacing after header
-
-            elif item['type'] == 'game':
-                # Determine if this item is selected
-                is_selected = (i == self.selected_index)
-
-                # Draw selection indicator
-                if is_selected:
-                    indicator = "►"
-                    title_color = Color.BRIGHT_WHITE
-                    desc_color = Color.BRIGHT_CYAN
-                else:
-                    indicator = " "
-                    title_color = Color.WHITE
-                    desc_color = Color.DARK_GRAY
-
-                # Draw title
-                title_text = f"{indicator} {item['title']}"
-                title_x = (self.renderer.width - len(title_text)) // 2
-                self.renderer.draw_text(title_x, current_y, title_text, title_color)
-
-                # Draw description (only for selected item)
-                if is_selected and item['description']:
-                    desc_x = (self.renderer.width - len(item['description'])) // 2
-                    self.renderer.draw_text(desc_x, current_y + 1, item['description'], desc_color)
-                    current_y += 1
-
+            if item['type'] == 'category':
+                # Category label - dim, no decoration
+                if current_y > 4:
+                    current_y += 1  # Space before category
+                self.renderer.draw_text(menu_x, current_y, item['name'], Color.YELLOW)
                 current_y += 1
 
-        # Draw controls help at bottom
-        Brand.draw_controls_help(self.renderer)
+            elif item['type'] == 'game':
+                is_selected = (i == self.selected_index)
 
-        # Draw joystick status
+                if is_selected:
+                    # Highlight selected item
+                    indicator = ">"
+                    color = Color.BRIGHT_WHITE
+                else:
+                    indicator = " "
+                    color = Color.WHITE
+
+                text = f"  {indicator} {item['title']}"
+                self.renderer.draw_text(menu_x, current_y, text, color)
+                current_y += 1
+
+        # Footer area - description of selected item
+        footer_y = self.renderer.height - 4
+        self.renderer.draw_text(0, footer_y, "─" * self.renderer.width, Color.DARK_GRAY)
+
+        # Show selected item description
+        selected_item = self.menu_items[self.selected_index]
+        if selected_item.get('description'):
+            desc = selected_item['description']
+            desc_x = (self.renderer.width - len(desc)) // 2
+            self.renderer.draw_text(desc_x, footer_y + 1, desc, Color.BRIGHT_CYAN)
+
+        # Controls hint
+        controls = "Arrow/WASD: Navigate | Enter/Space: Select | ESC/Q: Exit"
+        controls_x = (self.renderer.width - len(controls)) // 2
+        self.renderer.draw_text(controls_x, self.renderer.height - 2, controls, Color.DARK_GRAY)
+
+        # Joystick status - bottom right
         joystick_info = self.input_handler.verify_joystick()
         if joystick_info['connected']:
-            status = f"🎮 {joystick_info['name']}"
-            status_color = Color.BRIGHT_GREEN
+            status = f"Joystick: {joystick_info['name'][:20]}"
+            status_color = Color.GREEN
         else:
-            status = "⌨️  Keyboard Mode"
-            status_color = Color.YELLOW
+            status = "Keyboard mode"
+            status_color = Color.DARK_GRAY
 
         status_x = self.renderer.width - len(status) - 2
-        self.renderer.draw_text(status_x, 1, status, status_color)
+        self.renderer.draw_text(status_x, self.renderer.height - 1, status, status_color)
 
         self.renderer.render()
 
@@ -185,20 +181,14 @@ class EnhancedMenu:
             self.selected_index = selectable[new_pos]
 
         elif input_type == InputType.SELECT:
-            # Execute selected action
             item = self.menu_items[self.selected_index]
             if item['action']:
                 try:
-                    # Exit fullscreen for game
                     self.renderer.exit_fullscreen()
-
-                    # Run the game
                     item['action']()
-
-                    # Re-enter fullscreen for menu
                     self.renderer.enter_fullscreen()
                 except Exception as e:
-                    print(f"Error running {item['title']}: {e}")
+                    print(f"Error: {e}")
                     input("Press Enter to continue...")
 
         elif input_type == InputType.BACK or input_type == InputType.QUIT:
@@ -209,7 +199,7 @@ class EnhancedMenu:
         try:
             self.renderer.enter_fullscreen()
 
-            # Initialize selected to first selectable item
+            # Initialize to first selectable item
             selectable = self._get_selectable_items()
             if selectable:
                 self.selected_index = selectable[0]
