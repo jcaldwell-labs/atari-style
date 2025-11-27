@@ -115,6 +115,8 @@ class MandelbrotExplorer:
 
         # Fill percentage tracking (for automated video monitoring)
         self.fill_percentage = 0.0  # Percentage of screen with non-black pixels (0.0-100.0)
+        self.prev_fill_percentage = 0.0  # Previous frame's fill for delta calculation
+        self.fill_delta = 0.0  # Rate of change of fill_percentage per second
 
         # Interesting locations (zoom targets)
         self.bookmarks = {
@@ -225,6 +227,16 @@ class MandelbrotExplorer:
         # Calculate fill percentage (0.0 to 100.0)
         self.fill_percentage = (filled_pixels / total_pixels) * 100.0 if total_pixels > 0 else 0.0
 
+    def update_fill_delta(self, dt: float):
+        """Update fill_delta based on rate of change.
+
+        Args:
+            dt: Time since last frame in seconds
+        """
+        if dt > 0:
+            self.fill_delta = (self.fill_percentage - self.prev_fill_percentage) / dt
+        self.prev_fill_percentage = self.fill_percentage
+
     def _sync_parameters(self):
         """Sync parameter values from game state."""
         self.parameters[0]['value'] = self.current_palette
@@ -269,7 +281,7 @@ class MandelbrotExplorer:
         param_lines.append("")
         param_lines.append("Center: ({:.6f}, {:.6f}i)".format(self.center_x, self.center_y))
         param_lines.append("Zoom: {:.6e}".format(self.zoom))
-        param_lines.append("Fill: {:.1f}%".format(self.fill_percentage))
+        param_lines.append("Fill: {:.1f}%  Delta: {:+.1f}".format(self.fill_percentage, self.fill_delta))
 
         # Use boxes to create bordered text with double-line border
         param_text = "\n".join(param_lines)
