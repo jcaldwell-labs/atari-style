@@ -3,6 +3,7 @@
 from blessed import Terminal
 from typing import Tuple, Optional
 import time
+import os
 
 
 class Renderer:
@@ -79,6 +80,90 @@ class Renderer:
     def clear_screen(self):
         """Clear the terminal screen."""
         print(self.term.home + self.term.clear, end='', flush=True)
+
+    def save_screenshot(self, path: str) -> bool:
+        """Export current buffer as PNG image for thumbnails.
+
+        Args:
+            path: Output path for PNG file
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+        except ImportError:
+            print("Pillow required for screenshots: pip install Pillow")
+            return False
+
+        # Character dimensions (approximate for monospace)
+        char_width = 10
+        char_height = 20
+
+        img_width = self.width * char_width
+        img_height = self.height * char_height
+
+        # Create image with dark background (Dracula theme)
+        img = Image.new('RGB', (img_width, img_height), (30, 30, 46))
+        draw = ImageDraw.Draw(img)
+
+        # Try to use a monospace font
+        try:
+            # Try common monospace font paths
+            font_paths = [
+                "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+                "/System/Library/Fonts/Monaco.dfont",  # macOS
+                "C:\\Windows\\Fonts\\consola.ttf",  # Windows
+            ]
+            font = None
+            for font_path in font_paths:
+                if os.path.exists(font_path):
+                    font = ImageFont.truetype(font_path, 16)
+                    break
+            if font is None:
+                font = ImageFont.load_default()
+        except Exception:
+            font = ImageFont.load_default()
+
+        # Terminal color name to RGB mapping
+        color_map = {
+            'red': (205, 49, 49),
+            'green': (13, 188, 121),
+            'blue': (36, 114, 200),
+            'yellow': (229, 229, 16),
+            'magenta': (188, 63, 188),
+            'cyan': (17, 168, 205),
+            'white': (229, 229, 229),
+            'bright_red': (241, 76, 76),
+            'bright_green': (35, 209, 139),
+            'bright_blue': (59, 142, 234),
+            'bright_yellow': (245, 245, 67),
+            'bright_magenta': (214, 112, 214),
+            'bright_cyan': (41, 184, 219),
+            'bright_white': (255, 255, 255),
+        }
+
+        # Render buffer to image
+        for y in range(self.height):
+            for x in range(self.width):
+                char = self.buffer[y][x]
+                if char == ' ':
+                    continue  # Skip empty spaces for performance
+
+                color_name = self.color_buffer[y][x]
+                if color_name and color_name in color_map:
+                    color = color_map[color_name]
+                else:
+                    color = (229, 229, 229)  # Default white
+
+                draw.text((x * char_width, y * char_height), char, font=font, fill=color)
+
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else '.', exist_ok=True)
+
+        img.save(path)
+        return True
 
 
 class Color:
