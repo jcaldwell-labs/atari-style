@@ -6,6 +6,7 @@ import random
 import pygame
 from ..core.renderer import Renderer, Color
 from ..core.input_handler import InputHandler, InputType
+from .screensaver_presets import ANIMATION_PRESETS, get_preset_names, get_preset
 
 
 class ParametricAnimation:
@@ -788,6 +789,112 @@ class ScreenSaver:
 
         self.save_feedback = f"Loaded Slot {slot + 2}"
         self.save_feedback_time = time.time()
+
+    def apply_preset(self, animation_index: int, preset_name: str):
+        """Apply a preset configuration to a specific animation mode.
+
+        Args:
+            animation_index: Index of the animation (0-7)
+            preset_name: Name of the preset to apply
+
+        Returns:
+            bool: True if preset was applied successfully, False otherwise
+        """
+        preset_params = get_preset(animation_index, preset_name)
+        if preset_params is None:
+            return False
+
+        # Switch to the animation if not already active
+        if self.current_animation != animation_index:
+            self.current_animation = animation_index
+
+        # Apply parameters to the animation
+        anim = self.animations[animation_index]
+        for key, value in preset_params.items():
+            if hasattr(anim, key):
+                setattr(anim, key, value)
+
+        self.save_feedback = f"Applied preset: {preset_name}"
+        self.save_feedback_time = time.time()
+        return True
+
+    def run_preset_tour(self, mode: int, seconds_per_preset: int = 10):
+        """Cycle through all presets for a single animation mode.
+
+        Args:
+            mode: Animation mode index (0-7)
+            seconds_per_preset: How long to display each preset (default: 10 seconds)
+        """
+        if mode < 0 or mode >= len(self.animations):
+            print(f"Invalid animation mode: {mode}. Must be 0-{len(self.animations)-1}")
+            return
+
+        preset_names = get_preset_names(mode)
+        if not preset_names:
+            print(f"No presets available for animation mode {mode}")
+            return
+
+        try:
+            self.renderer.enter_fullscreen()
+            self.renderer.clear_screen()
+
+            for preset_name in preset_names:
+                # Apply the preset
+                self.apply_preset(mode, preset_name)
+
+                # Display the preset for the specified duration
+                start_time = time.time()
+                last_time = start_time
+
+                while time.time() - start_time < seconds_per_preset:
+                    current_time = time.time()
+                    dt = current_time - last_time
+                    last_time = current_time
+
+                    # Draw and update
+                    self.renderer.clear_buffer()
+                    anim = self.animations[self.current_animation]
+                    anim.draw(anim.t)
+
+                    # Draw preset tour info
+                    name = self.animation_names[self.current_animation]
+                    self.renderer.draw_text(2, 1, f"Preset Tour: {name}", Color.BRIGHT_YELLOW)
+                    self.renderer.draw_text(2, 2, f"Preset: {preset_name}", Color.BRIGHT_CYAN)
+
+                    # Draw parameters
+                    if hasattr(anim, 'get_param_info'):
+                        param_info = anim.get_param_info()
+                        for i, param in enumerate(param_info):
+                            self.renderer.draw_text(2, 4 + i, param, Color.BRIGHT_GREEN)
+
+                    # Draw progress bar
+                    elapsed = time.time() - start_time
+                    progress = elapsed / seconds_per_preset
+                    bar_width = 40
+                    filled = int(progress * bar_width)
+                    bar = "[" + "=" * filled + " " * (bar_width - filled) + "]"
+                    self.renderer.draw_text(2, 10, bar, Color.CYAN)
+
+                    # Draw time remaining
+                    remaining = seconds_per_preset - elapsed
+                    time_text = f"Next preset in: {remaining:.1f}s"
+                    self.renderer.draw_text(2, 11, time_text, Color.YELLOW)
+
+                    # Draw exit info
+                    self.renderer.draw_text(2, 13, "Press ESC/Q to exit tour", Color.RED)
+
+                    self.renderer.render()
+                    anim.update(dt * self.speed_multiplier)
+
+                    # Check for exit
+                    input_type = self.input_handler.get_input(timeout=0.01)
+                    if input_type == InputType.QUIT:
+                        return
+
+                    time.sleep(0.016)  # ~60 FPS
+
+        finally:
+            self.renderer.exit_fullscreen()
 
     def draw_help_modal(self):
         """Draw help modal overlay."""
