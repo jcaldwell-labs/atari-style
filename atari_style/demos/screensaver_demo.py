@@ -1,6 +1,7 @@
 """Auto-demo mode for screensaver - smooth parameter sweeps without user input."""
 import time
 import math
+import os
 from atari_style.demos.screensaver import ScreenSaver
 
 
@@ -111,11 +112,138 @@ class ScreenSaverDemo(ScreenSaver):
         finally:
             self.renderer.exit_fullscreen()
 
+    def run_single_mode_demo(self, mode: int, duration: int):
+        """Run a single animation mode without auto-switching.
+
+        Args:
+            mode: Animation mode index (0-7)
+            duration: How long to run in seconds
+        """
+        try:
+            self.renderer.enter_fullscreen()
+            self.renderer.clear_screen()
+
+            start_time = time.time()
+            last_time = start_time
+
+            while self.running:
+                current_time = time.time()
+                dt = current_time - last_time
+                last_time = current_time
+
+                # Check total duration
+                elapsed = current_time - start_time
+                if elapsed >= duration:
+                    break
+
+                # Auto-adjust parameters
+                self.auto_adjust_params(dt)
+
+                # Draw and update
+                self.draw()
+                self.update(dt)
+
+                # Still check for quit
+                self.handle_input()
+
+                time.sleep(0.016)  # ~60 FPS
+
+        finally:
+            self.renderer.exit_fullscreen()
+
 
 def run_demo(duration: int = 200):
     """Entry point for demo mode."""
     demo = ScreenSaverDemo()
     demo.run_demo(duration)
+
+
+def run_lissajous_demo(duration: int = 60):
+    """Run Lissajous curve animation demo.
+
+    Args:
+        duration: How long to run in seconds (default: 60)
+    """
+    demo = ScreenSaverDemo()
+    demo.current_animation = 0
+    demo.run_single_mode_demo(0, duration)
+
+
+def run_spiral_demo(duration: int = 60):
+    """Run spiral animation demo.
+
+    Args:
+        duration: How long to run in seconds (default: 60)
+    """
+    demo = ScreenSaverDemo()
+    demo.current_animation = 1
+    demo.run_single_mode_demo(1, duration)
+
+
+def run_circlewave_demo(duration: int = 60):
+    """Run circle wave animation demo.
+
+    Args:
+        duration: How long to run in seconds (default: 60)
+    """
+    demo = ScreenSaverDemo()
+    demo.current_animation = 2
+    demo.run_single_mode_demo(2, duration)
+
+
+def run_plasma_demo(duration: int = 60):
+    """Run plasma animation demo.
+
+    Args:
+        duration: How long to run in seconds (default: 60)
+    """
+    demo = ScreenSaverDemo()
+    demo.current_animation = 3
+    demo.run_single_mode_demo(3, duration)
+
+
+def run_mandelbrot_demo(duration: int = 60):
+    """Run Mandelbrot zoomer animation demo.
+
+    Args:
+        duration: How long to run in seconds (default: 60)
+    """
+    demo = ScreenSaverDemo()
+    demo.current_animation = 4
+    demo.run_single_mode_demo(4, duration)
+
+
+def run_fluidlattice_demo(duration: int = 60):
+    """Run fluid lattice animation demo.
+
+    Args:
+        duration: How long to run in seconds (default: 60)
+    """
+    demo = ScreenSaverDemo()
+    demo.current_animation = 5
+    demo.run_single_mode_demo(5, duration)
+
+
+def run_particleswarm_demo(duration: int = 60):
+    """Run particle swarm animation demo.
+
+    Args:
+        duration: How long to run in seconds (default: 60)
+    """
+    demo = ScreenSaverDemo()
+    demo.current_animation = 6
+    demo.run_single_mode_demo(6, duration)
+
+
+def run_tunnelvision_demo(duration: int = 60):
+    """Run tunnel vision animation demo.
+
+    Args:
+        duration: How long to run in seconds (default: 60)
+    """
+    demo = ScreenSaverDemo()
+    demo.current_animation = 7
+    demo.run_single_mode_demo(7, duration)
 
 
 if __name__ == "__main__":
