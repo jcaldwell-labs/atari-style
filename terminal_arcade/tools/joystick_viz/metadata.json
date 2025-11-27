@@ -1,0 +1,16 @@
+{
+  "title": "Joystick Visualizer",
+  "description": "Debug joystick input with visual stick position and button states",
+  "version": "1.0",
+  "author": "jcaldwell-labs",
+  "category": "creative_tool",
+  "tags": ["joystick", "debug", "input", "testing", "utility"],
+  "run_function": {
+    "module": "terminal_arcade.tools.joystick_viz",
+    "function": "run_joystick_viz"
+  },
+  "has_intro": false,
+  "joystick_support": true,
+  "keyboard_support": true,
+  "is_new": true
+}
