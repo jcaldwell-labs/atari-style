@@ -635,7 +635,8 @@ def run_rhythm_flux_demo(duration: int = 90):
     """Auto-demo mode for video recording.
 
     Plays the game automatically, pressing drain at various timings
-    to demonstrate perfect/good/miss mechanics.
+    to demonstrate perfect/good/miss mechanics while surviving long enough
+    for a good demo.
 
     Args:
         duration: How long to run the demo in seconds
@@ -646,11 +647,10 @@ def run_rhythm_flux_demo(duration: int = 90):
     try:
         start_time = time.time()
         last_time = start_time
-        last_auto_drain = 0
         drain_cooldown = 0
+        beats_since_drain = 0
+        last_beat_progress = 0
 
-        # Auto-play strategy: mix of on-beat and off-beat drains
-        # to show the timing mechanic variety
         while True:
             current_time = time.time()
             dt = current_time - last_time
@@ -665,47 +665,58 @@ def run_rhythm_flux_demo(duration: int = 90):
                 if game.game_over_time > 5:
                     break
             else:
-                # Auto-drain logic: simulate player with ~70% accuracy
                 progress = game.beat_system.beat_progress
                 drain_cooldown -= dt
 
+                # Track beat crossings
+                if progress < last_beat_progress:  # Beat just happened
+                    beats_since_drain += 1
+                last_beat_progress = progress
+
+                # Get current energy level for emergency drains
+                energy = game.fluid.get_total_energy()
+                energy_pct = energy / game.max_energy
+
+                should_drain = False
+
                 if drain_cooldown <= 0:
-                    # Decide when to drain based on beat progress
-                    # Mix of strategies for demo variety:
-                    should_drain = False
-                    drain_type = ""
+                    # EMERGENCY: Always drain if energy is critical
+                    if energy_pct > 0.7:
+                        should_drain = True
 
                     # Strategy varies by time to show different play styles
-                    phase = int(elapsed / 15) % 4  # Change strategy every 15s
+                    phase = int(elapsed / 20) % 3  # Change strategy every 20s
 
                     if phase == 0:
-                        # "Perfect hunter" - tries to hit on beat
+                        # "Skilled player" - mostly hits on beat
                         if 0.85 < progress < 0.98:
                             should_drain = True
-                            drain_type = "perfect_attempt"
+                        elif beats_since_drain >= 2:  # Don't skip more than 1 beat
+                            should_drain = True
+
                     elif phase == 1:
-                        # "Button masher" - frequent off-beat presses
-                        if random.random() < 0.03:  # ~3% per frame
-                            should_drain = True
-                            drain_type = "mash"
-                    elif phase == 2:
-                        # "Good enough" - hits in good window
-                        if 0.7 < progress < 0.95:
-                            if random.random() < 0.15:
+                        # "Good timing" - hits in good window, sometimes early
+                        if 0.75 < progress < 0.95:
+                            if random.random() < 0.4:  # 40% chance in window
                                 should_drain = True
-                                drain_type = "good_attempt"
+                        elif beats_since_drain >= 2:
+                            should_drain = True
+
                     else:
-                        # "Skilled player" - mostly perfect, some good
-                        if 0.88 < progress < 0.95:
+                        # "Learning player" - sometimes early, sometimes late
+                        if 0.6 < progress < 0.85:
+                            if random.random() < 0.3:  # Early hits
+                                should_drain = True
+                        elif 0.85 < progress < 0.98:
+                            if random.random() < 0.6:  # On-beat hits
+                                should_drain = True
+                        elif beats_since_drain >= 2:
                             should_drain = True
-                            drain_type = "skilled"
-                        elif 0.75 < progress < 0.88 and random.random() < 0.1:
-                            should_drain = True
-                            drain_type = "early"
 
                     if should_drain:
                         game.handle_drain()
-                        drain_cooldown = 0.3  # Minimum time between drains
+                        drain_cooldown = 0.4  # Minimum time between drains
+                        beats_since_drain = 0
 
             # Update and draw
             game.update(dt)
