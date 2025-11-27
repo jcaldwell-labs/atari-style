@@ -2,7 +2,7 @@
 
 Displays real-time joystick state including:
 - Analog stick position with radial direction line
-- Button states with gamepad-style layout (A/B/X/Y/L/R)
+- Button states with Trooper V2 controller layout
 - Axis values and deadzone visualization
 """
 
@@ -12,20 +12,20 @@ from ...engine.renderer import Renderer, Color
 from ...engine.input_handler import InputHandler
 
 
-# Button name mapping for common gamepad layouts
+# Button name mapping for Trooper V2 controller
+# 0, 1: Large circular buttons on top
+# 2, 3: Smaller rectangular buttons on front
+# 4, 5: Rectangle buttons on back
+# 6, 7: Possibly not implemented
 BUTTON_NAMES = {
-    0: 'A',
-    1: 'B',
-    2: 'X',
-    3: 'Y',
-    4: 'LB',
-    5: 'RB',
-    6: 'Back',
-    7: 'Start',
-    8: 'LS',
-    9: 'RS',
-    10: 'LT',
-    11: 'RT',
+    0: 'Top L',
+    1: 'Top R',
+    2: 'Front L',
+    3: 'Front R',
+    4: 'Back L',
+    5: 'Back R',
+    6: 'Btn 6',
+    7: 'Btn 7',
 }
 
 
@@ -123,46 +123,74 @@ class JoystickViz:
         text = f"[{char}]{name}"
         self.renderer.draw_text(x, y, text, color)
 
+    def draw_circle_button(self, cx: int, cy: int, label: str, pressed: bool):
+        """Draw a large circular button (for Trooper V2 top buttons).
+
+        Args:
+            cx, cy: Center position
+            label: Button label
+            pressed: Whether button is pressed
+        """
+        color = Color.BRIGHT_GREEN if pressed else Color.WHITE
+        fill = '█' if pressed else ' '
+
+        # Draw circular button shape
+        self.renderer.draw_text(cx - 2, cy - 1, "╭──╮", color)
+        self.renderer.draw_text(cx - 2, cy,     f"│{fill}{fill}│", color)
+        self.renderer.draw_text(cx - 2, cy + 1, "╰──╯", color)
+
+        # Draw label below
+        label_x = cx - len(label) // 2
+        self.renderer.draw_text(label_x, cy + 2, label, Color.CYAN)
+
+    def draw_rect_button(self, x: int, y: int, label: str, pressed: bool):
+        """Draw a rectangular button (for Trooper V2 front/back buttons).
+
+        Args:
+            x, y: Top-left position
+            label: Button label
+            pressed: Whether button is pressed
+        """
+        color = Color.BRIGHT_GREEN if pressed else Color.WHITE
+        fill = '██' if pressed else '  '
+
+        # Draw rectangular button shape
+        self.renderer.draw_text(x, y, f"┌──┐", color)
+        self.renderer.draw_text(x, y + 1, f"│{fill}│", color)
+        self.renderer.draw_text(x, y + 2, f"└──┘", color)
+
+        # Draw label below
+        label_x = x + 2 - len(label) // 2
+        self.renderer.draw_text(label_x, y + 3, label, Color.CYAN)
+
     def draw_button_panel(self, x: int, y: int, buttons: dict):
-        """Draw gamepad-style button layout.
+        """Draw Trooper V2 controller button layout.
+
+        Trooper V2 Layout:
+        - Buttons 0, 1: Large circular buttons on top
+        - Buttons 2, 3: Smaller rectangular buttons on front
+        - Buttons 4, 5: Rectangle buttons on back
 
         Args:
             x, y: Top-left position
             buttons: Button states dict
         """
-        self.renderer.draw_text(x, y, "BUTTONS", Color.CYAN)
+        self.renderer.draw_text(x, y, "TROOPER V2 BUTTONS", Color.CYAN)
 
-        # Face buttons (diamond layout)
-        #       Y
-        #     X   B
-        #       A
-        face_x = x + 8
-        face_y = y + 3
+        # TOP BUTTONS (0, 1) - Large circular, side by side
+        self.renderer.draw_text(x + 2, y + 2, "── TOP ──", Color.DARK_GRAY)
+        self.draw_circle_button(x + 3, y + 5, "0", buttons.get(0, False))
+        self.draw_circle_button(x + 12, y + 5, "1", buttons.get(1, False))
 
-        # Y button (top)
-        self.draw_button(face_x, face_y, 'Y', buttons.get(3, False))
-        # X button (left)
-        self.draw_button(face_x - 5, face_y + 1, 'X', buttons.get(2, False))
-        # B button (right)
-        self.draw_button(face_x + 5, face_y + 1, 'B', buttons.get(1, False))
-        # A button (bottom)
-        self.draw_button(face_x, face_y + 2, 'A', buttons.get(0, False))
+        # FRONT BUTTONS (2, 3) - Smaller rectangular
+        self.renderer.draw_text(x + 1, y + 9, "── FRONT ──", Color.DARK_GRAY)
+        self.draw_rect_button(x, y + 11, "2", buttons.get(2, False))
+        self.draw_rect_button(x + 10, y + 11, "3", buttons.get(3, False))
 
-        # Shoulder buttons
-        self.draw_button(x, y + 6, 'LB', buttons.get(4, False))
-        self.draw_button(x + 12, y + 6, 'RB', buttons.get(5, False))
-
-        # Trigger buttons (if available)
-        self.draw_button(x, y + 7, 'LT', buttons.get(10, False))
-        self.draw_button(x + 12, y + 7, 'RT', buttons.get(11, False))
-
-        # System buttons
-        self.draw_button(x, y + 9, 'Back', buttons.get(6, False))
-        self.draw_button(x + 10, y + 9, 'Start', buttons.get(7, False))
-
-        # Stick clicks
-        self.draw_button(x, y + 10, 'LS', buttons.get(8, False))
-        self.draw_button(x + 10, y + 10, 'RS', buttons.get(9, False))
+        # BACK BUTTONS (4, 5) - Rectangle on back
+        self.renderer.draw_text(x + 1, y + 16, "── BACK ──", Color.DARK_GRAY)
+        self.draw_rect_button(x, y + 18, "4", buttons.get(4, False))
+        self.draw_rect_button(x + 10, y + 18, "5", buttons.get(5, False))
 
     def draw_all_buttons_raw(self, x: int, y: int, buttons: dict):
         """Draw raw button state list.
