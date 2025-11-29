@@ -33,13 +33,18 @@ A comprehensive collection of terminal-based interactive games, creative tools, 
   - Lateral drift control (X-axis movement)
   - 3 color modes (monochrome, rainbow, speed-based)
 
-- **Screen Saver** - 8 parametric animations with real-time joystick control:
-  - Lissajous curves, Spirals, Wave Circles, Plasma effects
-  - Mandelbrot zoomer, Fluid lattice, Particle swarm, Tunnel vision
-  - 32 adjustable parameters (4 per animation)
+- **Screen Saver** - 11 parametric animations (8 base + 3 composites) with real-time joystick control:
+  - **Base animations**: Lissajous curves, Spirals, Wave Circles, Plasma effects
+  - **Base animations**: Mandelbrot zoomer, Fluid lattice, Particle swarm, Tunnel vision
+  - **NEW: Composite animations** - Fusion visuals where one animation modulates another:
+    - **Plasma → Lissajous**: Plasma field drives Lissajous curve frequencies
+    - **Flux → Spiral**: Fluid wave energy modulates spiral rotation speed
+    - **Lissajous → Plasma**: Curve motion drives plasma color cycling
+  - 32+ adjustable parameters (4 per animation)
+  - Value modulation system for emergent behaviors
   - Help system (press 'H' for parameter descriptions)
   - 4 save slots (hold to save, tap to load)
-  - 60 FPS rendering
+  - 30-60 FPS rendering
 
 - **Platonic Solids** - Interactive 3D geometry viewer:
   - All 5 Platonic solids (Tetrahedron, Cube, Octahedron, Dodecahedron, Icosahedron)
