@@ -24,6 +24,36 @@ class ParametricAnimation:
         """Update animation time."""
         self.t += dt
 
+    def get_value_at(self, x: int, y: int, t: float) -> float:
+        """Get normalized value (-1.0 to 1.0) at screen position (x, y) and time t.
+        
+        This method allows animations to be used as modulation sources.
+        Override in subclasses to provide meaningful values.
+        
+        Args:
+            x: Screen X coordinate
+            y: Screen Y coordinate
+            t: Current time
+            
+        Returns:
+            float: Normalized value representing animation state at this point
+        """
+        return 0.0
+
+    def get_global_value(self, t: float) -> float:
+        """Get global scalar value for the entire animation at time t.
+        
+        This provides a single value representing the overall state of the animation,
+        useful for modulating parameters of other animations.
+        
+        Args:
+            t: Current time
+            
+        Returns:
+            float: Normalized value (-1.0 to 1.0) representing overall animation state
+        """
+        return 0.0
+
 
 class LissajousCurve(ParametricAnimation):
     """Lissajous curve animation."""
@@ -73,6 +103,45 @@ class LissajousCurve(ParametricAnimation):
             color_idx = int((i / points) * 6)
             colors = [Color.RED, Color.YELLOW, Color.GREEN, Color.CYAN, Color.BLUE, Color.MAGENTA]
             self.renderer.set_pixel(x, y, '●', colors[color_idx])
+
+    def get_value_at(self, x: int, y: int, t: float) -> float:
+        """Get normalized distance to nearest curve point.
+        
+        Returns a value based on how close (x, y) is to the Lissajous curve.
+        Closer points return values closer to 1.0.
+        """
+        cx = self.renderer.width // 2
+        cy = self.renderer.height // 2
+        scale_x = self.renderer.width // 3
+        scale_y = self.renderer.height // 3
+        
+        # Sample a few points on the curve and find minimum distance
+        min_dist_sq = float('inf')
+        samples = 50  # Use fewer samples for efficiency
+        
+        for i in range(samples):
+            angle = (i / samples) * 2 * math.pi
+            curve_x = cx + scale_x * math.sin(self.a * angle + t)
+            curve_y = cy + scale_y * math.sin(self.b * angle + self.delta + t * 0.5)
+            
+            dx = x - curve_x
+            dy = y - curve_y
+            dist_sq = dx * dx + dy * dy
+            min_dist_sq = min(min_dist_sq, dist_sq)
+        
+        # Convert distance to normalized value (closer = higher value)
+        # Use exponential decay for smoother falloff
+        max_dist = 50.0  # Maximum meaningful distance
+        normalized_dist = min(math.sqrt(min_dist_sq) / max_dist, 1.0)
+        return 1.0 - normalized_dist  # Invert so close = high value
+
+    def get_global_value(self, t: float) -> float:
+        """Get current phase angle of the curve.
+        
+        Returns the sine of the current time, providing a smooth oscillation
+        that can drive other parameters.
+        """
+        return math.sin(t)
 
 
 class SpiralAnimation(ParametricAnimation):
@@ -246,6 +315,41 @@ class PlasmaAnimation(ParametricAnimation):
                     char = '░'
 
                 self.renderer.set_pixel(x, y, char, color)
+
+    def get_value_at(self, x: int, y: int, t: float) -> float:
+        """Get plasma value at specific position.
+        
+        Returns the normalized plasma value at the given screen coordinate.
+        """
+        # Calculate plasma value using same formula as draw()
+        value = math.sin(x * self.freq_x + t)
+        value += math.sin(y * self.freq_y + t * 1.2)
+        value += math.sin((x + y) * self.freq_diag + t * 0.8)
+        value += math.sin(math.sqrt(x * x + y * y) * self.freq_radial + t * 1.5)
+        value = value / 4.0  # Normalize to [-1, 1] range
+        return value
+
+    def get_global_value(self, t: float) -> float:
+        """Get average plasma value across center region.
+        
+        Samples a few points near the center and returns their average.
+        This is more efficient than sampling the entire screen.
+        """
+        cx = self.renderer.width // 2
+        cy = self.renderer.height // 2
+        
+        # Sample 9 points in a 3x3 grid around center
+        total = 0.0
+        samples = 0
+        for dy in [-5, 0, 5]:
+            for dx in [-5, 0, 5]:
+                x = cx + dx
+                y = cy + dy
+                if 0 <= x < self.renderer.width and 0 <= y < self.renderer.height:
+                    total += self.get_value_at(x, y, t)
+                    samples += 1
+        
+        return total / samples if samples > 0 else 0.0
 
 
 class MandelbrotZoomer(ParametricAnimation):
@@ -454,6 +558,44 @@ class FluidLattice(ParametricAnimation):
                 if color:
                     self.renderer.set_pixel(x * 2, y, char, color)
 
+    def get_value_at(self, x: int, y: int, t: float) -> float:
+        """Get fluid height at specific lattice position.
+        
+        Returns the normalized wave amplitude at the given position.
+        """
+        # Convert screen coordinates to lattice coordinates
+        lx = x // 2
+        ly = y
+        
+        if 0 <= lx < self.width and 0 <= ly < self.height:
+            # Normalize to [-1, 1] range
+            # Fluid values typically range from -10 to +10
+            value = self.current[ly][lx]
+            return max(-1.0, min(1.0, value / 10.0))
+        return 0.0
+
+    def get_global_value(self, t: float) -> float:
+        """Get average wave energy across the lattice.
+        
+        Returns the average absolute value of all wave heights,
+        representing overall fluid activity.
+        """
+        total = 0.0
+        count = 0
+        
+        # Sample every 4th cell for efficiency
+        for y in range(0, self.height, 4):
+            for x in range(0, self.width, 4):
+                total += abs(self.current[y][x])
+                count += 1
+        
+        if count == 0:
+            return 0.0
+        
+        # Normalize average to [-1, 1] range
+        avg = total / count
+        return max(-1.0, min(1.0, avg / 5.0))
+
 
 class ParticleSwarm(ParametricAnimation):
     """Particle swarm with boid-like behavior."""
@@ -634,6 +776,209 @@ class TunnelVision(ParametricAnimation):
                 self.renderer.set_pixel(x, y, char, color)
 
 
+class CompositeAnimation(ParametricAnimation):
+    """Base class for composite animations that combine multiple animations.
+    
+    Composites use one animation as a modulation source to drive the parameters
+    of another animation, creating emergent visual behaviors.
+    """
+    
+    def __init__(self, renderer: Renderer, source: ParametricAnimation, target: ParametricAnimation):
+        """Initialize composite animation.
+        
+        Args:
+            renderer: The renderer instance
+            source: Animation that provides modulation values
+            target: Animation that receives modulation
+        """
+        super().__init__(renderer)
+        self.source = source
+        self.target = target
+        self.modulation_strength = 1.0  # 0.0 = no modulation, 1.0 = full modulation
+        self.modulation_mapping = "linear"  # linear, quadratic, sine
+        
+    def map_value(self, value: float, min_out: float, max_out: float) -> float:
+        """Map normalized value from source to target parameter range.
+        
+        Args:
+            value: Input value in range [-1.0, 1.0]
+            min_out: Minimum output value
+            max_out: Maximum output value
+            
+        Returns:
+            Mapped value in range [min_out, max_out]
+        """
+        # Apply modulation strength
+        value = value * self.modulation_strength
+        
+        # Apply mapping function
+        if self.modulation_mapping == "linear":
+            # Linear mapping from [-1, 1] to [min_out, max_out]
+            normalized = (value + 1.0) * 0.5  # Convert to [0, 1]
+            return min_out + normalized * (max_out - min_out)
+        elif self.modulation_mapping == "quadratic":
+            # Quadratic easing for smoother transitions
+            normalized = (value + 1.0) * 0.5
+            eased = normalized * normalized
+            return min_out + eased * (max_out - min_out)
+        elif self.modulation_mapping == "sine":
+            # Sinusoidal mapping for smooth oscillation
+            normalized = (value + 1.0) * 0.5
+            eased = math.sin(normalized * math.pi - math.pi / 2) * 0.5 + 0.5
+            return min_out + eased * (max_out - min_out)
+        else:
+            # Default to linear
+            normalized = (value + 1.0) * 0.5
+            return min_out + normalized * (max_out - min_out)
+    
+    def adjust_params(self, param: int, delta: float):
+        """Adjust composite-specific parameters."""
+        if param == 1:
+            # Modulation strength
+            self.modulation_strength = max(0.0, min(2.0, self.modulation_strength + delta * 0.1))
+        else:
+            # Pass through to target animation
+            self.target.adjust_params(param, delta)
+    
+    def get_param_info(self) -> list:
+        """Return parameter info for composite."""
+        target_info = self.target.get_param_info()
+        return [f"Mod: {self.modulation_strength:.1f}x"] + target_info
+    
+    def update(self, dt: float):
+        """Update both source and target animations."""
+        super().update(dt)
+        self.source.update(dt)
+        self.target.update(dt)
+
+
+class PlasmaLissajous(CompositeAnimation):
+    """Lissajous curve with frequencies driven by plasma field.
+    
+    The plasma animation's global value modulates the Lissajous curve's
+    X and Y frequencies, causing the curve to morph as the plasma undulates.
+    """
+    
+    def __init__(self, renderer: Renderer):
+        """Initialize PlasmaLissajous composite."""
+        plasma = PlasmaAnimation(renderer)
+        lissajous = LissajousCurve(renderer)
+        super().__init__(renderer, plasma, lissajous)
+        
+        # Configure source plasma for interesting modulation
+        self.source.freq_x = 0.08
+        self.source.freq_y = 0.08
+        self.source.freq_diag = 0.06
+        
+    def draw(self, t: float):
+        """Draw Lissajous modulated by plasma."""
+        # Sample plasma at center to get modulation value
+        plasma_value = self.source.get_global_value(t)
+        
+        # Modulate Lissajous frequencies based on plasma
+        self.target.a = self.map_value(plasma_value, 2.0, 6.0)
+        self.target.b = self.map_value(-plasma_value, 2.0, 6.0)  # Inverse for contrast
+        
+        # Draw the modulated Lissajous
+        self.target.draw(t)
+        
+    def get_param_info(self) -> list:
+        """Return parameter info showing both animations."""
+        return [
+            f"Mod: {self.modulation_strength:.1f}x",
+            f"Plasma→Liss",
+            f"Freq X: {self.target.a:.1f}",
+            f"Freq Y: {self.target.b:.1f}"
+        ]
+
+
+class FluxSpiral(CompositeAnimation):
+    """Spiral with rotation driven by fluid wave energy.
+    
+    The fluid lattice animation's average wave height modulates the spiral's
+    rotation speed, causing it to pulse with the rhythm of the waves.
+    """
+    
+    def __init__(self, renderer: Renderer):
+        """Initialize FluxSpiral composite."""
+        flux = FluidLattice(renderer)
+        spiral = SpiralAnimation(renderer)
+        super().__init__(renderer, flux, spiral)
+        
+        # Configure flux for good wave action
+        self.source.rain_rate = 0.5
+        self.source.wave_speed = 0.4
+        self.source.drop_strength = 10.0
+        
+        # Configure spiral for nice visual
+        self.target.num_spirals = 3
+        self.target.tightness = 8.0
+        
+    def draw(self, t: float):
+        """Draw spiral modulated by fluid lattice."""
+        # Get average fluid energy
+        flux_value = self.source.get_global_value(t)
+        
+        # Modulate rotation speed based on wave energy
+        self.target.rotation_speed = self.map_value(flux_value, 0.5, 3.0)
+        
+        # Also modulate tightness slightly for extra effect
+        self.target.tightness = self.map_value(math.sin(t * 0.5), 6.0, 10.0)
+        
+        # Draw the modulated spiral
+        self.target.draw(t)
+        
+    def get_param_info(self) -> list:
+        """Return parameter info showing both animations."""
+        return [
+            f"Mod: {self.modulation_strength:.1f}x",
+            f"Flux→Spiral",
+            f"Speed: {self.target.rotation_speed:.1f}x",
+            f"Tight: {self.target.tightness:.1f}"
+        ]
+
+
+class LissajousPlasma(CompositeAnimation):
+    """Plasma with frequencies driven by Lissajous motion.
+    
+    The Lissajous curve's phase angle modulates the plasma's frequency
+    parameters, causing the plasma colors to dance with the curve's motion.
+    """
+    
+    def __init__(self, renderer: Renderer):
+        """Initialize LissajousPlasma composite."""
+        lissajous = LissajousCurve(renderer)
+        plasma = PlasmaAnimation(renderer)
+        super().__init__(renderer, lissajous, plasma)
+        
+        # Configure Lissajous for smooth motion
+        self.source.a = 3.0
+        self.source.b = 4.0
+        self.source.delta = math.pi / 4
+        
+    def draw(self, t: float):
+        """Draw plasma modulated by Lissajous."""
+        # Get Lissajous phase value
+        liss_value = self.source.get_global_value(t)
+        
+        # Modulate plasma frequencies based on Lissajous motion
+        self.target.freq_x = self.map_value(liss_value, 0.05, 0.15)
+        self.target.freq_y = self.map_value(-liss_value, 0.05, 0.15)
+        self.target.freq_diag = self.map_value(math.cos(t), 0.04, 0.12)
+        
+        # Draw the modulated plasma
+        self.target.draw(t)
+        
+    def get_param_info(self) -> list:
+        """Return parameter info showing both animations."""
+        return [
+            f"Mod: {self.modulation_strength:.1f}x",
+            f"Liss→Plasma",
+            f"Freq X: {self.target.freq_x:.2f}",
+            f"Freq Y: {self.target.freq_y:.2f}"
+        ]
+
+
 class ScreenSaver:
     """Screen saver with multiple parametric animations."""
 
@@ -662,6 +1007,10 @@ class ScreenSaver:
             FluidLattice(self.renderer),
             ParticleSwarm(self.renderer),
             TunnelVision(self.renderer),
+            # Composite animations (8-10)
+            PlasmaLissajous(self.renderer),
+            FluxSpiral(self.renderer),
+            LissajousPlasma(self.renderer),
         ]
         self.animation_names = [
             "Lissajous Curve",
@@ -672,6 +1021,10 @@ class ScreenSaver:
             "Fluid Lattice",
             "Particle Swarm",
             "Tunnel Vision",
+            # Composite animation names
+            "Plasma → Lissajous",
+            "Flux → Spiral",
+            "Lissajous → Plasma",
         ]
         self.current_animation = 0
         self.speed_multiplier = 2.0  # Increased animation speed
@@ -726,6 +1079,24 @@ class ScreenSaver:
                 "Rotation: Spin rate (-2 to 2)",
                 "Size: Tunnel diameter (0.3-3.0)",
                 "Color Speed: Rainbow cycle (0.1-3.0)"
+            ],
+            "Plasma → Lissajous": [
+                "Modulation: Strength (0.0-2.0)",
+                "Plasma drives Lissajous frequencies",
+                "Curve morphs with plasma waves",
+                "Creates evolving patterns"
+            ],
+            "Flux → Spiral": [
+                "Modulation: Strength (0.0-2.0)",
+                "Fluid waves drive spiral rotation",
+                "Spiral pulses with wave rhythm",
+                "Energy-based motion"
+            ],
+            "Lissajous → Plasma": [
+                "Modulation: Strength (0.0-2.0)",
+                "Curve motion drives plasma colors",
+                "Synchronized wave patterns",
+                "Harmonic color shifts"
             ]
         }
         return descriptions.get(self.animation_names[self.current_animation], [])
