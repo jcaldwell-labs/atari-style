@@ -26,22 +26,23 @@ COLOR_MAP = {
     15: (255, 255, 255),  # BRIGHT_WHITE
 }
 
-# Map Color enum values to their ANSI codes
+# Map Color string values to their ANSI codes
+# Color class uses strings like 'red', 'cyan', etc.
 COLOR_TO_ANSI = {
-    1: 1,   # RED
-    2: 2,   # GREEN
-    3: 3,   # YELLOW
-    4: 4,   # BLUE
-    5: 5,   # MAGENTA
-    6: 6,   # CYAN
-    7: 7,   # WHITE
-    9: 9,   # BRIGHT_RED
-    10: 10, # BRIGHT_GREEN
-    11: 11, # BRIGHT_YELLOW
-    12: 12, # BRIGHT_BLUE
-    13: 13, # BRIGHT_MAGENTA
-    14: 14, # BRIGHT_CYAN
-    15: 15, # BRIGHT_WHITE
+    'red': 1,
+    'green': 2,
+    'yellow': 3,
+    'blue': 4,
+    'magenta': 5,
+    'cyan': 6,
+    'white': 7,
+    'bright_red': 9,
+    'bright_green': 10,
+    'bright_yellow': 11,
+    'bright_blue': 12,
+    'bright_magenta': 13,
+    'bright_cyan': 14,
+    'bright_white': 15,
 }
 
 
@@ -146,7 +147,11 @@ def render_flux_video(duration: int = 60, output_path: str = None):
     fluid = FluidLattice(renderer.width, renderer.height)
     fluid.wave_speed = 0.45
     fluid.damping = 0.77
-    fluid.rain_rate = 0.5
+    fluid.rain_rate = 60  # ~3 drops per frame at dt=0.05 for visible waves
+
+    # Pre-warm the simulation with initial drops
+    for _ in range(100):
+        fluid.update(0.05)
 
     # Visual settings sequence (matching showcase)
     modes = [
