@@ -880,7 +880,7 @@ def run_flux_explorer_extended_demo(duration: int = 270, log_metrics: bool = Fal
 
             game.update(dt)
             game.draw()
-            time.sleep(0.016)
+            time.sleep(0.05)  # 20 FPS for VHS compatibility
 
     finally:
         game.renderer.exit_fullscreen()
@@ -1202,7 +1202,7 @@ def run_flux_explorer_demo(duration: int = 270):
 
             game.update(dt)
             game.draw()
-            time.sleep(0.016)
+            time.sleep(0.05)  # 20 FPS for VHS compatibility
 
     finally:
         game.renderer.exit_fullscreen()
@@ -1413,7 +1413,7 @@ def run_parameter_capture(duration: int = 600):
             # Run simulation
             game.update(dt)
             game.draw()
-            time.sleep(0.016)
+            time.sleep(0.05)  # 20 FPS for VHS compatibility
 
     finally:
         log_file.close()
@@ -1436,9 +1436,260 @@ def run_parameter_capture(duration: int = 600):
         print(f"Full log: /tmp/flux_capture.log")
 
 
+def run_trajectory_analysis(target: int = 40, duration: int = 120, log_interval: float = 0.5):
+    """Analyze trajectory when converging to a target percentage.
+
+    Measures:
+    - Time to reach target (within 5%)
+    - Time to stabilize (within 2% for 5 seconds)
+    - Maximum overshoot/undershoot
+    - Number of oscillations around target
+    - Final parameters at equilibrium
+
+    Returns dict with all metrics.
+    """
+    from .flux_control_zen import FluidLattice
+
+    fluid = FluidLattice(80, 40)
+    tracker = CriticalityTracker(fluid)
+    tracker.target_coverage = float(target)
+
+    params = {
+        'wave_speed': {'value': 0.45, 'min': 0.1, 'max': 1.0, 'step': 0.05},
+        'damping': {'value': 0.86, 'min': 0.60, 'max': 0.98, 'step': 0.02},
+        'rain_rate': {'value': 1.5, 'min': 0.1, 'max': 5.0, 'step': 0.1},
+    }
+
+    def apply_params():
+        fluid.wave_speed = params['wave_speed']['value']
+        fluid.damping = params['damping']['value']
+        fluid.rain_rate = params['rain_rate']['value']
+
+    def adjust_param(name, direction):
+        p = params[name]
+        new_val = p['value'] + direction * p['step']
+        p['value'] = round(max(p['min'], min(p['max'], new_val)), 3)
+        apply_params()
+        tracker.record_adjustment()
+
+    # Start conservative
+    ideal_rain, ideal_damp = tracker.estimate_equilibrium_params(target, "normal")
+    params['rain_rate']['value'] = round(ideal_rain * 0.4, 2)
+    params['damping']['value'] = round(ideal_damp, 2)
+    apply_params()
+
+    dt = 0.033
+    elapsed = 0.0
+    last_tune = 0.0
+    last_log = 0.0
+    tune_interval = 0.5
+
+    # Trajectory metrics
+    coverage_history = []
+    time_to_reach = None  # First time within 5% of target
+    time_to_stable = None  # First time stable for 5s within 2%
+    max_overshoot = 0.0
+    max_undershoot = 0.0
+    oscillation_count = 0
+    last_direction = None  # Track direction changes
+    stable_start = None
+
+    while elapsed < duration:
+        fluid.update(dt)
+        fluid.update_coverage_history()
+        tracker.update(dt)
+        coverage = fluid.get_coverage_percent()
+
+        # Log coverage at intervals
+        if elapsed - last_log >= log_interval:
+            coverage_history.append({'time': elapsed, 'coverage': coverage})
+            last_log = elapsed
+
+        diff = coverage - target
+
+        # Track time to reach target (first time within 5%)
+        if time_to_reach is None and abs(diff) < 5:
+            time_to_reach = elapsed
+
+        # Track stability (within 2% for 5 seconds)
+        if abs(diff) < 2:
+            if stable_start is None:
+                stable_start = elapsed
+            elif elapsed - stable_start >= 5.0 and time_to_stable is None:
+                time_to_stable = stable_start
+        else:
+            stable_start = None
+
+        # Track overshoot/undershoot
+        if diff > 0:
+            max_overshoot = max(max_overshoot, diff)
+        else:
+            max_undershoot = min(max_undershoot, diff)
+
+        # Count oscillations (direction changes around target)
+        if abs(diff) < 10:
+            direction = 1 if diff > 0 else -1
+            if last_direction is not None and direction != last_direction:
+                oscillation_count += 1
+            last_direction = direction
+
+        # Auto-tune
+        if elapsed - last_tune > tune_interval:
+            action, direction = tracker.get_adjustment(params)
+            if action == 'drain':
+                fluid.drain_global(0.9)
+            elif action and direction != 0:
+                adjust_param(action, direction)
+            last_tune = elapsed
+
+        elapsed += dt
+
+    # Final metrics
+    final_coverage = fluid.get_coverage_percent()
+    return {
+        'target': target,
+        'time_to_reach': time_to_reach,
+        'time_to_stable': time_to_stable,
+        'max_overshoot': max_overshoot,
+        'max_undershoot': abs(max_undershoot),
+        'oscillations': oscillation_count // 2,  # Each full oscillation = 2 direction changes
+        'final_coverage': final_coverage,
+        'final_diff': abs(final_coverage - target),
+        'final_params': {
+            'rain_rate': params['rain_rate']['value'],
+            'damping': params['damping']['value'],
+            'wave_speed': params['wave_speed']['value'],
+        },
+        'coverage_history': coverage_history,
+    }
+
+
+def run_parameter_optimization(duration_per_target: int = 90):
+    """Run comprehensive parameter optimization across multiple targets.
+
+    Tests targets from 25% to 60% in 5% increments.
+    Outputs optimal defaults for gameplay based on:
+    - Fastest convergence
+    - Lowest oscillation
+    - Best stability
+
+    Results saved to /tmp/flux_optimization_results.json
+    """
+    import json
+    import statistics
+
+    targets = [25, 30, 35, 40, 45, 50, 55, 60]
+    results = {}
+
+    print("=" * 70)
+    print("FLUX CONTROL PARAMETER OPTIMIZATION")
+    print("=" * 70)
+    print(f"Testing {len(targets)} targets, {duration_per_target}s each")
+    print(f"Total estimated time: {len(targets) * duration_per_target / 60:.1f} minutes")
+    print("-" * 70)
+
+    for target in targets:
+        print(f"\n>>> Target: {target}%")
+        result = run_trajectory_analysis(target=target, duration=duration_per_target)
+        results[target] = result
+
+        # Print summary for this target
+        reach = f"{result['time_to_reach']:.1f}s" if result['time_to_reach'] else "NEVER"
+        stable = f"{result['time_to_stable']:.1f}s" if result['time_to_stable'] else "NEVER"
+        print(f"    Reach target: {reach}")
+        print(f"    Stabilize: {stable}")
+        print(f"    Overshoot: +{result['max_overshoot']:.1f}%")
+        print(f"    Undershoot: -{result['max_undershoot']:.1f}%")
+        print(f"    Oscillations: {result['oscillations']}")
+        print(f"    Final: {result['final_coverage']:.1f}% (diff={result['final_diff']:.1f}%)")
+        print(f"    Params: rain={result['final_params']['rain_rate']:.2f}, "
+              f"damp={result['final_params']['damping']:.2f}")
+
+    # Analyze results
+    print("\n" + "=" * 70)
+    print("OPTIMIZATION RESULTS")
+    print("=" * 70)
+
+    # Find sweet spot targets (those that stabilized)
+    stable_targets = [t for t, r in results.items() if r['time_to_stable'] is not None]
+    if stable_targets:
+        print(f"\nStable targets: {stable_targets}")
+
+        # Best convergence time
+        best_convergence = min(stable_targets, key=lambda t: results[t]['time_to_reach'] or 999)
+        print(f"Fastest convergence: {best_convergence}% "
+              f"(reached in {results[best_convergence]['time_to_reach']:.1f}s)")
+
+        # Lowest oscillation
+        best_smooth = min(stable_targets, key=lambda t: results[t]['oscillations'])
+        print(f"Smoothest (fewest oscillations): {best_smooth}% "
+              f"({results[best_smooth]['oscillations']} oscillations)")
+
+        # Lowest overshoot
+        best_overshoot = min(stable_targets, key=lambda t: results[t]['max_overshoot'])
+        print(f"Lowest overshoot: {best_overshoot}% "
+              f"(+{results[best_overshoot]['max_overshoot']:.1f}%)")
+
+        # Calculate score for each target
+        print("\n--- GAMEPLAY SCORE (lower = better) ---")
+        scores = {}
+        for t in stable_targets:
+            r = results[t]
+            # Weight: convergence time (30%), oscillations (30%), overshoot (20%), stability (20%)
+            reach_score = (r['time_to_reach'] or 999) / duration_per_target
+            stab_score = (r['time_to_stable'] or 999) / duration_per_target
+            osc_score = r['oscillations'] / 10  # Normalize
+            over_score = r['max_overshoot'] / 20  # Normalize
+
+            score = (reach_score * 0.30 + osc_score * 0.30 +
+                     over_score * 0.20 + stab_score * 0.20)
+            scores[t] = round(score, 3)
+            print(f"  {t}%: score={scores[t]:.3f}")
+
+        best_overall = min(scores, key=scores.get)
+        print(f"\n*** RECOMMENDED DEFAULT TARGET: {best_overall}% ***")
+        best_params = results[best_overall]['final_params']
+        print(f"    Suggested defaults:")
+        print(f"      wave_speed = {best_params['wave_speed']}")
+        print(f"      damping = {best_params['damping']}")
+        print(f"      rain_rate = {best_params['rain_rate']}")
+    else:
+        print("\nWARNING: No targets achieved stability. Try longer duration.")
+
+    # Save results
+    output_file = '/tmp/flux_optimization_results.json'
+    # Convert coverage_history to prevent JSON issues
+    save_results = {}
+    for t, r in results.items():
+        save_results[str(t)] = {
+            k: v for k, v in r.items()
+            if k != 'coverage_history'  # Exclude large history
+        }
+        save_results[str(t)]['sample_history'] = r['coverage_history'][::10]  # Every 10th point
+
+    with open(output_file, 'w') as f:
+        json.dump(save_results, f, indent=2)
+    print(f"\nDetailed results saved to: {output_file}")
+
+    return results
+
+
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "sim":
-        run_multi_simulation()
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "sim":
+            run_multi_simulation()
+        elif sys.argv[1] == "optimize":
+            duration = int(sys.argv[2]) if len(sys.argv) > 2 else 90
+            run_parameter_optimization(duration)
+        elif sys.argv[1] == "trajectory":
+            target = int(sys.argv[2]) if len(sys.argv) > 2 else 40
+            duration = int(sys.argv[3]) if len(sys.argv) > 3 else 120
+            result = run_trajectory_analysis(target, duration)
+            print(f"Target: {target}%")
+            print(f"Time to reach: {result['time_to_reach']}")
+            print(f"Time to stable: {result['time_to_stable']}")
+            print(f"Overshoot: +{result['max_overshoot']:.1f}%")
+            print(f"Oscillations: {result['oscillations']}")
     else:
         run_flux_explorer()

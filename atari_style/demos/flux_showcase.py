@@ -288,5 +288,157 @@ def run_flux_showcase_single(mode: str = 'rainbow', duration: int = 60):
         showcase.renderer.exit_fullscreen()
 
 
+def run_flux_ultimate(duration: int = 240):
+    """Run the ultimate color journey showcase (4 minutes).
+
+    Uses PROVEN VHS-compatible pattern from run_flux_showcase().
+    7-segment journey: Ocean → Fire → Rainbow → Sunset → Desert → Heat → Ocean
+
+    Args:
+        duration: Total duration in seconds (default 240s = 4 minutes)
+    """
+    showcase = FluxShowcase()
+    showcase.renderer.enter_fullscreen()
+
+    # 7-segment color journey with varied character sets and speeds
+    modes = [
+        ('ocean', CHARS_WAVE, 0.3),       # 0:00-0:34  Calm opening
+        ('fire', CHARS_DENSE, 0.5),       # 0:34-1:08  Energy burst
+        ('rainbow', CHARS_WAVE, 0.8),     # 1:08-1:43  Peak excitement
+        ('sunset', CHARS_DOTS, 0.4),      # 1:43-2:17  Golden warmth
+        ('desert', CHARS_DENSE, 0.3),     # 2:17-2:51  Sandy dunes
+        ('heat', CHARS_DENSE, 0.5),       # 2:51-3:26  Energy heat
+        ('ocean', CHARS_WAVE, 0.2),       # 3:26-4:00  Calm outro
+    ]
+    mode_duration = duration / len(modes)
+
+    try:
+        start_time = time.time()
+        last_time = start_time
+        mode_idx = 0
+
+        while time.time() - start_time < duration:
+            current_time = time.time()
+            dt = current_time - last_time
+            last_time = current_time
+            elapsed = current_time - start_time
+
+            # Change mode based on time (division-based - proven to work)
+            new_mode_idx = min(int(elapsed / mode_duration), len(modes) - 1)
+            if new_mode_idx != mode_idx:
+                mode_idx = new_mode_idx
+                mode, chars, speed = modes[mode_idx]
+                showcase.color_mode = mode
+                showcase.char_set = chars
+                showcase.color_speed = speed
+
+            showcase.update(dt)
+            showcase.draw()
+            time.sleep(0.05)  # 20 FPS - reduced for VHS compatibility
+
+    finally:
+        showcase.renderer.exit_fullscreen()
+
+
+def run_segment_1(duration: int = 60):
+    """Segment 1: Ocean opening (Blue waves)."""
+    showcase = FluxShowcase()
+    showcase.color_mode = 'ocean'
+    showcase.char_set = CHARS_WAVE
+    showcase.color_speed = 0.3
+    showcase.renderer.enter_fullscreen()
+
+    try:
+        start_time = time.time()
+        last_time = start_time
+
+        while time.time() - start_time < duration:
+            current_time = time.time()
+            dt = current_time - last_time
+            last_time = current_time
+
+            showcase.update(dt)
+            showcase.draw(show_ui=False)  # No UI for clean YouTube look
+            time.sleep(0.05)
+
+    finally:
+        showcase.renderer.exit_fullscreen()
+
+
+def run_segment_2(duration: int = 60):
+    """Segment 2: Fire burst (Red/Yellow energy)."""
+    showcase = FluxShowcase()
+    showcase.color_mode = 'fire'
+    showcase.char_set = CHARS_DENSE
+    showcase.color_speed = 0.5
+    showcase.renderer.enter_fullscreen()
+
+    try:
+        start_time = time.time()
+        last_time = start_time
+
+        while time.time() - start_time < duration:
+            current_time = time.time()
+            dt = current_time - last_time
+            last_time = current_time
+
+            showcase.update(dt)
+            showcase.draw(show_ui=False)
+            time.sleep(0.05)
+
+    finally:
+        showcase.renderer.exit_fullscreen()
+
+
+def run_segment_3(duration: int = 60):
+    """Segment 3: Rainbow peak (Full color spectrum)."""
+    showcase = FluxShowcase()
+    showcase.color_mode = 'rainbow'
+    showcase.char_set = CHARS_WAVE
+    showcase.color_speed = 0.8
+    showcase.renderer.enter_fullscreen()
+
+    try:
+        start_time = time.time()
+        last_time = start_time
+
+        while time.time() - start_time < duration:
+            current_time = time.time()
+            dt = current_time - last_time
+            last_time = current_time
+
+            showcase.update(dt)
+            showcase.draw(show_ui=False)
+            time.sleep(0.05)
+
+    finally:
+        showcase.renderer.exit_fullscreen()
+
+
+def run_segment_4(duration: int = 60):
+    """Segment 4: Sunset outro (Golden warmth)."""
+    showcase = FluxShowcase()
+    showcase.color_mode = 'sunset'
+    showcase.char_set = CHARS_DOTS
+    showcase.color_speed = 0.4
+    showcase.renderer.enter_fullscreen()
+
+    try:
+        start_time = time.time()
+        last_time = start_time
+
+        while time.time() - start_time < duration:
+            current_time = time.time()
+            dt = current_time - last_time
+            last_time = current_time
+
+            showcase.update(dt)
+            showcase.draw(show_ui=False)
+            time.sleep(0.05)
+
+    finally:
+        showcase.renderer.exit_fullscreen()
+
+
 if __name__ == "__main__":
     run_flux_showcase(180)
