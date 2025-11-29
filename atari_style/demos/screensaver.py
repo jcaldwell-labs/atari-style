@@ -117,7 +117,10 @@ class LissajousCurve(ParametricAnimation):
         
         # Sample a few points on the curve and find minimum distance
         min_dist_sq = float('inf')
-        samples = 50  # Use fewer samples for efficiency
+        # Note: 50 samples is a reasonable compromise between accuracy and performance
+        # This method is typically called infrequently in current composites
+        # For heavy use cases, consider caching or adaptive sampling
+        samples = 50
         
         for i in range(samples):
             angle = (i / samples) * 2 * math.pi
@@ -583,9 +586,12 @@ class FluidLattice(ParametricAnimation):
         total = 0.0
         count = 0
         
-        # Sample every 4th cell for efficiency
-        for y in range(0, self.height, 4):
-            for x in range(0, self.width, 4):
+        # Adaptive sampling based on lattice size
+        # Aim for ~100-200 samples regardless of lattice size
+        step = max(1, min(self.width, self.height) // 15)
+        
+        for y in range(0, self.height, step):
+            for x in range(0, self.width, step):
                 total += abs(self.current[y][x])
                 count += 1
         
@@ -808,8 +814,9 @@ class CompositeAnimation(ParametricAnimation):
         Returns:
             Mapped value in range [min_out, max_out]
         """
-        # Apply modulation strength
+        # Apply modulation strength and clamp to valid range
         value = value * self.modulation_strength
+        value = max(-1.0, min(1.0, value))  # Clamp to [-1, 1]
         
         # Apply mapping function
         if self.modulation_mapping == "linear":
