@@ -11,6 +11,11 @@ from .demos.galaga import run_galaga
 from .demos.grandprix import run_grandprix
 from .demos.ascii_painter import run_ascii_painter
 from .demos.platonic_solids import run_platonic_solids
+from .demos.flux_control import run_flux_control
+from .demos.flux_control_patterns import run_pattern_flux
+from .demos.flux_control_rhythm import run_rhythm_flux
+from .demos.flux_control_zen import run_flux_zen
+from .demos.flux_control_explorer import run_flux_explorer
 
 
 def main():
@@ -21,6 +26,11 @@ def main():
         MenuItem("Galaga", run_galaga),
         MenuItem("Grand Prix", run_grandprix),
         MenuItem("Breakout", run_breakout),
+        MenuItem("Flux Control", run_flux_control),
+        MenuItem("Flux Control: Patterns", run_pattern_flux),
+        MenuItem("Flux Control: Rhythm", run_rhythm_flux),
+        MenuItem("Flux Control: Zen", run_flux_zen),
+        MenuItem("Flux Control: Explorer", run_flux_explorer),
         MenuItem("ASCII Painter", run_ascii_painter),
         MenuItem("Starfield", run_starfield),
         MenuItem("Screen Saver", run_screensaver),

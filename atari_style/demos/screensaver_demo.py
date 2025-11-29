@@ -55,9 +55,11 @@ class ScreenSaverDemo(ScreenSaver):
 
         elif self.current_animation == 5:  # Fluid Lattice
             t = self.demo_time * self.param_cycle_speed
-            anim.rain_rate = 0.5 + math.sin(t) * 0.4
-            anim.wave_speed = 0.3 + math.sin(t * 1.2) * 0.2
-            anim.drop_power = 10 + math.sin(t * 0.8) * 5
+            # Lower rain rate for distinct drops, sweep damping for wave decay
+            anim.rain_rate = 0.15 + math.sin(t) * 0.1  # Range: 0.05-0.25 (sparse drops)
+            anim.wave_speed = 0.4 + math.sin(t * 1.2) * 0.15  # Range: 0.25-0.55
+            anim.drop_strength = 12 + math.sin(t * 0.8) * 4  # Range: 8-16 (strong splashes)
+            anim.damping = 0.88 + math.sin(t * 0.5) * 0.05  # Range: 0.83-0.93 (faster decay)
 
         elif self.current_animation == 6:  # Particle Swarm
             t = self.demo_time * self.param_cycle_speed
