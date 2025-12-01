@@ -65,7 +65,14 @@ void main() {
     // Map fragment coordinate to complex plane
     // fragCoord is already in [0, 1] from vertex shader
     vec2 uv = fragCoord - 0.5;
-    uv.x *= iResolution.x / iResolution.y;  // Aspect ratio correction
+
+    // Aspect ratio correction for terminal display
+    // Terminal chars are ~2x taller than wide, so when the GPU frame
+    // is mapped to terminal, X gets compressed. We pre-stretch X here.
+    // Standard aspect: uv.x *= iResolution.x / iResolution.y
+    // Terminal correction: multiply by additional 2.0 for char aspect
+    float terminalCharAspect = 2.0;  // Chars are 2x taller than wide
+    uv.x *= (iResolution.x / iResolution.y) * terminalCharAspect;
 
     // Apply zoom and centering
     vec2 c = center + uv * (3.0 / zoom);
