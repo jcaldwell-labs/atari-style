@@ -11,3 +11,8 @@ ENV/
 dist/
 build/
 .DS_Store
+
+# Test outputs
+*.mp4
+mandelbrot_*.png
+.claude/settings.local.json
