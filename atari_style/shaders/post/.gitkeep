@@ -1,0 +1,3 @@
+# Post-processing shaders (CRT, scanlines, color reduction)
+# GLSL fragment shaders for screen-space effects.
+# See docs/shader-roadmap.md for implementation plan.
