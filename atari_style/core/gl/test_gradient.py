@@ -39,6 +39,9 @@ def test_basic_render():
         print(f"GPU Renderer: {info['renderer']}")
         print(f"Max Texture Size: {info['max_texture_size']}")
         print(f"Framebuffer: {info['framebuffer_size']}")
+        print(f"Backend: {info['backend']}")
+        print(f"Software Rendering: {info['using_software_rendering']}")
+        print(f"Running in WSL: {info['is_wsl']}")
         print()
 
         # Load test shader

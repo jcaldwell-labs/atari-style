@@ -2,14 +2,49 @@
 
 This module provides the base class for all GPU-accelerated effects,
 using OpenGL 3.3+ via moderngl for cross-platform shader rendering.
+
+WSL2 Note:
+    WSL2's D3D12/DXCore GPU passthrough can be unstable with certain GPUs
+    (especially Intel Arc). When running in WSL2, the renderer automatically
+    falls back to software rendering (llvmpipe) for stability. You can override
+    this behavior with the `backend` parameter.
 """
 
 import os
+import sys
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, Literal
 
 import moderngl
 import numpy as np
+
+
+def _is_wsl() -> bool:
+    """Detect if running in Windows Subsystem for Linux (WSL).
+
+    Returns:
+        True if running in WSL1 or WSL2, False otherwise.
+    """
+    if sys.platform != 'linux':
+        return False
+
+    try:
+        with open('/proc/version', 'r') as f:
+            version_info = f.read().lower()
+            return 'microsoft' in version_info or 'wsl' in version_info
+    except (OSError, IOError):
+        return False
+
+
+def _setup_software_rendering():
+    """Configure environment for software rendering (llvmpipe).
+
+    Sets environment variables to force Mesa's llvmpipe software renderer,
+    which is more stable than GPU passthrough in WSL2.
+    """
+    os.environ['LIBGL_ALWAYS_SOFTWARE'] = '1'
+    os.environ['MESA_GL_VERSION_OVERRIDE'] = '3.3'
+    os.environ['MESA_GLSL_VERSION_OVERRIDE'] = '330'
 
 
 # Standard vertex shader for fullscreen quad rendering
@@ -36,18 +71,30 @@ class GLRenderer:
     - Framebuffer management for offscreen rendering
     - Shader loading with error handling
     - Uniform management for Shadertoy-compatible shaders
+    - WSL2-aware backend selection for stability
 
     Example:
         renderer = GLRenderer(width=1920, height=1080, headless=True)
         program = renderer.load_shader('shaders/effects/plasma.frag')
         pixels = renderer.render(program, {'iTime': 1.5, 'iResolution': (1920, 1080)})
+
+    WSL2 Example:
+        # Automatic software fallback in WSL2
+        renderer = GLRenderer(width=1920, height=1080, backend='auto')
+
+        # Force GPU (may crash on some WSL2 setups)
+        renderer = GLRenderer(width=1920, height=1080, backend='gpu')
+
+        # Force software rendering
+        renderer = GLRenderer(width=1920, height=1080, backend='software')
     """
 
     def __init__(
         self,
         width: int = 1920,
         height: int = 1080,
-        headless: bool = True
+        headless: bool = True,
+        backend: Literal['auto', 'gpu', 'software'] = 'auto'
     ):
         """Initialize the GL renderer.
 
@@ -56,10 +103,27 @@ class GLRenderer:
             height: Framebuffer height in pixels
             headless: If True, create standalone context (no window)
                      If False, requires existing OpenGL context (e.g., pygame)
+            backend: Rendering backend selection:
+                    - 'auto': Use GPU, but fall back to software in WSL2
+                    - 'gpu': Force GPU rendering (may be unstable in WSL2)
+                    - 'software': Force software rendering (llvmpipe)
         """
         self.width = width
         self.height = height
         self.headless = headless
+        self.backend = backend
+        self.using_software_rendering = False
+
+        # Determine if we should use software rendering
+        use_software = False
+        if backend == 'software':
+            use_software = True
+        elif backend == 'auto' and _is_wsl():
+            use_software = True
+
+        if use_software:
+            _setup_software_rendering()
+            self.using_software_rendering = True
 
         # Create OpenGL context
         try:
@@ -69,7 +133,22 @@ class GLRenderer:
                 # Use existing context (must be created by pygame/glfw first)
                 self.ctx = moderngl.create_context()
         except Exception as e:
-            raise RuntimeError(f"Failed to create OpenGL context: {e}")
+            # If GPU failed and we haven't tried software yet, try software fallback
+            if not use_software and backend == 'auto':
+                _setup_software_rendering()
+                self.using_software_rendering = True
+                try:
+                    if headless:
+                        self.ctx = moderngl.create_context(standalone=True)
+                    else:
+                        self.ctx = moderngl.create_context()
+                except Exception as e2:
+                    raise RuntimeError(
+                        f"Failed to create OpenGL context. "
+                        f"GPU error: {e}, Software fallback error: {e2}"
+                    )
+            else:
+                raise RuntimeError(f"Failed to create OpenGL context: {e}")
 
         # Store context info
         self.gl_version = self.ctx.version_code
@@ -270,7 +349,7 @@ class GLRenderer:
         """Get OpenGL context information.
 
         Returns:
-            Dictionary with GL version, vendor, renderer info
+            Dictionary with GL version, vendor, renderer info, and backend status
         """
         return {
             'version': self.gl_version,
@@ -278,6 +357,9 @@ class GLRenderer:
             'renderer': self.renderer_name,
             'max_texture_size': self.ctx.info.get('GL_MAX_TEXTURE_SIZE', 0),
             'framebuffer_size': (self.width, self.height),
+            'backend': self.backend,
+            'using_software_rendering': self.using_software_rendering,
+            'is_wsl': _is_wsl(),
         }
 
     def release(self):
