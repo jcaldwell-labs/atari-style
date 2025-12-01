@@ -2,20 +2,26 @@
 
 import sys
 from .core.menu import Menu, MenuItem
-from .demos.starfield import run_starfield
-from .demos.screensaver import run_screensaver
-from .demos.joystick_test import run_joystick_test
-from .demos.breakout import run_breakout
-from .demos.pacman import run_pacman
-from .demos.galaga import run_galaga
-from .demos.grandprix import run_grandprix
-from .demos.ascii_painter import run_ascii_painter
-from .demos.platonic_solids import run_platonic_solids
-from .demos.flux_control import run_flux_control
-from .demos.flux_control_patterns import run_pattern_flux
-from .demos.flux_control_rhythm import run_rhythm_flux
-from .demos.flux_control_zen import run_flux_zen
-from .demos.flux_control_explorer import run_flux_explorer
+
+# Games
+from .demos.games.pacman import run_pacman
+from .demos.games.galaga import run_galaga
+from .demos.games.grandprix import run_grandprix
+from .demos.games.breakout import run_breakout
+
+# Visualizers
+from .demos.visualizers.starfield import run_starfield
+from .demos.visualizers.screensaver import run_screensaver
+from .demos.visualizers.platonic_solids import run_platonic_solids
+from .demos.visualizers.flux_control import run_flux_control
+from .demos.visualizers.flux_control_patterns import run_pattern_flux
+from .demos.visualizers.flux_control_rhythm import run_rhythm_flux
+from .demos.visualizers.flux_control_zen import run_flux_zen
+from .demos.visualizers.flux_control_explorer import run_flux_explorer
+
+# Tools
+from .demos.tools.ascii_painter import run_ascii_painter
+from .demos.tools.joystick_test import run_joystick_test
 
 
 def main():
