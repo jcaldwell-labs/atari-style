@@ -8,6 +8,7 @@ from .flux_control_patterns import run_pattern_flux
 from .flux_control_rhythm import run_rhythm_flux
 from .flux_control_zen import run_flux_zen
 from .flux_control_explorer import run_flux_explorer
+from .gl_mandelbrot import run_gl_mandelbrot
 
 __all__ = [
     'run_screensaver',
@@ -18,4 +19,5 @@ __all__ = [
     'run_rhythm_flux',
     'run_flux_zen',
     'run_flux_explorer',
+    'run_gl_mandelbrot',
 ]
