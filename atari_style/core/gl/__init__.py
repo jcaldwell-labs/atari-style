@@ -1,12 +1,15 @@
 """OpenGL rendering module for GPU-accelerated effects.
 
-This module will contain:
+This module provides:
 - GLRenderer: Base class for OpenGL rendering with moderngl
-- Uniform management for Shadertoy-compatible shaders
+- ShaderUniforms: Shadertoy-compatible uniform management
 - Fullscreen quad rendering utilities
-- Framebuffer management for multi-pass effects
+- Framebuffer management for offscreen rendering
 
-Implementation planned for Phase 1 (see docs/shader-roadmap.md).
+See docs/shader-roadmap.md for implementation details.
 """
 
-__all__ = []
+from .renderer import GLRenderer
+from .uniforms import ShaderUniforms, EffectPreset
+
+__all__ = ['GLRenderer', 'ShaderUniforms', 'EffectPreset']
