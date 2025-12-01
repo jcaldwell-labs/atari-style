@@ -114,10 +114,15 @@ class GLMandelbrot:
         self.max_iterations = 100
 
         # Control state
-        self.zoom_mode = False  # Toggle for zoom control mode
+        self.input_mode = 'navigate'  # 'navigate' or 'params'
         self.auto_zoom = False  # Auto-zoom animation
         self.color_mode = 0     # 0-3 for different palettes
         self.running = True
+
+        # Parameter editing state
+        self.param_index = 0  # Which parameter is selected (0=iterations, 1=color, 2=speed)
+        self.param_names = ['Iterations', 'Color Mode', 'Zoom Speed']
+        self.zoom_speed = 1.0  # Zoom speed multiplier
 
         # Animation timing
         self.start_time = time.time()
@@ -130,6 +135,9 @@ class GLMandelbrot:
         self.recording = False
         self.record_frames = []
         self.record_start_time = 0
+
+        # Button debounce tracking
+        self._last_button_time = {}
 
     def reset_view(self):
         """Reset to default view."""
@@ -181,8 +189,42 @@ class GLMandelbrot:
         )
         self.uniforms.iColorMode = self.color_mode
 
+    def _button_pressed(self, button: int, buttons: dict) -> bool:
+        """Check if button was just pressed (with debounce).
+
+        Args:
+            button: Button index
+            buttons: Current button state dict
+
+        Returns:
+            True if button was just pressed
+        """
+        if not buttons.get(button):
+            return False
+
+        now = time.time()
+        last = self._last_button_time.get(button, 0)
+        if now - last < 0.2:  # 200ms debounce
+            return False
+
+        self._last_button_time[button] = now
+        return True
+
     def _handle_input(self, input_handler: InputHandler, dt: float):
         """Process joystick and keyboard input.
+
+        Control scheme:
+        - NAVIGATE MODE (default):
+          - Left stick: Pan view
+          - Button 0/1: Zoom out/in
+          - Button 4: Next preset
+          - Button 5: Reset view
+          - Button 2/3: Adjust iterations -/+
+
+        - PARAMS MODE (toggle with Button 6/7):
+          - Left stick up/down: Select parameter
+          - Left stick left/right: Adjust value
+          - Same buttons work
 
         Args:
             input_handler: Input handler instance
@@ -193,50 +235,75 @@ class GLMandelbrot:
             joy_xy = input_handler.get_joystick_state()  # Tuple[float, float]
             x, y = joy_xy if joy_xy else (0.0, 0.0)
 
-            # Get right stick axes if available (axes 2 and 3 on most controllers)
-            try:
-                import pygame
-                pygame.event.pump()
-                rx = input_handler.joystick.get_axis(2) if input_handler.joystick.get_numaxes() > 2 else 0.0
-                ry = input_handler.joystick.get_axis(3) if input_handler.joystick.get_numaxes() > 3 else 0.0
-                # Apply deadzone
-                rx = rx if abs(rx) > 0.15 else 0.0
-                ry = ry if abs(ry) > 0.15 else 0.0
-            except Exception:
-                rx, ry = 0.0, 0.0
-
-            # Calculate pan speed (slower at higher zoom)
-            pan_speed = 2.0 / self.zoom * dt
-
-            if self.zoom_mode:
-                # Zoom mode: Left stick pans, right stick zooms
-                self.center_x += x * pan_speed
-                self.center_y += y * pan_speed
-                if abs(rx) > 0.1:
-                    self.zoom *= 1.0 + rx * 2.0 * dt
-            else:
-                # Standard mode: Left stick pans, right stick = zoom & iterations
-                self.center_x += x * pan_speed
-                self.center_y += y * pan_speed
-                if abs(rx) > 0.1:
-                    self.zoom *= 1.0 + rx * 2.0 * dt
-                if abs(ry) > 0.1:
-                    self.max_iterations = int(max(10, min(500, self.max_iterations + ry * 50 * dt)))
-
-            # Button handling
+            # Get buttons
             buttons = input_handler.get_joystick_buttons()
-            if buttons.get(0):  # A - cycle color
-                self.color_mode = (self.color_mode + 1) % 4
-                time.sleep(0.2)  # Debounce
-            if buttons.get(1):  # B - toggle auto-zoom
-                self.auto_zoom = not self.auto_zoom
-                time.sleep(0.2)
-            if buttons.get(2):  # X - toggle zoom mode
-                self.zoom_mode = not self.zoom_mode
-                time.sleep(0.2)
-            if buttons.get(3):  # Y - reset
-                self.reset_view()
-                time.sleep(0.2)
+
+            # Mode toggle (buttons 6 or 7 - select/start on most controllers)
+            if self._button_pressed(6, buttons) or self._button_pressed(7, buttons):
+                self.input_mode = 'params' if self.input_mode == 'navigate' else 'navigate'
+
+            if self.input_mode == 'navigate':
+                # === NAVIGATION MODE ===
+
+                # Left stick: Pan view
+                pan_speed = 2.0 / self.zoom * dt
+                self.center_x += x * pan_speed
+                self.center_y += y * pan_speed
+
+                # Button 0: Zoom OUT
+                if buttons.get(0):
+                    self.zoom *= 1.0 - self.zoom_speed * dt
+
+                # Button 1: Zoom IN
+                if buttons.get(1):
+                    self.zoom *= 1.0 + self.zoom_speed * dt
+
+                # Button 2: Decrease iterations
+                if buttons.get(2):
+                    self.max_iterations = max(10, self.max_iterations - 1)
+
+                # Button 3: Increase iterations
+                if buttons.get(3):
+                    self.max_iterations = min(500, self.max_iterations + 1)
+
+                # Button 4: Next preset
+                if self._button_pressed(4, buttons):
+                    self.next_preset()
+
+                # Button 5: Reset view
+                if self._button_pressed(5, buttons):
+                    self.reset_view()
+
+            else:
+                # === PARAMETER EDITING MODE ===
+
+                # Left stick up/down: Select parameter
+                if abs(y) > 0.5:
+                    if y < -0.5 and self._button_pressed(-1, {-1: True}):  # Up
+                        self.param_index = (self.param_index - 1) % len(self.param_names)
+                        time.sleep(0.15)
+                    elif y > 0.5 and self._button_pressed(-2, {-2: True}):  # Down
+                        self.param_index = (self.param_index + 1) % len(self.param_names)
+                        time.sleep(0.15)
+
+                # Left stick left/right: Adjust selected parameter
+                if abs(x) > 0.3:
+                    delta = x * dt * 2.0
+
+                    if self.param_index == 0:  # Iterations
+                        self.max_iterations = int(max(10, min(500, self.max_iterations + delta * 50)))
+                    elif self.param_index == 1:  # Color mode
+                        if abs(x) > 0.7:
+                            self.color_mode = (self.color_mode + (1 if x > 0 else -1)) % 4
+                            time.sleep(0.2)
+                    elif self.param_index == 2:  # Zoom speed
+                        self.zoom_speed = max(0.1, min(5.0, self.zoom_speed + delta))
+
+                # Buttons still work in param mode for quick actions
+                if self._button_pressed(4, buttons):
+                    self.next_preset()
+                if self._button_pressed(5, buttons):
+                    self.reset_view()
 
         # Keyboard input
         input_type = input_handler.get_input(timeout=0)
@@ -386,8 +453,9 @@ class GLMandelbrot:
             'center': (self.center_x, self.center_y),
             'max_iterations': self.max_iterations,
             'color_mode': self.color_mode,
-            'zoom_mode': self.zoom_mode,
+            'input_mode': self.input_mode,
             'auto_zoom': self.auto_zoom,
+            'zoom_speed': self.zoom_speed,
             'preset': self.PRESETS[self.current_preset]['name'],
             **self.renderer.get_info()
         }
@@ -424,9 +492,14 @@ def run_gl_mandelbrot():
         term_width = renderer.width
         term_height = renderer.height
 
-        # Use higher resolution for GPU rendering
+        # Terminal characters are ~2x taller than wide, so we need to
+        # render a wider aspect ratio to compensate
+        # Terminal effective aspect = term_width / (term_height * 2)
+        char_aspect = 0.5  # Character height/width ratio
+
+        # Use higher resolution for GPU rendering, accounting for aspect ratio
         gpu_width = min(1920, term_width * 8)
-        gpu_height = min(1080, term_height * 8)
+        gpu_height = min(1080, int(term_height * 8 * char_aspect))
 
         mandelbrot = GLMandelbrot(
             width=gpu_width,
@@ -500,14 +573,36 @@ def run_gl_mandelbrot():
 
             # Draw HUD
             state = mandelbrot.get_info()
-            hud_lines = [
-                f"GPU Mandelbrot | {state['renderer']}",
-                f"Zoom: {state['zoom']:.2e} | Iter: {state['max_iterations']}",
-                f"Center: ({state['center'][0]:.6f}, {state['center'][1]:.6f})",
-                f"Mode: {'ZOOM' if state['zoom_mode'] else 'PAN'} | Auto: {'ON' if state['auto_zoom'] else 'OFF'}",
-                f"Color: {['Classic', 'Fire', 'Rainbow', 'Grayscale'][state['color_mode']]}",
-                "Q/ESC: Exit | Arrows: Pan | +/-: Zoom",
-            ]
+            color_names = ['Classic', 'Fire', 'Rainbow', 'Grayscale']
+
+            if mandelbrot.input_mode == 'navigate':
+                hud_lines = [
+                    f"GPU Mandelbrot | {state['renderer'][:30]}",
+                    f"Zoom: {state['zoom']:.2e} | Iter: {state['max_iterations']}",
+                    f"Center: ({state['center'][0]:.6f}, {state['center'][1]:.6f})",
+                    f"Preset: {mandelbrot.PRESETS[mandelbrot.current_preset]['name']}",
+                    f"Color: {color_names[state['color_mode']]} | Speed: {mandelbrot.zoom_speed:.1f}x",
+                    "[NAV] Stick:Pan | 0/1:Zoom | 2/3:Iter | 4:Preset | 5:Reset | 6/7:Params",
+                ]
+            else:
+                # Parameter editing mode
+                param_values = [
+                    f"{state['max_iterations']}",
+                    color_names[state['color_mode']],
+                    f"{mandelbrot.zoom_speed:.1f}x"
+                ]
+                hud_lines = [
+                    f"GPU Mandelbrot | PARAMETER MODE",
+                    f"Zoom: {state['zoom']:.2e}",
+                    "",
+                ]
+                # Show parameter list with selection
+                for i, (name, val) in enumerate(zip(mandelbrot.param_names, param_values)):
+                    marker = ">" if i == mandelbrot.param_index else " "
+                    hud_lines.append(f" {marker} {name}: {val}")
+
+                hud_lines.append("")
+                hud_lines.append("[PARAMS] Up/Down:Select | Left/Right:Adjust | 6/7:Back")
 
             for i, line in enumerate(hud_lines):
                 renderer.draw_text(1, i, line, Color.WHITE)
