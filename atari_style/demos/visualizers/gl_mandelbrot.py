@@ -494,7 +494,7 @@ def run_gl_mandelbrot():
                     elif g > 128 and b > 128:
                         color = Color.CYAN
                     else:
-                        color = Color.WHITE if intensity > 0.5 else Color.BRIGHT_BLACK
+                        color = Color.WHITE if intensity > 0.5 else Color.BLUE
 
                     renderer.set_pixel(tx, ty, char, color)
 
