@@ -209,4 +209,4 @@ Contributions welcome! Feel free to open issues or submit pull requests.
 
 ---
 
-**Made with love for retro terminal aesthetics**
+**Built for retro terminal enthusiasts**
