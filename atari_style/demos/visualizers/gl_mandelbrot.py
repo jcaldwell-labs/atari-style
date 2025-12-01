@@ -188,43 +188,53 @@ class GLMandelbrot:
             input_handler: Input handler instance
             dt: Time delta for smooth movement
         """
-        # Get joystick state
-        joy = input_handler.get_joystick_state()
+        # Get joystick state - returns tuple (x, y) for left stick
+        if input_handler.joystick_initialized:
+            joy_xy = input_handler.get_joystick_state()  # Tuple[float, float]
+            x, y = joy_xy if joy_xy else (0.0, 0.0)
 
-        if joy:
+            # Get right stick axes if available (axes 2 and 3 on most controllers)
+            try:
+                import pygame
+                pygame.event.pump()
+                rx = input_handler.joystick.get_axis(2) if input_handler.joystick.get_numaxes() > 2 else 0.0
+                ry = input_handler.joystick.get_axis(3) if input_handler.joystick.get_numaxes() > 3 else 0.0
+                # Apply deadzone
+                rx = rx if abs(rx) > 0.15 else 0.0
+                ry = ry if abs(ry) > 0.15 else 0.0
+            except Exception:
+                rx, ry = 0.0, 0.0
+
             # Calculate pan speed (slower at higher zoom)
             pan_speed = 2.0 / self.zoom * dt
 
             if self.zoom_mode:
                 # Zoom mode: Left stick pans, right stick zooms
-                self.center_x += joy.get('x', 0) * pan_speed
-                self.center_y += joy.get('y', 0) * pan_speed
-                zoom_delta = joy.get('rx', 0)
-                if abs(zoom_delta) > 0.1:
-                    self.zoom *= 1.0 + zoom_delta * 2.0 * dt
+                self.center_x += x * pan_speed
+                self.center_y += y * pan_speed
+                if abs(rx) > 0.1:
+                    self.zoom *= 1.0 + rx * 2.0 * dt
             else:
-                # Standard mode: Left stick X/Y = params 2&3, right stick = zoom & iterations
-                self.center_x += joy.get('x', 0) * pan_speed
-                self.center_y += joy.get('y', 0) * pan_speed
-                zoom_delta = joy.get('rx', 0)
-                if abs(zoom_delta) > 0.1:
-                    self.zoom *= 1.0 + zoom_delta * 2.0 * dt
-                iter_delta = joy.get('ry', 0)
-                if abs(iter_delta) > 0.1:
-                    self.max_iterations = int(max(10, min(500, self.max_iterations + iter_delta * 50 * dt)))
+                # Standard mode: Left stick pans, right stick = zoom & iterations
+                self.center_x += x * pan_speed
+                self.center_y += y * pan_speed
+                if abs(rx) > 0.1:
+                    self.zoom *= 1.0 + rx * 2.0 * dt
+                if abs(ry) > 0.1:
+                    self.max_iterations = int(max(10, min(500, self.max_iterations + ry * 50 * dt)))
 
             # Button handling
-            buttons = joy.get('buttons', [])
-            if len(buttons) > 0 and buttons[0]:  # A - cycle color
+            buttons = input_handler.get_joystick_buttons()
+            if buttons.get(0):  # A - cycle color
                 self.color_mode = (self.color_mode + 1) % 4
                 time.sleep(0.2)  # Debounce
-            if len(buttons) > 1 and buttons[1]:  # B - toggle auto-zoom
+            if buttons.get(1):  # B - toggle auto-zoom
                 self.auto_zoom = not self.auto_zoom
                 time.sleep(0.2)
-            if len(buttons) > 2 and buttons[2]:  # X - toggle zoom mode
+            if buttons.get(2):  # X - toggle zoom mode
                 self.zoom_mode = not self.zoom_mode
                 time.sleep(0.2)
-            if len(buttons) > 3 and buttons[3]:  # Y - reset
+            if buttons.get(3):  # Y - reset
                 self.reset_view()
                 time.sleep(0.2)
 
