@@ -52,7 +52,7 @@ class FluxControl:
 import math
 import time
 from typing import Optional
-from ..core.renderer import Renderer, Color
+from ...core.renderer import Renderer, Color
 
 
 class ReactorTheme:

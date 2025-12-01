@@ -4,8 +4,8 @@ import math
 import time
 import random
 import pygame
-from ..core.renderer import Renderer, Color
-from ..core.input_handler import InputHandler, InputType
+from ...core.renderer import Renderer, Color
+from ...core.input_handler import InputHandler, InputType
 from .screensaver_presets import ANIMATION_PRESETS, get_preset_names, get_preset
 
 

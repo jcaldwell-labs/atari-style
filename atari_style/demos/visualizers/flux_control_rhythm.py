@@ -3,8 +3,8 @@
 import time
 import random
 import math
-from ..core.renderer import Renderer, Color
-from ..core.input_handler import InputHandler, InputType
+from ...core.renderer import Renderer, Color
+from ...core.input_handler import InputHandler, InputType
 
 
 class BeatSystem:

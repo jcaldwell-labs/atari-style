@@ -4,14 +4,14 @@ A comprehensive collection of terminal-based interactive games, creative tools, 
 
 ## Features
 
-### 🎮 Classic Arcade Games
+### Classic Arcade Games
 
 - **Pac-Man** - Maze chase game with 4 ghost AIs (Blinky, Pinky, Inky, Clyde), power-ups, pellet collection, and level progression
 - **Galaga** - Space shooter with wave-based enemy formations, dive attacks, UFO bonus ships, and progressive difficulty
 - **Grand Prix** - First-person 3D racing with curves, hills, 8 AI opponents, lap timing, and realistic physics
 - **Breakout** - Paddle game with ball physics, 5 power-up types, multiple brick types, combo system, and level progression
 
-### 🎨 Creative Tools
+### Creative Tools
 
 - **ASCII Painter** - Full-featured drawing program with:
   - 6 tools (freehand, line, rectangle, circle, flood fill, erase)
@@ -22,7 +22,7 @@ A comprehensive collection of terminal-based interactive games, creative tools, 
   - Save/load (.txt and .ansi formats)
   - Grid overlay and help system
 
-### ✨ Visual Demos
+### Visual Demos
 
 - **Starfield** - Enhanced 3D space flight with:
   - 3-layer parallax system (far/mid/near stars)
@@ -36,7 +36,7 @@ A comprehensive collection of terminal-based interactive games, creative tools, 
 - **Screen Saver** - 11 parametric animations (8 base + 3 composites) with real-time joystick control:
   - **Base animations**: Lissajous curves, Spirals, Wave Circles, Plasma effects
   - **Base animations**: Mandelbrot zoomer, Fluid lattice, Particle swarm, Tunnel vision
-  - **NEW: Composite animations** - Fusion visuals where one animation modulates another:
+  - **Composite animations** - Fusion visuals where one animation modulates another:
     - **Plasma → Lissajous**: Plasma field drives Lissajous curve frequencies
     - **Flux → Spiral**: Fluid wave energy modulates spiral rotation speed
     - **Lissajous → Plasma**: Curve motion drives plasma color cycling
@@ -53,7 +53,7 @@ A comprehensive collection of terminal-based interactive games, creative tools, 
   - Zoom controls (5-30x range)
   - Wireframe rendering with vertex highlighting
 
-### 🛠️ Utilities
+### Utilities
 
 - **Joystick Test** - Connection verification with real-time axis and button display
 - **Interactive Menu** - Organized navigation with sections for games, tools, demos, and utilities
@@ -108,20 +108,30 @@ python -m atari_style.main
 ```
 atari_style/
 ├── core/
-│   ├── renderer.py      # Terminal rendering engine (double-buffered)
-│   ├── input_handler.py # Unified keyboard/joystick input
-│   └── menu.py          # Interactive menu system
+│   ├── renderer.py        # Terminal rendering engine (double-buffered)
+│   ├── input_handler.py   # Unified keyboard/joystick input
+│   ├── menu.py            # Interactive menu system
+│   └── gl/                # OpenGL rendering (future)
+├── shaders/               # GLSL shaders (future)
+│   ├── effects/           # Effect shaders
+│   └── post/              # Post-processing shaders
 ├── demos/
-│   ├── pacman.py        # Pac-Man maze chase game
-│   ├── galaga.py        # Space shooter
-│   ├── grandprix.py     # First-person 3D racing
-│   ├── breakout.py      # Paddle and ball game
-│   ├── ascii_painter.py # ASCII art editor
-│   ├── starfield.py     # Enhanced starfield simulation
-│   ├── screensaver.py   # Parametric animations
-│   ├── platonic_solids.py # 3D geometry viewer
-│   └── joystick_test.py # Joystick verification
-└── main.py              # Entry point with menu
+│   ├── games/             # Arcade games
+│   │   ├── pacman.py
+│   │   ├── galaga.py
+│   │   ├── grandprix.py
+│   │   └── breakout.py
+│   ├── visualizers/       # Visual demos
+│   │   ├── screensaver.py
+│   │   ├── starfield.py
+│   │   └── platonic_solids.py
+│   └── tools/             # Utilities
+│       ├── ascii_painter.py
+│       └── joystick_test.py
+├── docs/                  # Documentation
+│   ├── architecture.md
+│   └── shader-roadmap.md
+└── main.py                # Entry point with menu
 ```
 
 ## Development
@@ -130,19 +140,38 @@ atari_style/
 
 ```bash
 # Games
-python -c "from atari_style.demos.pacman import run_pacman; run_pacman()"
-python -c "from atari_style.demos.galaga import run_galaga; run_galaga()"
-python -c "from atari_style.demos.grandprix import run_grandprix; run_grandprix()"
-python -c "from atari_style.demos.breakout import run_breakout; run_breakout()"
+python -c "from atari_style.demos.games.pacman import run_pacman; run_pacman()"
+python -c "from atari_style.demos.games.galaga import run_galaga; run_galaga()"
+python -c "from atari_style.demos.games.grandprix import run_grandprix; run_grandprix()"
+python -c "from atari_style.demos.games.breakout import run_breakout; run_breakout()"
 
 # Tools
-python -c "from atari_style.demos.ascii_painter import run_ascii_painter; run_ascii_painter()"
+python -c "from atari_style.demos.tools.ascii_painter import run_ascii_painter; run_ascii_painter()"
 
 # Demos
-python -c "from atari_style.demos.starfield import run_starfield; run_starfield()"
-python -c "from atari_style.demos.screensaver import run_screensaver; run_screensaver()"
-python -c "from atari_style.demos.platonic_solids import run_platonic_solids; run_platonic_solids()"
+python -c "from atari_style.demos.visualizers.starfield import run_starfield; run_starfield()"
+python -c "from atari_style.demos.visualizers.screensaver import run_screensaver; run_screensaver()"
+python -c "from atari_style.demos.visualizers.platonic_solids import run_platonic_solids; run_platonic_solids()"
 ```
+
+## Roadmap
+
+### Upcoming: GPU-Accelerated Visualizers
+
+The screensaver animations (Lissajous, Mandelbrot, Plasma, etc.) are being ported to GLSL shaders for improved performance. This will enable:
+
+- **60+ FPS at 1080p and above** - Currently limited by CPU per-pixel computation
+- **Real-time CRT post-processing effects** - Scanlines, barrel distortion, color bleeding
+- **More complex parameter exploration** - Richer visual effects without performance penalties
+
+The implementation is planned in phases:
+
+1. **Foundation** - OpenGL context and shader infrastructure
+2. **First Effect** - Mandelbrot ported to GPU with joystick control
+3. **Post-Processing** - CRT scanlines, color palette reduction
+4. **Effect Library** - Port remaining effects (Plasma, Tunnel, Fluid)
+
+See [docs/shader-roadmap.md](docs/shader-roadmap.md) for detailed implementation plan.
 
 ## Features Overview
 
@@ -180,4 +209,4 @@ Contributions welcome! Feel free to open issues or submit pull requests.
 
 ---
 
-**Made with ❤️ for retro terminal aesthetics**
+**Built for retro terminal enthusiasts**

@@ -3,8 +3,8 @@
 import time
 import random
 from collections import deque
-from ..core.renderer import Renderer, Color
-from ..core.input_handler import InputHandler, InputType
+from ...core.renderer import Renderer, Color
+from ...core.input_handler import InputHandler, InputType
 
 
 class Maze:

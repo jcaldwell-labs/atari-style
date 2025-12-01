@@ -7,8 +7,8 @@ by managing wave propagation with directional drain controls.
 import math
 import time
 import random
-from ..core.renderer import Renderer, Color
-from ..core.input_handler import InputHandler, InputType
+from ...core.renderer import Renderer, Color
+from ...core.input_handler import InputHandler, InputType
 
 
 class Zone:

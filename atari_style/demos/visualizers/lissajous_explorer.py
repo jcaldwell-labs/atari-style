@@ -15,7 +15,7 @@ import subprocess
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 from PIL import Image, ImageDraw, ImageFont
-from ..core.renderer import Color
+from ...core.renderer import Color
 
 
 # Critical Lissajous ratios and their properties

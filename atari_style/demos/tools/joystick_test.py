@@ -1,8 +1,8 @@
 """Joystick connection verification and testing."""
 
 import time
-from ..core.renderer import Renderer, Color
-from ..core.input_handler import InputHandler, InputType
+from ...core.renderer import Renderer, Color
+from ...core.input_handler import InputHandler
 
 
 class JoystickTest:

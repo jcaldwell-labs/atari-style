@@ -3,8 +3,8 @@
 import random
 import time
 import math
-from ..core.renderer import Renderer, Color
-from ..core.input_handler import InputHandler, InputType
+from ...core.renderer import Renderer, Color
+from ...core.input_handler import InputHandler, InputType
 
 
 class Star:

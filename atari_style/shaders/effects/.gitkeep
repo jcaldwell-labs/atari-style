@@ -1,0 +1,3 @@
+# Effect shaders (Mandelbrot, Plasma, Tunnel, etc.)
+# GLSL fragment shaders for per-pixel visual effects.
+# See docs/shader-roadmap.md for implementation plan.

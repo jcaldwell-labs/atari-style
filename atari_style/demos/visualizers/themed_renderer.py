@@ -5,7 +5,7 @@ import time
 import math
 import subprocess
 from PIL import Image, ImageDraw, ImageFont
-from ..core.renderer import Color
+from ...core.renderer import Color
 
 
 # Theme palettes

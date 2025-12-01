@@ -2,7 +2,7 @@
 
 import time
 import math
-from ..core.renderer import Renderer, Color
+from ...core.renderer import Renderer, Color
 from .flux_control_zen import FluidLattice
 
 
