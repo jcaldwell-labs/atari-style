@@ -1,3 +1,9 @@
+# Core dependencies
 pygame>=2.5.0
 blessed>=1.20.0
 Pillow>=10.0.0
+
+# Planned for GLSL integration (Phase 1):
+# See docs/shader-roadmap.md for implementation details
+# moderngl>=5.8.0
+# numpy>=1.20.0  # For efficient pixel array handling
