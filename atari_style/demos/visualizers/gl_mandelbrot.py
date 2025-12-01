@@ -501,14 +501,17 @@ def run_gl_mandelbrot():
         term_width = renderer.width
         term_height = renderer.height
 
-        # Terminal characters are ~2x taller than wide, so we need to
-        # render a wider aspect ratio to compensate
-        # Terminal effective aspect = term_width / (term_height * 2)
-        char_aspect = 0.5  # Character height/width ratio
+        # Terminal characters are ~2x taller than wide (aspect ~0.5)
+        # When we map GPU pixels to terminal chars, the image gets squished horizontally
+        # So we render a WIDER GPU frame that will look correct when squished
+        #
+        # If terminal is 80x24 chars, visual appearance is like 80x48 pixels
+        # GPU should render at aspect ratio matching visual: width = term_width * 2, height = term_height * 2
+        # But we want high res, so multiply both by a scale factor
 
-        # Use higher resolution for GPU rendering, accounting for aspect ratio
-        gpu_width = min(1920, term_width * 8)
-        gpu_height = min(1080, int(term_height * 8 * char_aspect))
+        scale = 8
+        gpu_width = min(1920, term_width * scale)
+        gpu_height = min(1080, term_height * scale // 2)  # Half height because chars are 2x tall
 
         mandelbrot = GLMandelbrot(
             width=gpu_width,

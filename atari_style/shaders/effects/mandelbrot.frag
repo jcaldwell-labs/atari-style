@@ -100,11 +100,15 @@ void main() {
         float nu = log(log_zn / log(2.0)) / log(2.0);
         float smoothIter = iter + 1.0 - nu;
 
-        // Normalize to [0, 1] range for coloring
-        float t = smoothIter / maxIter;
+        // Use log scale for better color distribution across iteration ranges
+        // This spreads colors more evenly instead of compressing them
+        float t = log(smoothIter + 1.0) / log(maxIter + 1.0);
 
-        // Add time-based color cycling
-        t = fract(t + iTime * 0.05);
+        // Multiply by a factor to get more color bands visible
+        t = t * 3.0;
+
+        // Add time-based color cycling - faster and more noticeable
+        t = fract(t + iTime * 0.3);
 
         color = getColor(t, iColorMode);
     }
