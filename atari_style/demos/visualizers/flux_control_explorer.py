@@ -6,7 +6,6 @@ import math
 from pathlib import Path
 from blessed import Terminal
 from ...core.renderer import Renderer, Color
-from ...core.input_handler import InputHandler, InputType
 from .flux_control_zen import FluidLattice
 
 

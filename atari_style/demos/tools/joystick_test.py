@@ -2,7 +2,7 @@
 
 import time
 from ...core.renderer import Renderer, Color
-from ...core.input_handler import InputHandler, InputType
+from ...core.input_handler import InputHandler
 
 
 class JoystickTest:

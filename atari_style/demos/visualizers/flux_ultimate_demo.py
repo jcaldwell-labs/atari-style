@@ -4,7 +4,6 @@ VHS-compatible: Uses single fullscreen session and 20 FPS frame rate.
 """
 
 import time
-from ...core.renderer import Renderer, Color
 from .flux_control_zen import FluidLattice
 from .flux_showcase import (
     FluxShowcase, OCEAN, FIRE, RAINBOW, SUNSET, DESERT,

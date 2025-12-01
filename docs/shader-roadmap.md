@@ -83,7 +83,7 @@ The project uses a CPU-based terminal renderer (`core/renderer.py`) with double 
 
 ## Implementation Phases
 
-### Phase 1: Foundation (PR #2)
+### Phase 1: Foundation ([#33](https://github.com/jcaldwell-labs/atari-style/issues/33))
 
 **Goal**: Establish OpenGL rendering infrastructure.
 
@@ -104,7 +104,7 @@ The project uses a CPU-based terminal renderer (`core/renderer.py`) with double 
 
 **Deliverables**: Ability to render a GLSL shader to a window.
 
-### Phase 2: First Effect (PR #3)
+### Phase 2: First Effect ([#34](https://github.com/jcaldwell-labs/atari-style/issues/34))
 
 **Goal**: Port one complete effect to GLSL.
 
@@ -119,7 +119,7 @@ The project uses a CPU-based terminal renderer (`core/renderer.py`) with double 
 
 **Deliverables**: Mandelbrot running on GPU with joystick control.
 
-### Phase 3: Post-Processing (PR #4)
+### Phase 3: Post-Processing ([#35](https://github.com/jcaldwell-labs/atari-style/issues/35))
 
 **Goal**: Add CRT-style visual effects.
 
@@ -136,7 +136,7 @@ The project uses a CPU-based terminal renderer (`core/renderer.py`) with double 
 
 **Deliverables**: Authentic retro CRT look.
 
-### Phase 4: Effect Library (PR #5+)
+### Phase 4: Effect Library ([#36](https://github.com/jcaldwell-labs/atari-style/issues/36))
 
 **Goal**: Port remaining effects one by one.
 
@@ -152,7 +152,7 @@ The project uses a CPU-based terminal renderer (`core/renderer.py`) with double 
 4. Add to effect selector menu
 5. Document in shader source
 
-### Phase 5: Composites & Advanced (PR #6+)
+### Phase 5: Composites & Advanced ([#37](https://github.com/jcaldwell-labs/atari-style/issues/37))
 
 **Goal**: Recreate composite animations in shader pipeline.
 
