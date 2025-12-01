@@ -305,23 +305,32 @@ class GLMandelbrot:
                 if self._button_pressed(5, buttons):
                     self.reset_view()
 
-        # Keyboard input
-        input_type = input_handler.get_input(timeout=0)
-        if input_type:
+        # Keyboard input only - we handle joystick buttons ourselves above
+        # Use terminal directly to avoid InputHandler's joystick->BACK mapping
+        key = input_handler.term.inkey(timeout=0)
+        if key:
             pan_speed = 0.5 / self.zoom
 
-            if input_type == InputType.LEFT:
+            if key.name == 'KEY_LEFT' or key.lower() == 'a':
                 self.center_x -= pan_speed
-            elif input_type == InputType.RIGHT:
+            elif key.name == 'KEY_RIGHT' or key.lower() == 'd':
                 self.center_x += pan_speed
-            elif input_type == InputType.UP:
+            elif key.name == 'KEY_UP' or key.lower() == 'w':
                 self.center_y -= pan_speed
-            elif input_type == InputType.DOWN:
+            elif key.name == 'KEY_DOWN' or key.lower() == 's':
                 self.center_y += pan_speed
-            elif input_type == InputType.QUIT:
+            elif key.name == 'KEY_ESCAPE' or key.lower() == 'q':
                 self.running = False
-            elif input_type == InputType.BACK:
-                self.running = False
+            elif key == '+' or key == '=':
+                self.zoom *= 1.1
+            elif key == '-':
+                self.zoom *= 0.9
+            elif key.lower() == 'c':
+                self.color_mode = (self.color_mode + 1) % 4
+            elif key.lower() == 'r':
+                self.reset_view()
+            elif key.lower() == 'p':
+                self.next_preset()
 
     def render_frame(self) -> bytes:
         """Render a single frame.
