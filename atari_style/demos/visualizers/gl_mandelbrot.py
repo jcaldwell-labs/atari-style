@@ -501,20 +501,13 @@ def run_gl_mandelbrot():
         term_width = renderer.width
         term_height = renderer.height
 
-        # GPU rendering resolution - CRITICAL for correct aspect ratio
-        #
-        # Terminal display: Each character cell is ~2x taller than wide
-        # If terminal is 80x40 chars, the VISUAL aspect is 80 : (40 * 0.5) = 80:20 = 4:1
-        # NOT 80:40 = 2:1
-        #
-        # To make circles appear circular:
-        # - GPU must render at the VISUAL aspect ratio the user sees
-        # - Terminal 80x40 chars appears visually as 80 : 20 (because chars are 2:1)
-        # - So GPU should render at 80*scale : 40*scale/2 = 80*scale : 20*scale
-        #
-        # char_aspect = 0.5 means height appears as half the char count
-        char_aspect = 0.5  # Visual height / char height (chars are tall)
-        scale = 10
+        # GPU rendering resolution
+        # Terminal chars are ~2x taller than wide, so visual aspect is:
+        #   visual_width = term_width
+        #   visual_height = term_height * 2  (in equivalent square pixels)
+        # We render GPU at this aspect ratio so circles look circular
+        char_aspect = 2.0  # Height/width ratio of terminal character
+        scale = 8
         gpu_width = min(1920, term_width * scale)
         gpu_height = min(1080, int(term_height * scale * char_aspect))
 
