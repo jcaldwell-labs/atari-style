@@ -501,11 +501,15 @@ def run_gl_mandelbrot():
         term_width = renderer.width
         term_height = renderer.height
 
-        # Use higher resolution for GPU rendering
-        # The shader handles terminal aspect ratio correction internally
+        # GPU rendering resolution
+        # Terminal chars are ~2x taller than wide, so visual aspect is:
+        #   visual_width = term_width
+        #   visual_height = term_height * 2  (in equivalent square pixels)
+        # We render GPU at this aspect ratio so circles look circular
+        char_aspect = 2.0  # Height/width ratio of terminal character
         scale = 8
         gpu_width = min(1920, term_width * scale)
-        gpu_height = min(1080, term_height * scale)
+        gpu_height = min(1080, int(term_height * scale * char_aspect))
 
         mandelbrot = GLMandelbrot(
             width=gpu_width,
