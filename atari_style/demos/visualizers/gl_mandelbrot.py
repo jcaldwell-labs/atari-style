@@ -569,6 +569,7 @@ if __name__ == '__main__':
         test_gl_mandelbrot()
     elif args.output:
         with GLMandelbrot(args.width, args.height, headless=True) as mb:
+            mb.update(0.0, None)  # Initialize uniforms before rendering
             mb.save_image(args.output)
     elif args.video:
         with GLMandelbrot(args.width, args.height, headless=True) as mb:
