@@ -16,3 +16,7 @@ build/
 *.mp4
 mandelbrot_*.png
 .claude/settings.local.json
+
+# Local demo files (not part of main project)
+atari_style/demos/lissajous_game.py
+atari_style/demos/unit_circle_*.py
