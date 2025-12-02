@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test help system and save slots."""
 
-from atari_style.demos.screensaver import ScreenSaver
+from atari_style.demos.visualizers.screensaver import ScreenSaver
 
 def main():
     print("Testing Help System and Save Slots...")

@@ -2,7 +2,7 @@
 """Quick visual test of composite animations."""
 
 import time
-from atari_style.demos.screensaver import (
+from atari_style.demos.visualizers.screensaver import (
     PlasmaLissajous,
     FluxSpiral,
     LissajousPlasma
@@ -10,8 +10,8 @@ from atari_style.demos.screensaver import (
 from atari_style.core.renderer import Renderer
 
 
-def test_composite(composite, name, duration=5.0):
-    """Test a single composite animation."""
+def run_composite_visual(composite, name, duration=5.0):
+    """Run visual test for a single composite animation."""
     print(f"\nTesting {name}...")
     print(f"  Source: {type(composite.source).__name__}")
     print(f"  Target: {type(composite.target).__name__}")
@@ -75,7 +75,7 @@ def main():
     
     for composite, name in composites:
         try:
-            test_composite(composite, name)
+            run_composite_visual(composite, name)
             time.sleep(1)  # Brief pause between animations
         except KeyboardInterrupt:
             print(f"\n  Skipped {name}")

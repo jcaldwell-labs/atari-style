@@ -17,13 +17,13 @@ def test_imports():
         from atari_style.core.menu import Menu, MenuItem
         print("  ✓ Menu imported")
 
-        from atari_style.demos.starfield import StarfieldDemo
+        from atari_style.demos.visualizers.starfield import StarfieldDemo
         print("  ✓ StarfieldDemo imported")
 
-        from atari_style.demos.screensaver import ScreenSaver
+        from atari_style.demos.visualizers.screensaver import ScreenSaver
         print("  ✓ ScreenSaver imported")
 
-        from atari_style.demos.joystick_test import JoystickTest
+        from atari_style.demos.tools.joystick_test import JoystickTest
         print("  ✓ JoystickTest imported")
 
         print("\n✓ All imports successful!")

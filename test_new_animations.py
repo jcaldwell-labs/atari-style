@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test new animations."""
 
-from atari_style.demos.screensaver import ScreenSaver
+from atari_style.demos.visualizers.screensaver import ScreenSaver
 
 def main():
     print("Testing new screen saver animations...")
