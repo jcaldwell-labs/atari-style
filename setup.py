@@ -8,6 +8,9 @@ setup(
     install_requires=[
         "pygame>=2.5.0",
         "blessed>=1.20.0",
+        "Pillow>=10.0.0",
+        "moderngl>=5.8.0",
+        "numpy>=1.20.0",
     ],
     entry_points={
         'console_scripts': [
