@@ -88,6 +88,7 @@ class ShaderController:
         # Joystick state
         self.joystick: Optional[pygame.joystick.Joystick] = None
         self.prev_buttons = {}
+        self.prev_hat = (0, 0)  # Track previous hat state for debouncing
 
         # Composite list for cycling
         self.composite_names = list(COMPOSITES.keys())
@@ -102,13 +103,20 @@ class ShaderController:
         self._load_presets()
 
     def _load_defaults(self):
-        """Load default params from composite config."""
+        """Load default params from composite config.
+        
+        Resets parameters to the composite's default values and color mode.
+        """
         config = COMPOSITES[self.state.composite_name]
         self.state.params = list(config.default_params)
         self.state.color_mode = config.default_color_mode
 
     def _load_presets(self):
-        """Load saved presets from file."""
+        """Load saved presets from file.
+        
+        Attempts to load presets from ~/.atari-style/shader_presets.json.
+        Silently fails if file doesn't exist or is corrupted.
+        """
         try:
             if os.path.exists(self.presets_file):
                 with open(self.presets_file, 'r') as f:
@@ -118,7 +126,11 @@ class ShaderController:
             pass
 
     def _save_presets(self):
-        """Save presets to file."""
+        """Save presets to file.
+        
+        Saves current presets to ~/.atari-style/shader_presets.json,
+        creating the directory if it doesn't exist.
+        """
         try:
             os.makedirs(os.path.dirname(self.presets_file), exist_ok=True)
             with open(self.presets_file, 'w') as f:
@@ -127,7 +139,11 @@ class ShaderController:
             pass
 
     def _init_pygame(self):
-        """Initialize pygame window and joystick."""
+        """Initialize pygame window and joystick.
+        
+        Sets up the pygame display, initializes connected joystick (if any),
+        and loads fonts for HUD rendering.
+        """
         pygame.init()
         pygame.joystick.init()
 
@@ -153,18 +169,33 @@ class ShaderController:
         self.font_large = pygame.font.SysFont('monospace', 24)
 
     def _init_gl(self):
-        """Initialize GL renderer and load shader."""
-        self.gl_renderer = GLRenderer(self.width, self.height, headless=True)
-        self._load_shader()
+        """Initialize GL renderer and load shader.
+        
+        Raises:
+            RuntimeError: If GL initialization or shader loading fails
+        """
+        try:
+            self.gl_renderer = GLRenderer(self.width, self.height, headless=True)
+            self._load_shader()
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize GL renderer: {e}") from e
 
     def _load_shader(self):
-        """Load current composite shader."""
+        """Load current composite shader.
+        
+        Loads the shader program for the currently selected composite
+        and updates the window caption.
+        """
         config = COMPOSITES[self.state.composite_name]
         self.current_program = self.gl_renderer.load_shader(config.shader_path)
         pygame.display.set_caption(f'Shader Controller - {self.state.composite_name}')
 
     def _get_joystick_axes(self) -> Tuple[float, float, float, float]:
-        """Get all joystick axes normalized to 0-1 range."""
+        """Get all joystick axes normalized to 0-1 range.
+        
+        Returns:
+            Tuple of (left_x, left_y, right_x, right_y) in range [0, 1]
+        """
         if not self.joystick:
             return (0.5, 0.5, 0.5, 0.5)
 
@@ -177,13 +208,13 @@ class ShaderController:
         lx = self.joystick.get_axis(0) if num_axes > 0 else 0
         ly = self.joystick.get_axis(1) if num_axes > 1 else 0
 
-        # Right stick (axis 2,3) or fallback to axis 4,5
-        if num_axes > 3:
-            rx = self.joystick.get_axis(2) if num_axes > 2 else 0
-            ry = self.joystick.get_axis(3) if num_axes > 3 else 0
-        elif num_axes > 5:
-            rx = self.joystick.get_axis(4) if num_axes > 4 else 0
-            ry = self.joystick.get_axis(5) if num_axes > 5 else 0
+        # Right stick (axis 2,3) or fallback to axis 4,5 for some controllers
+        if num_axes >= 4:
+            rx = self.joystick.get_axis(2)
+            ry = self.joystick.get_axis(3)
+        elif num_axes >= 6:
+            rx = self.joystick.get_axis(4)
+            ry = self.joystick.get_axis(5)
         else:
             rx, ry = 0, 0
 
@@ -203,7 +234,14 @@ class ShaderController:
         )
 
     def _check_button_press(self, button: int) -> bool:
-        """Check if button was just pressed (rising edge)."""
+        """Check if button was just pressed (rising edge).
+        
+        Args:
+            button: Button index to check
+            
+        Returns:
+            True if button was just pressed, False otherwise
+        """
         if not self.joystick:
             return False
 
@@ -213,7 +251,7 @@ class ShaderController:
         return current and not prev
 
     def _update_button_state(self):
-        """Update previous button states."""
+        """Update previous button states for edge detection."""
         if not self.joystick:
             return
 
@@ -221,7 +259,10 @@ class ShaderController:
             self.prev_buttons[i] = self.joystick.get_button(i)
 
     def _handle_input(self):
-        """Handle pygame events and joystick input."""
+        """Handle pygame events and joystick input.
+        
+        Processes keyboard events, joystick buttons, and D-pad input.
+        """
         for event in pygame.event.get():
             if event.type == QUIT:
                 self.running = False
@@ -289,24 +330,30 @@ class ShaderController:
             if self._check_button_press(7):
                 self.state.paused = not self.state.paused
 
-            # D-Pad for composite switching (hat)
+            # D-Pad for composite switching (hat) - with debouncing
             if self.joystick.get_numhats() > 0:
                 hat = self.joystick.get_hat(0)
-                if hat[0] < 0:  # Left
+                # Only trigger on rising edge (not pressed -> pressed)
+                if hat[0] < 0 and self.prev_hat[0] >= 0:  # Left
                     self.composite_index = (self.composite_index - 1) % len(self.composite_names)
                     self.state.composite_name = self.composite_names[self.composite_index]
                     self._load_defaults()
                     self._load_shader()
-                elif hat[0] > 0:  # Right
+                elif hat[0] > 0 and self.prev_hat[0] <= 0:  # Right
                     self.composite_index = (self.composite_index + 1) % len(self.composite_names)
                     self.state.composite_name = self.composite_names[self.composite_index]
                     self._load_defaults()
                     self._load_shader()
+                self.prev_hat = hat
 
             self._update_button_state()
 
     def _update_params_from_joystick(self):
-        """Update shader params from joystick position."""
+        """Update shader params from joystick position.
+        
+        Maps joystick axes to shader parameter ranges based on
+        the current composite's configuration.
+        """
         if not self.joystick:
             return
 
@@ -321,7 +368,11 @@ class ShaderController:
             self.state.params[i] = min_val + norm_val * (max_val - min_val)
 
     def _render_frame(self) -> pygame.Surface:
-        """Render shader to pygame surface."""
+        """Render shader to pygame surface.
+        
+        Returns:
+            pygame.Surface containing the rendered frame
+        """
         config = COMPOSITES[self.state.composite_name]
 
         # Set up uniforms
@@ -343,7 +394,11 @@ class ShaderController:
         return surface
 
     def _draw_hud(self):
-        """Draw HUD overlay."""
+        """Draw HUD overlay.
+        
+        Displays current parameters, color mode, preset slot,
+        and control hints on screen.
+        """
         if not self.state.show_hud:
             return
 
@@ -394,7 +449,11 @@ class ShaderController:
         self.screen.blit(controls_surface, (0, self.height - 30))
 
     def run(self):
-        """Main loop."""
+        """Main loop.
+        
+        Initializes pygame and GL, then enters the main render loop
+        handling input, updating parameters, and rendering frames.
+        """
         try:
             self._init_pygame()
             self._init_gl()
