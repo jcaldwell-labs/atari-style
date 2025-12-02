@@ -23,6 +23,10 @@ Usage:
                               width=fmt.width, height=fmt.height, fps=fmt.fps)
 """
 
+# Suppress runpy RuntimeWarning when running as __main__
+import warnings
+warnings.filterwarnings('ignore', category=RuntimeWarning, module='runpy')
+
 import os
 import subprocess
 import tempfile
