@@ -33,7 +33,11 @@ from .composites import (
 )
 from .video_export import (
     VideoExporter,
+    VideoFormat,
+    VIDEO_FORMATS,
     export_composite_video,
+    get_format_names,
+    get_vertical_formats,
 )
 
 __all__ = [
@@ -54,5 +58,9 @@ __all__ = [
     'list_composites',
     'get_composite_info',
     'VideoExporter',
+    'VideoFormat',
+    'VIDEO_FORMATS',
     'export_composite_video',
+    'get_format_names',
+    'get_vertical_formats',
 ]
