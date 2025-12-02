@@ -2,7 +2,7 @@
 import time
 import math
 import os
-from atari_style.demos.screensaver import ScreenSaver
+from atari_style.demos.visualizers.screensaver import ScreenSaver
 
 
 class ScreenSaverDemo(ScreenSaver):

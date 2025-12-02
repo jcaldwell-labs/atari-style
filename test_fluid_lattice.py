@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test fluid lattice refinements."""
 
-from atari_style.demos.screensaver import FluidLattice
+from atari_style.demos.visualizers.screensaver import FluidLattice
 from atari_style.core.renderer import Renderer
 
 def main():
