@@ -598,6 +598,10 @@ Examples:
   %(prog)s flux_spiral --format youtube_shorts -d 45
   %(prog)s --all --shorts
   %(prog)s lissajous_plasma --format instagram_reels -o reel.mp4
+
+Quick preview (GIF):
+  %(prog)s plasma_lissajous --preview
+  %(prog)s flux_spiral --preview --params 0.4,1.5,0.8,0.6 --color 2
 """
     )
     parser.add_argument('composite', nargs='?', choices=list(COMPOSITES.keys()),
@@ -617,6 +621,12 @@ Examples:
                               help='Export as YouTube Shorts (1080x1920, 9:16)')
 
     parser.add_argument('--gif', action='store_true', help='Export as GIF instead')
+    parser.add_argument('--preview', action='store_true',
+                        help='Quick GIF preview (3s, 480x270, 15fps)')
+    parser.add_argument('--params', '-p', type=str,
+                        help='Custom params as comma-separated floats (e.g., 0.2,0.5,0.7,0.3)')
+    parser.add_argument('--color', '-c', type=int, choices=[0, 1, 2, 3],
+                        help='Color mode (0=aurora, 1=fire, 2=electric, 3=grayscale)')
     parser.add_argument('--all', action='store_true', help='Export all composites')
     parser.add_argument('--list-formats', action='store_true',
                         help='List available format presets')
@@ -629,6 +639,18 @@ Examples:
             limit = f"max {fmt.max_duration}s" if fmt.max_duration else "unlimited"
             print(f"  {name:20} {fmt.width}x{fmt.height}  {fmt.aspect_ratio:5}  ({limit})")
         return
+
+    # Parse custom params if provided
+    custom_params = None
+    if args.params:
+        try:
+            custom_params = tuple(float(x.strip()) for x in args.params.split(','))
+            if len(custom_params) != 4:
+                print(f"Error: --params requires exactly 4 values, got {len(custom_params)}")
+                return
+        except ValueError as e:
+            print(f"Error parsing --params: {e}")
+            return
 
     # Determine format name for format-based exports
     format_name = 'youtube_shorts' if args.shorts else args.format
@@ -662,17 +684,34 @@ Examples:
             print(f"  {name}: {status}")
 
     elif args.composite:
-        if args.gif:
+        if args.preview:
+            # Quick preview: 3s GIF at low resolution
+            import time as time_mod
+            timestamp = int(time_mod.time()) % 10000
+            output_path = args.output or f"/tmp/{args.composite}_preview_{timestamp}.gif"
+            preview_duration = args.duration or 3.0
+            print(f"Quick preview: {args.composite}")
+            if custom_params:
+                print(f"  Params: {custom_params}")
+            if args.color is not None:
+                print(f"  Color mode: {args.color}")
+            exporter.create_gif(args.composite, output_path, preview_duration,
+                               fps=15, width=480, height=270,
+                               params=custom_params, color_mode=args.color)
+        elif args.gif:
             output_path = args.output or f"/tmp/{args.composite}.gif"
             exporter.create_gif(args.composite, output_path, duration,
-                               fps=min(fps, 15), width=480, height=270)
+                               fps=min(fps, 15), width=480, height=270,
+                               params=custom_params, color_mode=args.color)
         elif format_name:
             output_path = args.output or f"/tmp/{args.composite}_{format_name}.mp4"
-            exporter.export_with_format(args.composite, output_path, format_name, duration)
+            exporter.export_with_format(args.composite, output_path, format_name, duration,
+                                        params=custom_params, color_mode=args.color)
         else:
             output_path = args.output or f"/tmp/{args.composite}.mp4"
             exporter.export_composite(args.composite, output_path, duration,
-                                      fps, width, height)
+                                      fps, width, height,
+                                      params=custom_params, color_mode=args.color)
     else:
         parser.print_help()
 
