@@ -4,7 +4,7 @@ Provides video export functionality for GPU-rendered composite animations
 using ffmpeg for encoding.
 
 Usage:
-    from atari_style.core.gl.video_export import VideoExporter
+    from atari_style.core.gl.video_export import VideoExporter, VIDEO_FORMATS
 
     # Export a single composite
     exporter = VideoExporter()
@@ -13,13 +13,22 @@ Usage:
     # Export with custom settings
     exporter.export_composite('flux_spiral', 'output.mp4',
                               duration=15.0, fps=60, width=1920, height=1080)
+
+    # Export YouTube Shorts (vertical 9:16)
+    exporter.export_shorts('plasma_lissajous', 'shorts.mp4', duration=45.0)
+
+    # Use format presets
+    fmt = VIDEO_FORMATS['youtube_shorts']
+    exporter.export_composite('flux_spiral', 'output.mp4',
+                              width=fmt.width, height=fmt.height, fps=fmt.fps)
 """
 
 import os
 import subprocess
 import tempfile
 import shutil
-from typing import Optional, Tuple, Callable
+from dataclasses import dataclass
+from typing import Optional, Tuple, Callable, Dict
 
 try:
     from PIL import Image
@@ -27,6 +36,113 @@ except ImportError:
     Image = None
 
 from .composites import CompositeManager, COMPOSITES
+
+
+@dataclass
+class VideoFormat:
+    """Video format preset configuration."""
+    name: str
+    width: int
+    height: int
+    fps: int
+    max_duration: Optional[float]  # Platform limit in seconds, None = unlimited
+    description: str
+
+    @property
+    def aspect_ratio(self) -> str:
+        """Return aspect ratio as string (e.g., '16:9', '9:16')."""
+        from math import gcd
+        g = gcd(self.width, self.height)
+        return f"{self.width // g}:{self.height // g}"
+
+    @property
+    def is_vertical(self) -> bool:
+        """Return True if format is vertical (portrait)."""
+        return self.height > self.width
+
+
+# Common video format presets
+VIDEO_FORMATS: Dict[str, VideoFormat] = {
+    # Vertical formats (9:16)
+    'youtube_shorts': VideoFormat(
+        name='YouTube Shorts',
+        width=1080,
+        height=1920,
+        fps=30,
+        max_duration=60.0,
+        description='YouTube Shorts vertical format (9:16)'
+    ),
+    'tiktok': VideoFormat(
+        name='TikTok',
+        width=1080,
+        height=1920,
+        fps=30,
+        max_duration=180.0,  # 3 minutes
+        description='TikTok vertical format (9:16)'
+    ),
+    'instagram_reels': VideoFormat(
+        name='Instagram Reels',
+        width=1080,
+        height=1920,
+        fps=30,
+        max_duration=90.0,
+        description='Instagram Reels vertical format (9:16)'
+    ),
+    'instagram_story': VideoFormat(
+        name='Instagram Story',
+        width=1080,
+        height=1920,
+        fps=30,
+        max_duration=15.0,
+        description='Instagram Story vertical format (9:16)'
+    ),
+
+    # Horizontal formats (16:9)
+    'youtube_1080p': VideoFormat(
+        name='YouTube 1080p',
+        width=1920,
+        height=1080,
+        fps=30,
+        max_duration=None,
+        description='Standard YouTube HD format (16:9)'
+    ),
+    'youtube_4k': VideoFormat(
+        name='YouTube 4K',
+        width=3840,
+        height=2160,
+        fps=30,
+        max_duration=None,
+        description='YouTube 4K UHD format (16:9)'
+    ),
+    'youtube_720p': VideoFormat(
+        name='YouTube 720p',
+        width=1280,
+        height=720,
+        fps=30,
+        max_duration=None,
+        description='YouTube HD Ready format (16:9)'
+    ),
+
+    # Square format (1:1)
+    'instagram_square': VideoFormat(
+        name='Instagram Square',
+        width=1080,
+        height=1080,
+        fps=30,
+        max_duration=60.0,
+        description='Instagram square format (1:1)'
+    ),
+}
+
+
+def get_format_names() -> list:
+    """Get list of available format preset names."""
+    return list(VIDEO_FORMATS.keys())
+
+
+def get_vertical_formats() -> Dict[str, VideoFormat]:
+    """Get only vertical format presets."""
+    return {k: v for k, v in VIDEO_FORMATS.items() if v.is_vertical}
 
 
 class VideoExporter:
@@ -199,6 +315,113 @@ class VideoExporter:
 
         return results
 
+    def export_with_format(self, composite_name: str, output_path: str,
+                           format_name: str, duration: Optional[float] = None,
+                           params: Optional[Tuple[float, float, float, float]] = None,
+                           color_mode: Optional[int] = None,
+                           crf: int = 18) -> bool:
+        """Export using a predefined format preset.
+
+        Args:
+            composite_name: Name of composite to render
+            output_path: Output video file path
+            format_name: Name of format preset (e.g., 'youtube_shorts', 'tiktok')
+            duration: Duration in seconds (uses format max if None and format has limit)
+            params: Custom parameters (uses defaults if None)
+            color_mode: Color palette (uses default if None)
+            crf: FFmpeg CRF quality
+
+        Returns:
+            True if export succeeded
+
+        Raises:
+            ValueError: If format_name is not recognized
+        """
+        if format_name not in VIDEO_FORMATS:
+            raise ValueError(f"Unknown format: {format_name}. Available: {get_format_names()}")
+
+        fmt = VIDEO_FORMATS[format_name]
+
+        # Use format's max duration if not specified and format has a limit
+        if duration is None:
+            duration = fmt.max_duration if fmt.max_duration else 10.0
+
+        # Warn if duration exceeds platform limit
+        if fmt.max_duration and duration > fmt.max_duration:
+            print(f"Warning: Duration {duration}s exceeds {fmt.name} limit of {fmt.max_duration}s")
+
+        print(f"Format: {fmt.name} ({fmt.width}x{fmt.height}, {fmt.aspect_ratio})")
+
+        return self.export_composite(
+            composite_name, output_path,
+            duration=duration,
+            fps=fmt.fps,
+            width=fmt.width,
+            height=fmt.height,
+            params=params,
+            color_mode=color_mode,
+            crf=crf
+        )
+
+    def export_shorts(self, composite_name: str, output_path: str,
+                      duration: float = 45.0,
+                      params: Optional[Tuple[float, float, float, float]] = None,
+                      color_mode: Optional[int] = None,
+                      crf: int = 18) -> bool:
+        """Export optimized for YouTube Shorts (1080x1920, 9:16 vertical).
+
+        Args:
+            composite_name: Name of composite to render
+            output_path: Output video file path
+            duration: Duration in seconds (max 60s for Shorts)
+            params: Custom parameters
+            color_mode: Color palette
+            crf: FFmpeg CRF quality
+
+        Returns:
+            True if export succeeded
+        """
+        if duration > 60.0:
+            print(f"Warning: YouTube Shorts max is 60s, got {duration}s")
+            duration = 60.0
+
+        return self.export_with_format(
+            composite_name, output_path,
+            format_name='youtube_shorts',
+            duration=duration,
+            params=params,
+            color_mode=color_mode,
+            crf=crf
+        )
+
+    def export_all_shorts(self, output_dir: str, duration: float = 45.0) -> dict:
+        """Export all composites as YouTube Shorts.
+
+        Args:
+            output_dir: Directory for output videos
+            duration: Duration for each video (max 60s)
+
+        Returns:
+            Dict mapping composite names to success status
+        """
+        results = {}
+        os.makedirs(output_dir, exist_ok=True)
+
+        for composite_name in COMPOSITES:
+            output_path = os.path.join(output_dir, f"{composite_name}_short.mp4")
+            print(f"\n{'=' * 60}")
+            print(f"Exporting Short: {composite_name}")
+            print('=' * 60)
+
+            try:
+                success = self.export_shorts(composite_name, output_path, duration)
+                results[composite_name] = success
+            except Exception as e:
+                print(f"Error: {e}")
+                results[composite_name] = False
+
+        return results
+
     def export_frames(self, composite_name: str, output_dir: str,
                       duration: float = 5.0, fps: Optional[int] = None,
                       width: Optional[int] = None, height: Optional[int] = None,
@@ -319,25 +542,82 @@ def main():
     """Command-line interface for video export."""
     import argparse
 
-    parser = argparse.ArgumentParser(description='Export GPU composite animations to video')
+    parser = argparse.ArgumentParser(
+        description='Export GPU composite animations to video',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Format presets:
+  youtube_shorts    1080x1920  9:16  (max 60s)
+  tiktok            1080x1920  9:16  (max 180s)
+  instagram_reels   1080x1920  9:16  (max 90s)
+  instagram_story   1080x1920  9:16  (max 15s)
+  instagram_square  1080x1080  1:1   (max 60s)
+  youtube_1080p     1920x1080  16:9
+  youtube_720p      1280x720   16:9
+  youtube_4k        3840x2160  16:9
+
+Examples:
+  %(prog)s plasma_lissajous --shorts
+  %(prog)s flux_spiral --format youtube_shorts -d 45
+  %(prog)s --all --shorts
+  %(prog)s lissajous_plasma --format instagram_reels -o reel.mp4
+"""
+    )
     parser.add_argument('composite', nargs='?', choices=list(COMPOSITES.keys()),
                         help='Composite to export (omit for all)')
     parser.add_argument('-o', '--output', help='Output path (or directory for --all)')
-    parser.add_argument('-d', '--duration', type=float, default=10.0,
-                        help='Duration in seconds')
-    parser.add_argument('--fps', type=int, default=30, help='Frames per second')
-    parser.add_argument('--width', type=int, default=1280, help='Video width')
-    parser.add_argument('--height', type=int, default=720, help='Video height')
+    parser.add_argument('-d', '--duration', type=float,
+                        help='Duration in seconds (default: 10s or format max)')
+    parser.add_argument('--fps', type=int, help='Frames per second (default: 30)')
+    parser.add_argument('--width', type=int, help='Video width')
+    parser.add_argument('--height', type=int, help='Video height')
+    parser.add_argument('--format', '-f', choices=get_format_names(),
+                        help='Use a format preset (overrides width/height/fps)')
+    parser.add_argument('--shorts', action='store_true',
+                        help='Export as YouTube Shorts (1080x1920, 9:16)')
     parser.add_argument('--gif', action='store_true', help='Export as GIF instead')
     parser.add_argument('--all', action='store_true', help='Export all composites')
+    parser.add_argument('--list-formats', action='store_true',
+                        help='List available format presets')
     args = parser.parse_args()
 
-    exporter = VideoExporter(args.width, args.height, args.fps)
+    # List formats and exit
+    if args.list_formats:
+        print("Available video format presets:\n")
+        for name, fmt in VIDEO_FORMATS.items():
+            limit = f"max {fmt.max_duration}s" if fmt.max_duration else "unlimited"
+            print(f"  {name:20} {fmt.width}x{fmt.height}  {fmt.aspect_ratio:5}  ({limit})")
+        return
+
+    # Determine format settings
+    if args.shorts:
+        fmt = VIDEO_FORMATS['youtube_shorts']
+        width = fmt.width
+        height = fmt.height
+        fps = fmt.fps
+        duration = args.duration or 45.0
+    elif args.format:
+        fmt = VIDEO_FORMATS[args.format]
+        width = fmt.width
+        height = fmt.height
+        fps = fmt.fps
+        duration = args.duration or (fmt.max_duration if fmt.max_duration else 10.0)
+    else:
+        width = args.width or 1280
+        height = args.height or 720
+        fps = args.fps or 30
+        duration = args.duration or 10.0
+
+    exporter = VideoExporter(width, height, fps)
 
     if args.all:
-        output_dir = args.output or '/tmp/gl_composites'
-        results = exporter.export_all_composites(output_dir, args.duration,
-                                                  args.fps, args.width, args.height)
+        if args.shorts:
+            output_dir = args.output or '/tmp/gl_shorts'
+            results = exporter.export_all_shorts(output_dir, duration)
+        else:
+            output_dir = args.output or '/tmp/gl_composites'
+            results = exporter.export_all_composites(output_dir, duration,
+                                                      fps, width, height)
         print("\nSummary:")
         for name, success in results.items():
             status = "OK" if success else "FAILED"
@@ -346,12 +626,18 @@ def main():
     elif args.composite:
         if args.gif:
             output_path = args.output or f"/tmp/{args.composite}.gif"
-            exporter.create_gif(args.composite, output_path, args.duration,
-                               fps=min(args.fps, 15), width=480, height=270)
+            exporter.create_gif(args.composite, output_path, duration,
+                               fps=min(fps, 15), width=480, height=270)
+        elif args.shorts:
+            output_path = args.output or f"/tmp/{args.composite}_short.mp4"
+            exporter.export_shorts(args.composite, output_path, duration)
+        elif args.format:
+            output_path = args.output or f"/tmp/{args.composite}_{args.format}.mp4"
+            exporter.export_with_format(args.composite, output_path, args.format, duration)
         else:
             output_path = args.output or f"/tmp/{args.composite}.mp4"
-            exporter.export_composite(args.composite, output_path, args.duration,
-                                      args.fps, args.width, args.height)
+            exporter.export_composite(args.composite, output_path, duration,
+                                      fps, width, height)
     else:
         parser.print_help()
 
