@@ -17,14 +17,14 @@ Example:
     pixels = pipeline.render(effect_program, effect_uniforms)
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Dict, Any, List, Optional
 from pathlib import Path
 
 import moderngl
 import numpy as np
 
-from .renderer import GLRenderer, STANDARD_VERTEX_SHADER
+from .renderer import GLRenderer
 
 
 @dataclass

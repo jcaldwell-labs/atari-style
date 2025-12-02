@@ -17,13 +17,12 @@ import argparse
 import shutil
 import subprocess
 import tempfile
-from pathlib import Path
+import math
 
 try:
-    import numpy as np
     from PIL import Image
 except ImportError:
-    print("ERROR: Pillow and numpy required: pip install Pillow numpy")
+    print("ERROR: Pillow required: pip install Pillow")
     sys.exit(1)
 
 from .renderer import GLRenderer
@@ -137,7 +136,7 @@ def render_comparison_image(
 
     try:
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", 36)
-    except:
+    except Exception:
         font = ImageFont.load_default()
 
     labels = ['No CRT', 'Subtle', 'Classic', 'Heavy']
@@ -192,7 +191,6 @@ def render_crt_video(
         for i in range(num_frames):
             t = i / num_frames
             # Exponential zoom interpolation
-            import math
             zoom = math.exp(math.log(start_zoom) + (math.log(end_zoom) - math.log(start_zoom)) * t)
 
             uniforms.iParams = (zoom, center_x, center_y, 150.0)

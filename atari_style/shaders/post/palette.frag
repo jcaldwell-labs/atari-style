@@ -76,5 +76,7 @@ void main() {
         col.b = quantize(col.b, levels);
     }
 
+    // Clamp to valid range after dithering
+    col = clamp(col, 0.0, 1.0);
     fragColor = vec4(col, 1.0);
 }

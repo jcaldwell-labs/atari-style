@@ -53,10 +53,13 @@ vec2 barrelDistort(vec2 uv) {
     return centered * 0.5 + 0.5;
 }
 
+// Pi constant for precise calculations
+const float PI = 3.14159265358979323846;
+
 // Scanline effect - horizontal lines like a CRT
 float scanline(vec2 uv) {
     // Create scanline pattern based on vertical position
-    float line = sin(uv.y * iResolution.y * 3.14159);
+    float line = sin(uv.y * iResolution.y * PI);
 
     // Shape the scanline (make dark bands narrower)
     line = pow(abs(line), 0.8);
