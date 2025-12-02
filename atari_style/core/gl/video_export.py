@@ -204,7 +204,7 @@ class VideoExporter:
                       width: Optional[int] = None, height: Optional[int] = None,
                       params: Optional[Tuple[float, float, float, float]] = None,
                       color_mode: Optional[int] = None,
-                      format: str = 'png') -> int:
+                      image_format: str = 'png') -> int:
         """Export individual frames (useful for testing or custom encoding).
 
         Args:
@@ -216,7 +216,7 @@ class VideoExporter:
             height: Frame height
             params: Custom parameters
             color_mode: Color palette
-            format: Image format (png, jpg)
+            image_format: Image format (png, jpg)
 
         Returns:
             Number of frames exported
@@ -240,9 +240,9 @@ class VideoExporter:
             time_val = frame_num / frame_rate
             img = manager.render_frame(composite_name, time_val, params, color_mode, w, h)
 
-            ext = format.lower()
+            ext = image_format.lower()
             frame_path = os.path.join(output_dir, f"frame_{frame_num:06d}.{ext}")
-            img.save(frame_path, format.upper())
+            img.save(frame_path, image_format.upper())
 
         return total_frames
 

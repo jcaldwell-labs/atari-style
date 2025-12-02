@@ -150,21 +150,35 @@ class CompositeManager:
         # Use specific size renderer if different from default
         if w != self.width or h != self.height:
             renderer = GLRenderer(w, h, headless=True)
-            program = renderer.load_shader(config.shader_path)
+            try:
+                program = renderer.load_shader(config.shader_path)
+
+                # Set up uniforms
+                uniforms = ShaderUniforms()
+                uniforms.set_resolution(w, h)
+                uniforms.iTime = time_val
+                uniforms.iParams = params or config.default_params
+                uniforms.iColorMode = color_mode if color_mode is not None else config.default_color_mode
+
+                # Render
+                arr = renderer.render_to_array(program, uniforms.to_dict())
+                return Image.fromarray(arr, 'RGBA')
+            finally:
+                renderer.release()
         else:
             renderer = self._get_renderer()
             program = self._get_program(composite_name)
 
-        # Set up uniforms
-        uniforms = ShaderUniforms()
-        uniforms.set_resolution(w, h)
-        uniforms.iTime = time_val
-        uniforms.iParams = params or config.default_params
-        uniforms.iColorMode = color_mode if color_mode is not None else config.default_color_mode
+            # Set up uniforms
+            uniforms = ShaderUniforms()
+            uniforms.set_resolution(w, h)
+            uniforms.iTime = time_val
+            uniforms.iParams = params or config.default_params
+            uniforms.iColorMode = color_mode if color_mode is not None else config.default_color_mode
 
-        # Render
-        arr = renderer.render_to_array(program, uniforms.to_dict())
-        return Image.fromarray(arr, 'RGBA')
+            # Render
+            arr = renderer.render_to_array(program, uniforms.to_dict())
+            return Image.fromarray(arr, 'RGBA')
 
     def render_animation(self, composite_name: str, duration: float = 5.0,
                          fps: int = 30, params: Optional[Tuple[float, float, float, float]] = None,
@@ -214,7 +228,9 @@ class CompositeManager:
         Returns:
             Dict with timing statistics
         """
-        config = COMPOSITES[composite_name]
+        if composite_name not in COMPOSITES:
+            raise ValueError(f"Unknown composite: {composite_name}")
+
         times = []
 
         for i in range(frames):
