@@ -385,10 +385,7 @@ class VideoExporter:
         Returns:
             True if export succeeded
         """
-        if duration > 60.0:
-            print(f"Warning: YouTube Shorts max is 60s, got {duration}s")
-            duration = 60.0
-
+        # Duration validation handled by export_with_format via format's max_duration
         return self.export_with_format(
             composite_name, output_path,
             format_name='youtube_shorts',
@@ -419,6 +416,42 @@ class VideoExporter:
 
             try:
                 success = self.export_shorts(composite_name, output_path, duration)
+                results[composite_name] = success
+            except Exception as e:
+                print(f"Error: {e}")
+                results[composite_name] = False
+
+        return results
+
+    def export_all_with_format(self, output_dir: str, format_name: str,
+                               duration: Optional[float] = None) -> dict:
+        """Export all composites using a format preset.
+
+        Args:
+            output_dir: Directory for output videos
+            format_name: Format preset name (e.g., 'instagram_reels', 'tiktok')
+            duration: Duration for each video (uses format default if None)
+
+        Returns:
+            Dict mapping composite names to success status
+        """
+        if format_name not in VIDEO_FORMATS:
+            raise ValueError(f"Unknown format: {format_name}")
+
+        fmt = VIDEO_FORMATS[format_name]
+        results = {}
+        os.makedirs(output_dir, exist_ok=True)
+
+        for composite_name in COMPOSITES:
+            output_path = os.path.join(output_dir, f"{composite_name}_{format_name}.mp4")
+            print(f"\n{'=' * 60}")
+            print(f"Exporting ({fmt.name}): {composite_name}")
+            print('=' * 60)
+
+            try:
+                success = self.export_with_format(
+                    composite_name, output_path, format_name, duration
+                )
                 results[composite_name] = success
             except Exception as e:
                 print(f"Error: {e}")
@@ -575,10 +608,14 @@ Examples:
     parser.add_argument('--fps', type=int, help='Frames per second (default: 30)')
     parser.add_argument('--width', type=int, help='Video width')
     parser.add_argument('--height', type=int, help='Video height')
-    parser.add_argument('--format', '-f', choices=get_format_names(),
-                        help='Use a format preset (overrides width/height/fps)')
-    parser.add_argument('--shorts', action='store_true',
-                        help='Export as YouTube Shorts (1080x1920, 9:16)')
+
+    # Format options (mutually exclusive)
+    format_group = parser.add_mutually_exclusive_group()
+    format_group.add_argument('--format', '-f', choices=get_format_names(),
+                              help='Use a format preset (overrides width/height/fps)')
+    format_group.add_argument('--shorts', action='store_true',
+                              help='Export as YouTube Shorts (1080x1920, 9:16)')
+
     parser.add_argument('--gif', action='store_true', help='Export as GIF instead')
     parser.add_argument('--all', action='store_true', help='Export all composites')
     parser.add_argument('--list-formats', action='store_true',
@@ -593,15 +630,12 @@ Examples:
             print(f"  {name:20} {fmt.width}x{fmt.height}  {fmt.aspect_ratio:5}  ({limit})")
         return
 
+    # Determine format name for format-based exports
+    format_name = 'youtube_shorts' if args.shorts else args.format
+
     # Determine format settings
-    if args.shorts:
-        fmt = VIDEO_FORMATS['youtube_shorts']
-        width = fmt.width
-        height = fmt.height
-        fps = fmt.fps
-        duration = args.duration or 45.0
-    elif args.format:
-        fmt = VIDEO_FORMATS[args.format]
+    if format_name:
+        fmt = VIDEO_FORMATS[format_name]
         width = fmt.width
         height = fmt.height
         fps = fmt.fps
@@ -615,9 +649,9 @@ Examples:
     exporter = VideoExporter(width, height, fps)
 
     if args.all:
-        if args.shorts:
-            output_dir = args.output or '/tmp/gl_shorts'
-            results = exporter.export_all_shorts(output_dir, duration)
+        if format_name:
+            output_dir = args.output or f'/tmp/gl_{format_name}'
+            results = exporter.export_all_with_format(output_dir, format_name, duration)
         else:
             output_dir = args.output or '/tmp/gl_composites'
             results = exporter.export_all_composites(output_dir, duration,
@@ -632,12 +666,9 @@ Examples:
             output_path = args.output or f"/tmp/{args.composite}.gif"
             exporter.create_gif(args.composite, output_path, duration,
                                fps=min(fps, 15), width=480, height=270)
-        elif args.shorts:
-            output_path = args.output or f"/tmp/{args.composite}_short.mp4"
-            exporter.export_shorts(args.composite, output_path, duration)
-        elif args.format:
-            output_path = args.output or f"/tmp/{args.composite}_{args.format}.mp4"
-            exporter.export_with_format(args.composite, output_path, args.format, duration)
+        elif format_name:
+            output_path = args.output or f"/tmp/{args.composite}_{format_name}.mp4"
+            exporter.export_with_format(args.composite, output_path, format_name, duration)
         else:
             output_path = args.output or f"/tmp/{args.composite}.mp4"
             exporter.export_composite(args.composite, output_path, duration,
