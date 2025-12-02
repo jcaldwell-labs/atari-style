@@ -17,7 +17,6 @@ Usage:
     python -m atari_style.demos.visualizers.shader_controller --composite flux_spiral
 """
 
-import sys
 import time
 import json
 import os
@@ -32,7 +31,6 @@ except ImportError:
     PYGAME_AVAILABLE = False
 
 try:
-    from PIL import Image
     import numpy as np
     PIL_AVAILABLE = True
 except ImportError:
@@ -40,7 +38,7 @@ except ImportError:
 
 from atari_style.core.gl.renderer import GLRenderer
 from atari_style.core.gl.uniforms import ShaderUniforms
-from atari_style.core.gl.composites import COMPOSITES, CompositeConfig
+from atari_style.core.gl.composites import COMPOSITES
 
 
 @dataclass
@@ -373,8 +371,6 @@ class ShaderController:
         Returns:
             pygame.Surface containing the rendered frame
         """
-        config = COMPOSITES[self.state.composite_name]
-
         # Set up uniforms
         uniforms = ShaderUniforms()
         uniforms.set_resolution(self.width, self.height)
