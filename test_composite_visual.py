@@ -2,7 +2,7 @@
 """Quick visual test of composite animations."""
 
 import time
-from atari_style.demos.screensaver import (
+from atari_style.demos.visualizers.screensaver import (
     PlasmaLissajous,
     FluxSpiral,
     LissajousPlasma

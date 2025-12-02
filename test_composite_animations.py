@@ -3,7 +3,7 @@
 
 import unittest
 import math
-from atari_style.demos.screensaver import (
+from atari_style.demos.visualizers.screensaver import (
     PlasmaAnimation,
     LissajousCurve,
     FluidLattice,
