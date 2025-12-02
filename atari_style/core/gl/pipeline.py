@@ -1,0 +1,472 @@
+"""Post-processing pipeline for multi-pass GPU rendering.
+
+This module provides infrastructure for chaining multiple shader passes,
+enabling effects like CRT simulation, color grading, and bloom.
+
+Example:
+    renderer = GLRenderer(1920, 1080, headless=True)
+    pipeline = PostProcessPipeline(renderer)
+
+    # Add CRT effect
+    pipeline.add_pass('atari_style/shaders/post/crt.frag', {
+        'scanlineIntensity': 0.5,
+        'curvature': 0.1,
+    })
+
+    # Render effect with post-processing
+    pixels = pipeline.render(effect_program, effect_uniforms)
+"""
+
+from dataclasses import dataclass, field
+from typing import Dict, Any, List, Optional, Tuple
+from pathlib import Path
+
+import moderngl
+import numpy as np
+
+from .renderer import GLRenderer, STANDARD_VERTEX_SHADER
+
+
+@dataclass
+class CRTPreset:
+    """Preset configuration for CRT effects."""
+    name: str
+    scanlineIntensity: float = 0.5
+    curvature: float = 0.1
+    vignetteStrength: float = 0.3
+    rgbOffset: float = 0.002
+    brightness: float = 1.0
+    shadowMask: float = 0.3
+    flickerAmount: float = 0.0
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert preset to uniform dictionary."""
+        return {
+            'scanlineIntensity': self.scanlineIntensity,
+            'curvature': self.curvature,
+            'vignetteStrength': self.vignetteStrength,
+            'rgbOffset': self.rgbOffset,
+            'brightness': self.brightness,
+            'shadowMask': self.shadowMask,
+            'flickerAmount': self.flickerAmount,
+        }
+
+
+# Predefined CRT presets
+CRT_PRESETS = {
+    'off': CRTPreset(
+        name='Off',
+        scanlineIntensity=0.0,
+        curvature=0.0,
+        vignetteStrength=0.0,
+        rgbOffset=0.0,
+        brightness=1.0,
+        shadowMask=0.0,
+        flickerAmount=0.0,
+    ),
+    'subtle': CRTPreset(
+        name='Subtle',
+        scanlineIntensity=0.2,
+        curvature=0.03,
+        vignetteStrength=0.2,
+        rgbOffset=0.001,
+        brightness=1.05,
+        shadowMask=0.15,
+        flickerAmount=0.0,
+    ),
+    'classic': CRTPreset(
+        name='Classic',
+        scanlineIntensity=0.5,
+        curvature=0.08,
+        vignetteStrength=0.4,
+        rgbOffset=0.002,
+        brightness=1.1,
+        shadowMask=0.3,
+        flickerAmount=0.02,
+    ),
+    'heavy': CRTPreset(
+        name='Heavy',
+        scanlineIntensity=0.8,
+        curvature=0.15,
+        vignetteStrength=0.6,
+        rgbOffset=0.004,
+        brightness=1.2,
+        shadowMask=0.5,
+        flickerAmount=0.05,
+    ),
+    'arcade': CRTPreset(
+        name='Arcade',
+        scanlineIntensity=0.6,
+        curvature=0.12,
+        vignetteStrength=0.35,
+        rgbOffset=0.003,
+        brightness=1.15,
+        shadowMask=0.4,
+        flickerAmount=0.03,
+    ),
+    'monitor': CRTPreset(
+        name='Monitor',
+        scanlineIntensity=0.3,
+        curvature=0.05,
+        vignetteStrength=0.25,
+        rgbOffset=0.0015,
+        brightness=1.0,
+        shadowMask=0.2,
+        flickerAmount=0.01,
+    ),
+}
+
+
+@dataclass
+class PalettePreset:
+    """Preset configuration for color palette reduction."""
+    name: str
+    colorLevels: float = 16.0  # Colors per channel
+    dithering: int = 1  # 0 = off, 1 = on
+    ditherScale: float = 1.0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'colorLevels': self.colorLevels,
+            'dithering': self.dithering,
+            'ditherScale': self.ditherScale,
+        }
+
+
+# Predefined palette presets
+PALETTE_PRESETS = {
+    'off': PalettePreset(name='Off', colorLevels=256.0, dithering=0),
+    'atari': PalettePreset(name='Atari 2600', colorLevels=4.0, dithering=1),
+    'nes': PalettePreset(name='NES', colorLevels=8.0, dithering=1),
+    'cga': PalettePreset(name='CGA', colorLevels=4.0, dithering=1),
+    'ega': PalettePreset(name='EGA', colorLevels=8.0, dithering=1),
+    'vga': PalettePreset(name='VGA', colorLevels=16.0, dithering=1),
+    'retro': PalettePreset(name='Retro', colorLevels=8.0, dithering=1),
+}
+
+
+class RenderPass:
+    """A single render pass in the pipeline."""
+
+    def __init__(
+        self,
+        ctx: moderngl.Context,
+        program: moderngl.Program,
+        width: int,
+        height: int,
+        uniforms: Dict[str, Any] = None
+    ):
+        self.ctx = ctx
+        self.program = program
+        self.uniforms = uniforms or {}
+
+        # Create framebuffer for this pass
+        self.texture = ctx.texture((width, height), 4, dtype='f1')
+        self.texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        self.fbo = ctx.framebuffer(color_attachments=[self.texture])
+
+    def set_uniforms(self, uniforms: Dict[str, Any]):
+        """Update pass uniforms."""
+        self.uniforms.update(uniforms)
+
+    def release(self):
+        """Release GPU resources."""
+        self.texture.release()
+        self.fbo.release()
+
+
+class PostProcessPipeline:
+    """Multi-pass post-processing pipeline.
+
+    Chains multiple shader passes together, with each pass reading
+    from the previous pass's output texture.
+
+    Architecture:
+        Effect Shader --> Pass 1 (CRT) --> Pass 2 (Palette) --> Output
+
+    Example:
+        pipeline = PostProcessPipeline(renderer)
+        pipeline.add_crt_pass('classic')
+        pipeline.add_palette_pass('nes')
+        pixels = pipeline.render(effect_program, effect_uniforms)
+    """
+
+    def __init__(self, renderer: GLRenderer):
+        """Initialize the pipeline.
+
+        Args:
+            renderer: GLRenderer instance for context and utilities
+        """
+        self.renderer = renderer
+        self.ctx = renderer.ctx
+        self.width = renderer.width
+        self.height = renderer.height
+
+        self.passes: List[RenderPass] = []
+
+        # Create quad VBO for post-process rendering
+        vertices = np.array([
+            -1.0, -1.0,
+             1.0, -1.0,
+            -1.0,  1.0,
+             1.0,  1.0,
+        ], dtype='f4')
+        self.quad_vbo = self.ctx.buffer(vertices)
+
+        # Track current CRT and palette settings
+        self.crt_preset: Optional[str] = None
+        self.palette_preset: Optional[str] = None
+
+    def _load_shader(self, shader_path: str) -> moderngl.Program:
+        """Load a post-processing shader."""
+        path = Path(shader_path)
+        if not path.is_absolute():
+            project_root = Path(__file__).parent.parent.parent.parent
+            path = project_root / shader_path
+
+        if not path.exists():
+            raise FileNotFoundError(f"Shader not found: {path}")
+
+        frag_src = path.read_text()
+
+        # Post-process shaders use texture sampling, need modified vertex shader
+        vert_src = '''
+#version 330 core
+in vec2 in_position;
+out vec2 fragCoord;
+
+void main() {
+    gl_Position = vec4(in_position, 0.0, 1.0);
+    fragCoord = (in_position + 1.0) / 2.0;
+}
+'''
+        return self.ctx.program(vertex_shader=vert_src, fragment_shader=frag_src)
+
+    def add_pass(
+        self,
+        shader_path: str,
+        uniforms: Dict[str, Any] = None
+    ) -> int:
+        """Add a custom render pass.
+
+        Args:
+            shader_path: Path to fragment shader
+            uniforms: Initial uniform values
+
+        Returns:
+            Index of the added pass
+        """
+        program = self._load_shader(shader_path)
+        render_pass = RenderPass(
+            self.ctx, program, self.width, self.height, uniforms
+        )
+        self.passes.append(render_pass)
+        return len(self.passes) - 1
+
+    def add_crt_pass(self, preset: str = 'classic') -> int:
+        """Add CRT post-processing pass.
+
+        Args:
+            preset: Preset name ('off', 'subtle', 'classic', 'heavy', 'arcade', 'monitor')
+
+        Returns:
+            Index of the CRT pass
+        """
+        if preset not in CRT_PRESETS:
+            raise ValueError(f"Unknown CRT preset: {preset}. Available: {list(CRT_PRESETS.keys())}")
+
+        self.crt_preset = preset
+        uniforms = CRT_PRESETS[preset].to_dict()
+        return self.add_pass('atari_style/shaders/post/crt.frag', uniforms)
+
+    def add_palette_pass(self, preset: str = 'retro') -> int:
+        """Add palette reduction pass.
+
+        Args:
+            preset: Preset name ('off', 'atari', 'nes', 'cga', 'ega', 'vga', 'retro')
+
+        Returns:
+            Index of the palette pass
+        """
+        if preset not in PALETTE_PRESETS:
+            raise ValueError(f"Unknown palette preset: {preset}. Available: {list(PALETTE_PRESETS.keys())}")
+
+        self.palette_preset = preset
+        uniforms = PALETTE_PRESETS[preset].to_dict()
+        return self.add_pass('atari_style/shaders/post/palette.frag', uniforms)
+
+    def set_crt_preset(self, preset: str):
+        """Change CRT preset on existing pass."""
+        if self.crt_preset is None:
+            raise RuntimeError("No CRT pass added. Call add_crt_pass() first.")
+
+        if preset not in CRT_PRESETS:
+            raise ValueError(f"Unknown CRT preset: {preset}")
+
+        self.crt_preset = preset
+        # Find and update CRT pass
+        for p in self.passes:
+            if 'scanlineIntensity' in p.uniforms:
+                p.set_uniforms(CRT_PRESETS[preset].to_dict())
+                break
+
+    def set_palette_preset(self, preset: str):
+        """Change palette preset on existing pass."""
+        if self.palette_preset is None:
+            raise RuntimeError("No palette pass added. Call add_palette_pass() first.")
+
+        if preset not in PALETTE_PRESETS:
+            raise ValueError(f"Unknown palette preset: {preset}")
+
+        self.palette_preset = preset
+        # Find and update palette pass
+        for p in self.passes:
+            if 'colorLevels' in p.uniforms:
+                p.set_uniforms(PALETTE_PRESETS[preset].to_dict())
+                break
+
+    def update_pass_uniforms(self, pass_index: int, uniforms: Dict[str, Any]):
+        """Update uniforms for a specific pass.
+
+        Args:
+            pass_index: Index of the pass to update
+            uniforms: Uniform values to set/update
+        """
+        if 0 <= pass_index < len(self.passes):
+            self.passes[pass_index].set_uniforms(uniforms)
+
+    def render(
+        self,
+        effect_program: moderngl.Program,
+        effect_uniforms: Dict[str, Any],
+        time: float = 0.0
+    ) -> bytes:
+        """Render effect with all post-processing passes.
+
+        Args:
+            effect_program: The main effect shader program
+            effect_uniforms: Uniforms for the main effect
+            time: Current time for animated effects
+
+        Returns:
+            Raw RGBA pixel data
+        """
+        # First pass: render main effect to renderer's FBO
+        self.renderer.fbo.use()
+        self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+
+        for name, value in effect_uniforms.items():
+            if name in effect_program:
+                effect_program[name].value = value
+
+        vao = self.ctx.vertex_array(
+            effect_program,
+            [(self.renderer.quad_vbo, '2f', 'in_position')]
+        )
+        vao.render(moderngl.TRIANGLE_STRIP)
+        vao.release()
+
+        # If no post-process passes, return main effect output
+        if not self.passes:
+            return self.renderer.fbo.read(components=4)
+
+        # Chain post-process passes
+        input_texture = self.renderer.texture
+
+        for i, render_pass in enumerate(self.passes):
+            render_pass.fbo.use()
+            self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+
+            # Bind input texture
+            input_texture.use(location=0)
+
+            # Set uniforms
+            program = render_pass.program
+            if 'iChannel0' in program:
+                program['iChannel0'].value = 0
+            if 'iResolution' in program:
+                program['iResolution'].value = (float(self.width), float(self.height))
+            if 'iTime' in program:
+                program['iTime'].value = time
+
+            for name, value in render_pass.uniforms.items():
+                if name in program:
+                    program[name].value = value
+
+            # Render quad
+            pass_vao = self.ctx.vertex_array(
+                program,
+                [(self.quad_vbo, '2f', 'in_position')]
+            )
+            pass_vao.render(moderngl.TRIANGLE_STRIP)
+            pass_vao.release()
+
+            # Output becomes input for next pass
+            input_texture = render_pass.texture
+
+        # Read final output
+        return self.passes[-1].fbo.read(components=4)
+
+    def render_to_array(
+        self,
+        effect_program: moderngl.Program,
+        effect_uniforms: Dict[str, Any],
+        time: float = 0.0
+    ) -> np.ndarray:
+        """Render effect and return as numpy array.
+
+        Args:
+            effect_program: The main effect shader program
+            effect_uniforms: Uniforms for the main effect
+            time: Current time for animated effects
+
+        Returns:
+            numpy array of shape (height, width, 4) with dtype uint8
+        """
+        pixels = self.render(effect_program, effect_uniforms, time)
+        arr = np.frombuffer(pixels, dtype=np.uint8)
+        arr = arr.reshape((self.height, self.width, 4))
+        return np.flip(arr, axis=0)
+
+    def resize(self, width: int, height: int):
+        """Resize all framebuffers in the pipeline.
+
+        Args:
+            width: New width
+            height: New height
+        """
+        self.width = width
+        self.height = height
+        self.renderer.resize(width, height)
+
+        # Recreate pass framebuffers
+        for render_pass in self.passes:
+            render_pass.texture.release()
+            render_pass.fbo.release()
+            render_pass.texture = self.ctx.texture((width, height), 4, dtype='f1')
+            render_pass.texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
+            render_pass.fbo = self.ctx.framebuffer(color_attachments=[render_pass.texture])
+
+    def release(self):
+        """Release all GPU resources."""
+        for render_pass in self.passes:
+            render_pass.release()
+        self.passes.clear()
+        self.quad_vbo.release()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+        return False
+
+
+def get_crt_preset_names() -> List[str]:
+    """Get list of available CRT preset names."""
+    return list(CRT_PRESETS.keys())
+
+
+def get_palette_preset_names() -> List[str]:
+    """Get list of available palette preset names."""
+    return list(PALETTE_PRESETS.keys())
