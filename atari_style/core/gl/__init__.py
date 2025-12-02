@@ -7,6 +7,7 @@ This module provides:
 - CRT and palette reduction presets
 - CompositeManager: Composite animation management
 - VideoExporter: Video export utilities
+- Storyboard: Keyframe planning and review workflow
 - Fullscreen quad rendering utilities
 - Framebuffer management for offscreen rendering
 
@@ -39,6 +40,12 @@ from .video_export import (
     get_format_names,
     get_vertical_formats,
 )
+from .storyboard import (
+    Storyboard,
+    Keyframe,
+    StoryboardRenderer,
+    validate_storyboard,
+)
 
 __all__ = [
     'GLRenderer',
@@ -63,4 +70,9 @@ __all__ = [
     'export_composite_video',
     'get_format_names',
     'get_vertical_formats',
+    # Storyboard system
+    'Storyboard',
+    'Keyframe',
+    'StoryboardRenderer',
+    'validate_storyboard',
 ]
