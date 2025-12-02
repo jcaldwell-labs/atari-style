@@ -21,6 +21,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: Install system dependencies for OpenGL
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb mesa-utils libgl1-mesa-glx libgl1-mesa-dev
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -51,8 +56,16 @@ jobs:
           echo "has_tests=false" >> $GITHUB_OUTPUT
         fi
 
+    - name: Start virtual display
+      run: |
+        Xvfb :99 -screen 0 1920x1080x24 &
+        echo "DISPLAY=:99" >> $GITHUB_ENV
+
     - name: Run tests with pytest
       if: steps.check_tests.outputs.has_tests == 'true'
+      env:
+        DISPLAY: ':99'
+        LIBGL_ALWAYS_SOFTWARE: '1'
       run: |
         pip install pytest pytest-cov
         # Test failures must fail the build - no continue-on-error
@@ -60,6 +73,9 @@ jobs:
 
     - name: Run tests with unittest
       if: steps.check_tests.outputs.has_tests == 'true'
+      env:
+        DISPLAY: ':99'
+        LIBGL_ALWAYS_SOFTWARE: '1'
       run: |
         # Test failures must fail the build - no continue-on-error
         python -m unittest discover -s . -p "test_*.py" -v
