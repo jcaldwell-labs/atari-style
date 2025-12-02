@@ -9,11 +9,9 @@ Usage:
     python -m atari_style.core.gl.test_effects --grid
 """
 
-import os
 import sys
 import time
 import argparse
-from pathlib import Path
 
 try:
     from PIL import Image
@@ -172,7 +170,7 @@ def run_effect_test(effect_name: str, duration: float = 3.0):
 
     for i in range(frames):
         t = i / frames * duration
-        img = render_effect(effect_name, 640, 480, t)
+        render_effect(effect_name, 640, 480, t)
 
     elapsed = time.time() - start
     fps = frames / elapsed

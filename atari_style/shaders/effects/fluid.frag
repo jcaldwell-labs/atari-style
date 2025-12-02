@@ -86,7 +86,8 @@ void main() {
     float dropStrength = iParams.z;     // Amplitude of drops
     float damping = iParams.w;          // How quickly waves decay (higher = less damping)
 
-    // Scale damping for shader (CPU uses 0.95-0.99, we need inverse behavior)
+    // Remap damping from CPU range [0.95-0.99] to shader-appropriate scale.
+    // This scales and shifts the value for correct wave decay visualization.
     float dampingFactor = 1.0 - (1.0 - damping) * 2.0;
     dampingFactor = max(0.1, dampingFactor);
 

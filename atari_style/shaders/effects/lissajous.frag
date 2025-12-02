@@ -62,25 +62,23 @@ vec3 getColor(float t, int mode) {
 
 // Calculate minimum distance to Lissajous curve
 // Using sampling approach since analytical SDF is complex for Lissajous
-float distToLissajous(vec2 p, float a, float b, float delta, float phase) {
+float distToLissajous(vec2 p, float a, float b, float delta) {
     float minDist = 1000.0;
-    float minT = 0.0;
 
     // Sample the curve at multiple points
     const int SAMPLES = 128;
     for (int i = 0; i < SAMPLES; i++) {
         float t = float(i) / float(SAMPLES) * TAU;
 
-        // Lissajous equations
+        // Lissajous equations: x = sin(a*t + delta), y = sin(b*t)
         vec2 curvePoint = vec2(
-            sin(a * t + delta + phase),
-            sin(b * t + phase * 0.7)
+            sin(a * t + delta),
+            sin(b * t)
         );
 
         float d = length(p - curvePoint);
         if (d < minDist) {
             minDist = d;
-            minT = t;
         }
     }
 
@@ -107,7 +105,7 @@ void main() {
     float animatedPhase = phaseOffset + iTime * 0.5;
 
     // Calculate distance to curve
-    float dist = distToLissajous(uv, freqA, freqB, animatedPhase, 0.0);
+    float dist = distToLissajous(uv, freqA, freqB, animatedPhase);
 
     // Create glow effect based on distance
     // Closer = brighter

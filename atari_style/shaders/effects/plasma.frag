@@ -21,10 +21,11 @@ in vec2 fragCoord;
 out vec4 fragColor;
 
 const float PI = 3.14159265358979323846;
+const float TAU = 6.28318530717958647692;
 
 // Cosine-based color palette (Inigo Quilez)
 vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
-    return a + b * cos(6.28318 * (c * t + d));
+    return a + b * cos(TAU * (c * t + d));
 }
 
 // Different color schemes
