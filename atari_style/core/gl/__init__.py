@@ -5,6 +5,8 @@ This module provides:
 - ShaderUniforms: Shadertoy-compatible uniform management
 - PostProcessPipeline: Multi-pass post-processing chain
 - CRT and palette reduction presets
+- CompositeManager: Composite animation management
+- VideoExporter: Video export utilities
 - Fullscreen quad rendering utilities
 - Framebuffer management for offscreen rendering
 
@@ -22,6 +24,17 @@ from .pipeline import (
     get_crt_preset_names,
     get_palette_preset_names,
 )
+from .composites import (
+    CompositeManager,
+    CompositeConfig,
+    COMPOSITES,
+    list_composites,
+    get_composite_info,
+)
+from .video_export import (
+    VideoExporter,
+    export_composite_video,
+)
 
 __all__ = [
     'GLRenderer',
@@ -34,4 +47,12 @@ __all__ = [
     'PALETTE_PRESETS',
     'get_crt_preset_names',
     'get_palette_preset_names',
+    # Phase 5 additions
+    'CompositeManager',
+    'CompositeConfig',
+    'COMPOSITES',
+    'list_composites',
+    'get_composite_info',
+    'VideoExporter',
+    'export_composite_video',
 ]
