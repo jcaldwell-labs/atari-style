@@ -273,12 +273,12 @@ python -c "from atari_style.demos.flux_control_patterns import run_pattern_flux;
 python -c "from atari_style.demos.ascii_painter import run_ascii_painter; run_ascii_painter()"
 
 # Visual Demos
-python -c "from atari_style.demos.starfield import run_starfield; run_starfield()"
-python -c "from atari_style.demos.screensaver import run_screensaver; run_screensaver()"
-python -c "from atari_style.demos.platonic_solids import run_platonic_solids; run_platonic_solids()"
+python -c "from atari_style.demos.visualizers.starfield import run_starfield; run_starfield()"
+python -c "from atari_style.demos.visualizers.screensaver import run_screensaver; run_screensaver()"
+python -c "from atari_style.demos.visualizers.platonic_solids import run_platonic_solids; run_platonic_solids()"
 
 # Utilities
-python -c "from atari_style.demos.joystick_test import run_joystick_test; run_joystick_test()"
+python -c "from atari_style.demos.tools.joystick_test import run_joystick_test; run_joystick_test()"
 ```
 
 ## Adding New Demos

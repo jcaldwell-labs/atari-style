@@ -184,7 +184,7 @@ See `COMPOSITE_ANIMATION_ANALYSIS.md` and `GITHUB_ISSUES.md` for detailed plans:
 ### From Python
 
 ```python
-from atari_style.demos.screensaver import PlasmaLissajous
+from atari_style.demos.visualizers.screensaver import PlasmaLissajous
 from atari_style.core.renderer import Renderer
 
 renderer = Renderer()

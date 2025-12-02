@@ -7,11 +7,9 @@ from atari_style.demos.visualizers.screensaver import (
     PlasmaAnimation,
     LissajousCurve,
     FluidLattice,
-    SpiralAnimation,
     PlasmaLissajous,
     FluxSpiral,
     LissajousPlasma,
-    CompositeAnimation
 )
 from atari_style.core.renderer import Renderer
 
