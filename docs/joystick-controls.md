@@ -147,7 +147,7 @@ All joystick controls have keyboard equivalents:
 1. Check USB connection
 2. Verify with `joystick_test.py`:
    ```bash
-   python -c "from atari_style.demos.joystick_test import run_joystick_test; run_joystick_test()"
+   python -c "from atari_style.demos.tools.joystick_test import run_joystick_test; run_joystick_test()"
    ```
 3. WSL users: Ensure usbipd has attached the device
 
@@ -162,7 +162,7 @@ All joystick controls have keyboard equivalents:
 Different controllers map buttons differently:
 - Xbox: A=0, B=1, X=2, Y=3
 - PlayStation: Cross=0, Circle=1, Square=2, Triangle=3
-- Use `joystick_test.py` to verify your controller's mapping
+- Use `atari_style/demos/tools/joystick_test.py` to verify your controller's mapping
 
 ### USB Device Lockup (WSL)
 
@@ -186,6 +186,6 @@ for consistent user experience.
 ## Files
 
 - `atari_style/core/input_handler.py` - Core input abstraction
-- `atari_style/demos/joystick_test.py` - Controller testing utility
+- `atari_style/demos/tools/joystick_test.py` - Controller testing utility
 - `atari_style/demos/visualizers/shader_controller.py` - GPU shader control
-- `atari_style/demos/screensaver.py` - Parametric animation control
+- `atari_style/demos/visualizers/screensaver.py` - Parametric animation control
