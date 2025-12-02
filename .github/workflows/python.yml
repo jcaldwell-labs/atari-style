@@ -24,7 +24,7 @@ jobs:
     - name: Install system dependencies for OpenGL
       run: |
         sudo apt-get update
-        sudo apt-get install -y xvfb mesa-utils libgl1-mesa-glx libgl1-mesa-dev
+        sudo apt-get install -y xvfb mesa-utils libgl1 libegl1 libgl1-mesa-dev
 
     - name: Install dependencies
       run: |
