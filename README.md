@@ -1,6 +1,10 @@
 # Atari-Style Terminal Games & Demos
 
-A comprehensive collection of terminal-based interactive games, creative tools, and visual demos inspired by classic Atari aesthetics. Features full joystick and keyboard support with ASCII/ANSI graphics.
+A creative pipeline for terminal-native parametric visualization, built through human-AI collaboration, following Unix philosophy principles.
+
+> **atari-style** celebrates terminal aesthetics as a medium, not a limitation. We create tools that treat parameter spaces as territories to explore, compose freely with other tools via text streams, and teach through interactive play.
+
+Features classic arcade games, creative tools, and GPU-accelerated visual demos with full joystick and keyboard support.
 
 ## Features
 
@@ -58,6 +62,17 @@ A comprehensive collection of terminal-based interactive games, creative tools, 
 - **Joystick Test** - Connection verification with real-time axis and button display
 - **Interactive Menu** - Organized navigation with sections for games, tools, demos, and utilities
 
+### GPU-Accelerated Rendering
+
+The project includes a full GPU rendering pipeline for high-performance visualization:
+
+- **Interactive Shader Controller** - Real-time parameter tweaking with joystick
+- **GIF Preview** - Quick animated previews for sharing
+- **Video Export** - YouTube Shorts, TikTok, Instagram formats
+- **Storyboard System** - Keyframe-based animation planning with contact sheets
+
+See the [GPU Visualizer CLI Guide](docs/guides/gpu-visualizer-guide.md) for usage examples.
+
 ## Installation
 
 ```bash
@@ -97,11 +112,16 @@ python -m atari_style.main
 - **Breakout**: Left/Right for paddle, Space to launch ball
 - **ASCII Painter**: Arrow keys/joystick to move cursor, Space to draw, 1-6 to select tools, H for help
 
+See [Joystick Controls](docs/joystick-controls.md) for detailed controller mappings and troubleshooting.
+
 ## Tech Stack
 
 - **Python 3.8+**
-- **pygame** - Joystick input handling
+- **pygame** - Joystick input handling and window management
 - **blessed** - Terminal rendering and control
+- **moderngl** - OpenGL 3.3+ GPU rendering
+- **Pillow** - Image processing and GIF export
+- **imageio** / **imageio-ffmpeg** - Video encoding
 
 ## Project Structure
 
@@ -111,27 +131,29 @@ atari_style/
 │   ├── renderer.py        # Terminal rendering engine (double-buffered)
 │   ├── input_handler.py   # Unified keyboard/joystick input
 │   ├── menu.py            # Interactive menu system
-│   └── gl/                # OpenGL rendering (future)
-├── shaders/               # GLSL shaders (future)
-│   ├── effects/           # Effect shaders
-│   └── post/              # Post-processing shaders
+│   └── gl/                # GPU rendering pipeline
+│       ├── gl_renderer.py       # OpenGL context management
+│       ├── shader_controller.py # Interactive shader control
+│       ├── video_export.py      # MP4/format export
+│       ├── gif_preview.py       # Animated GIF generation
+│       ├── storyboard.py        # Keyframe animation system
+│       └── composite_manager.py # Multi-effect composites
+├── shaders/               # GLSL shaders
+│   ├── effects/           # Effect shaders (plasma, mandelbrot, tunnel)
+│   └── post/              # Post-processing (CRT, scanlines)
 ├── demos/
 │   ├── games/             # Arcade games
-│   │   ├── pacman.py
-│   │   ├── galaga.py
-│   │   ├── grandprix.py
-│   │   └── breakout.py
 │   ├── visualizers/       # Visual demos
-│   │   ├── screensaver.py
-│   │   ├── starfield.py
-│   │   └── platonic_solids.py
 │   └── tools/             # Utilities
-│       ├── ascii_painter.py
-│       └── joystick_test.py
-├── docs/                  # Documentation
-│   ├── architecture.md
-│   └── shader-roadmap.md
+├── storyboards/           # Animation storyboard definitions
 └── main.py                # Entry point with menu
+
+docs/
+├── getting-started/       # New user onboarding
+├── guides/                # How-to guides (GPU visualizer, etc.)
+├── reference/             # Quick reference documentation
+├── architecture/          # System design docs
+└── archive/               # Historical development notes
 ```
 
 ## Development
@@ -156,22 +178,33 @@ python -c "from atari_style.demos.visualizers.platonic_solids import run_platoni
 
 ## Roadmap
 
-### Upcoming: GPU-Accelerated Visualizers
+### Vision 2025
 
-The screensaver animations (Lissajous, Mandelbrot, Plasma, etc.) are being ported to GLSL shaders for improved performance. This will enable:
+atari-style is evolving along four strategic pillars:
 
-- **60+ FPS at 1080p and above** - Currently limited by CPU per-pixel computation
-- **Real-time CRT post-processing effects** - Scanlines, barrel distortion, color bleeding
-- **More complex parameter exploration** - Richer visual effects without performance penalties
+1. **Foundation & Philosophy** - Defining what "atari-style" means as an aesthetic
+2. **Architecture & Extensibility** - Unix composability and plugin architecture
+3. **AI-Native Development** - Human-AI collaboration patterns for creative tools
+4. **Ecosystem & Community** - Integration with jcaldwell-labs projects and community contributions
 
-The implementation is planned in phases:
+See [Issue #75](https://github.com/jcaldwell-labs/atari-style/issues/75) for the full strategic roadmap.
 
-1. **Foundation** - OpenGL context and shader infrastructure
-2. **First Effect** - Mandelbrot ported to GPU with joystick control
-3. **Post-Processing** - CRT scanlines, color palette reduction
-4. **Effect Library** - Port remaining effects (Plasma, Tunnel, Fluid)
+### GPU-Accelerated Visualizers (Complete)
 
-See [docs/shader-roadmap.md](docs/shader-roadmap.md) for detailed implementation plan.
+All core GPU features are now implemented:
+
+- **Shader Effects** - Plasma, Mandelbrot, Tunnel running on GPU at 60+ FPS
+- **Video Export** - YouTube Shorts, TikTok, Instagram format presets
+- **Storyboard System** - Keyframe-based animation planning
+- **Composite Animations** - Multi-effect fusion (Plasma→Lissajous, Flux→Spiral)
+
+### In Progress
+
+- **Video Production Pipeline** - Educational video series (#28-31)
+- **Flux Control Game** - Interactive game built on flux patterns (#21-24)
+- **Documentation** - Comprehensive guides and tutorials (#76)
+
+See [docs/shader-roadmap.md](docs/shader-roadmap.md) for GPU implementation details.
 
 ## Features Overview
 
@@ -195,9 +228,22 @@ See [docs/shader-roadmap.md](docs/shader-roadmap.md) for detailed implementation
 - **Undo/redo system**: Stack-based command pattern for ASCII Painter
 - **File I/O**: Save/load for ASCII art in .txt and .ansi formats
 
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [GPU Visualizer CLI](docs/guides/gpu-visualizer-guide.md) | Interactive shaders, GIF/video export, storyboards |
+| [Joystick Controls](docs/joystick-controls.md) | Controller mappings and troubleshooting |
+| [Getting Started](docs/getting-started/) | Installation and basic usage |
+| [Architecture](docs/architecture.md) | System design overview |
+| [Shader Roadmap](docs/shader-roadmap.md) | GPU implementation details |
+| [All Documentation](docs/README.md) | Full documentation index |
+
 ## Related Projects
 
-This project expands on the concept of terminal-stars with a comprehensive menu system and multiple playable games and demos.
+This project is part of the [jcaldwell-labs](https://github.com/jcaldwell-labs) ecosystem:
+
+- **[boxes-live](https://github.com/jcaldwell-labs/boxes-live)** - Terminal canvas with joystick support (bidirectional integration via storyboard2canvas)
 
 ## License
 
