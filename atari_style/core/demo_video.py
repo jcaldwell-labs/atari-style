@@ -181,6 +181,10 @@ register_demo('joystick_test', create_joystick_test, 'Joystick verification inte
 class DemoVideoExporter:
     """Exports terminal demos to video using scripted input."""
 
+    # Default GIF settings for small file sizes
+    DEFAULT_GIF_FPS = 15
+    DEFAULT_GIF_MAX_WIDTH = 480
+
     def __init__(
         self,
         demo_name: str,
@@ -190,6 +194,9 @@ class DemoVideoExporter:
         height: int = 1080,
         char_columns: int = 100,
         char_rows: int = 40,
+        gif_mode: bool = False,
+        gif_fps: Optional[int] = None,
+        gif_scale: Optional[int] = None,
     ):
         """Initialize exporter.
 
@@ -201,6 +208,9 @@ class DemoVideoExporter:
             height: Output video height in pixels
             char_columns: Terminal columns
             char_rows: Terminal rows
+            gif_mode: If True, export as GIF instead of MP4
+            gif_fps: GIF frame rate (default: 15)
+            gif_scale: GIF max width in pixels (default: 480)
         """
         if demo_name not in DEMO_REGISTRY:
             available = ', '.join(DEMO_REGISTRY.keys())
@@ -209,6 +219,9 @@ class DemoVideoExporter:
         self.demo_name = demo_name
         self.script_path = script_path
         self.output_path = output_path
+        self.gif_mode = gif_mode
+        self.gif_fps = gif_fps or self.DEFAULT_GIF_FPS
+        self.gif_scale = gif_scale or self.DEFAULT_GIF_MAX_WIDTH
 
         # Load script
         self.script = InputScript.from_file(script_path)
@@ -256,8 +269,11 @@ class DemoVideoExporter:
                 if progress_callback:
                     progress_callback(frame_num + 1, total_frames)
 
-            # Encode video with ffmpeg
-            self._encode_video(temp_dir)
+            # Encode output with ffmpeg
+            if self.gif_mode:
+                self._encode_gif(temp_dir)
+            else:
+                self._encode_video(temp_dir)
 
         finally:
             # Cleanup temp directory
@@ -288,6 +304,50 @@ class DemoVideoExporter:
         if result.returncode != 0:
             raise RuntimeError(f"ffmpeg failed: {result.stderr}")
 
+    def _encode_gif(self, frames_dir: str):
+        """Encode frames to GIF using ffmpeg two-pass palette approach.
+
+        Uses palette generation for high-quality GIF output with small file sizes.
+        """
+        # Check for ffmpeg
+        if not shutil.which('ffmpeg'):
+            raise RuntimeError("ffmpeg not found. Please install ffmpeg.")
+
+        frame_pattern = os.path.join(frames_dir, 'frame_%05d.png')
+        palette_path = os.path.join(frames_dir, 'palette.png')
+
+        # Build filter string for scaling and fps
+        filters = f"fps={self.gif_fps},scale={self.gif_scale}:-1:flags=lanczos"
+
+        # Pass 1: Generate optimized palette
+        palette_cmd = [
+            'ffmpeg',
+            '-y',
+            '-framerate', str(self.script.fps),
+            '-i', frame_pattern,
+            '-vf', f"{filters},palettegen=stats_mode=diff",
+            palette_path
+        ]
+
+        result = subprocess.run(palette_cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"ffmpeg palette generation failed: {result.stderr}")
+
+        # Pass 2: Generate GIF using palette
+        gif_cmd = [
+            'ffmpeg',
+            '-y',
+            '-framerate', str(self.script.fps),
+            '-i', frame_pattern,
+            '-i', palette_path,
+            '-lavfi', f"{filters}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5",
+            self.output_path
+        ]
+
+        result = subprocess.run(gif_cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"ffmpeg GIF encoding failed: {result.stderr}")
+
     def preview_frame(self, time: float) -> 'Image.Image':
         """Render a single frame at the given time.
 
@@ -305,11 +365,13 @@ class DemoVideoExporter:
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
-        description='Export terminal demos to video',
+        description='Export terminal demos to video or GIF',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   %(prog)s joystick_test scripts/demos/joystick-demo.json -o joystick-demo.mp4
+  %(prog)s joystick_test scripts/demos/joystick-demo.json --gif -o demo.gif
+  %(prog)s joystick_test scripts/demos/joystick-demo.json --gif --gif-fps 20 --gif-scale 640
   %(prog)s joystick_test scripts/demos/joystick-demo.json --preview
   %(prog)s --list
 
@@ -327,6 +389,14 @@ Available demos:
     parser.add_argument('--preview', action='store_true', help='Show preview of middle frame')
     parser.add_argument('--list', action='store_true', help='List available demos')
 
+    # GIF export options
+    parser.add_argument('--gif', action='store_true',
+                        help='Export as GIF instead of MP4 (smaller, for docs/README)')
+    parser.add_argument('--gif-fps', type=int, default=15,
+                        help='GIF frame rate (default: 15)')
+    parser.add_argument('--gif-scale', type=int, default=480,
+                        help='GIF max width in pixels (default: 480)')
+
     args = parser.parse_args()
 
     if args.list:
@@ -342,7 +412,8 @@ Available demos:
     output_path = args.output
     if not output_path:
         script_stem = Path(args.script).stem
-        output_path = f"{args.demo}-{script_stem}.mp4"
+        ext = '.gif' if args.gif else '.mp4'
+        output_path = f"{args.demo}-{script_stem}{ext}"
 
     try:
         exporter = DemoVideoExporter(
@@ -353,6 +424,9 @@ Available demos:
             height=args.height,
             char_columns=args.columns,
             char_rows=args.rows,
+            gif_mode=args.gif,
+            gif_fps=args.gif_fps,
+            gif_scale=args.gif_scale,
         )
 
         if args.preview:
@@ -364,22 +438,25 @@ Available demos:
             print(f"Preview saved to: {preview_path}")
             return
 
-        # Export video with progress
+        # Export with progress
         def show_progress(current, total):
             pct = current * 100 // total
             bar = '█' * (pct // 5) + '░' * (20 - pct // 5)
             print(f"\rRendering: [{bar}] {pct}% ({current}/{total} frames)", end='', flush=True)
 
-        print(f"Exporting {args.demo} demo...")
+        output_type = "GIF" if args.gif else "video"
+        print(f"Exporting {args.demo} demo as {output_type}...")
         print(f"Script: {args.script}")
         print(f"Output: {output_path}")
         print(f"Duration: {exporter.script.duration}s @ {exporter.script.fps}fps")
+        if args.gif:
+            print(f"GIF settings: {args.gif_fps}fps, max {args.gif_scale}px width")
         print()
 
         exporter.export(progress_callback=show_progress)
 
         print()
-        print(f"✓ Video exported to: {output_path}")
+        print(f"✓ {output_type.capitalize()} exported to: {output_path}")
 
     except FileNotFoundError as e:
         print(f"Error: File not found: {e}", file=sys.stderr)
