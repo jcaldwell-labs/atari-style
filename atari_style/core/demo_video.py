@@ -20,7 +20,10 @@ import tempfile
 import subprocess
 import shutil
 from pathlib import Path
-from typing import Optional, Callable, Dict, Any
+from typing import Optional, Callable, Dict, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from PIL import Image
 
 from .scripted_input import ScriptedInputHandler, InputScript
 from .headless_renderer import HeadlessRenderer, HeadlessRendererFactory
