@@ -23,7 +23,7 @@ Each keyframe becomes a box with:
 import sys
 import json
 import argparse
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
 
@@ -44,15 +44,11 @@ class CanvasBox:
 class StoryboardConverter:
     """Convert storyboard JSON to boxes-live canvas format."""
 
-    # Canvas dimensions
-    WORLD_WIDTH = 2000
-    WORLD_HEIGHT = 800
-
-    # Box dimensions
+    # Box dimensions (constants)
     BOX_WIDTH = 28
     BOX_HEIGHT = 10
 
-    # Layout settings
+    # Layout settings (constants)
     START_X = 80
     START_Y = 150
     HORIZONTAL_SPACING = 280
@@ -65,7 +61,15 @@ class StoryboardConverter:
         'peak': 1,     # Red - intense
     }
 
-    def __init__(self):
+    def __init__(self, world_width: int = 2000, world_height: int = 800):
+        """Initialize converter with canvas dimensions.
+
+        Args:
+            world_width: Canvas world width (default: 2000)
+            world_height: Canvas world height (default: 800)
+        """
+        self.world_width = world_width
+        self.world_height = world_height
         self.boxes: List[CanvasBox] = []
 
     def load_storyboard(self, path: str) -> Dict[str, Any]:
@@ -182,7 +186,7 @@ class StoryboardConverter:
 
         # Header
         lines.append("BOXES_CANVAS_V1")
-        lines.append(f"{self.WORLD_WIDTH} {self.WORLD_HEIGHT}")
+        lines.append(f"{self.world_width} {self.world_height}")
         lines.append(str(len(self.boxes)))
 
         # Boxes
@@ -249,10 +253,10 @@ Examples:
     args = parser.parse_args()
 
     try:
-        converter = StoryboardConverter()
-        converter.WORLD_WIDTH = args.width
-        converter.WORLD_HEIGHT = args.height
-
+        converter = StoryboardConverter(
+            world_width=args.width,
+            world_height=args.height
+        )
         storyboard = converter.load_storyboard(args.storyboard)
         converter.convert(storyboard)
         canvas = converter.to_canvas_format()
