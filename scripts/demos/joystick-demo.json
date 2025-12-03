@@ -1,0 +1,148 @@
+{
+  "name": "Joystick Test Demo - Hyperkin Trooper V2",
+  "description": "Demonstrates joystick test interface with Hyperkin Trooper V2 digital movements and button chords",
+  "duration": 18.0,
+  "fps": 30,
+  "interpolation": "step",
+  "controller": {
+    "model": "Hyperkin Trooper V2 Premium Controller",
+    "type": "digital",
+    "buttons": 6,
+    "note": "Digital joystick with 8-direction D-pad, 6 buttons"
+  },
+  "keyframes": [
+    {
+      "time": 0.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [],
+      "note": "Start at center"
+    },
+    {
+      "time": 1.0,
+      "x": 1.0,
+      "y": 0.0,
+      "buttons": [],
+      "note": "Right"
+    },
+    {
+      "time": 2.0,
+      "x": 1.0,
+      "y": -1.0,
+      "buttons": [],
+      "note": "Up-Right diagonal"
+    },
+    {
+      "time": 3.0,
+      "x": 0.0,
+      "y": -1.0,
+      "buttons": [],
+      "note": "Up"
+    },
+    {
+      "time": 4.0,
+      "x": -1.0,
+      "y": -1.0,
+      "buttons": [],
+      "note": "Up-Left diagonal"
+    },
+    {
+      "time": 5.0,
+      "x": -1.0,
+      "y": 0.0,
+      "buttons": [],
+      "note": "Left"
+    },
+    {
+      "time": 6.0,
+      "x": -1.0,
+      "y": 1.0,
+      "buttons": [],
+      "note": "Down-Left diagonal"
+    },
+    {
+      "time": 7.0,
+      "x": 0.0,
+      "y": 1.0,
+      "buttons": [],
+      "note": "Down"
+    },
+    {
+      "time": 8.0,
+      "x": 1.0,
+      "y": 1.0,
+      "buttons": [],
+      "note": "Down-Right diagonal"
+    },
+    {
+      "time": 9.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [],
+      "note": "Return to center"
+    },
+    {
+      "time": 10.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [0],
+      "note": "Button 0 (fire)"
+    },
+    {
+      "time": 11.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [1],
+      "note": "Button 1"
+    },
+    {
+      "time": 12.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [0, 1],
+      "note": "Button chord: 0+1"
+    },
+    {
+      "time": 13.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [2, 3],
+      "note": "Button chord: 2+3"
+    },
+    {
+      "time": 14.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [4, 5],
+      "note": "Button chord: 4+5"
+    },
+    {
+      "time": 15.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [0, 1, 2],
+      "note": "Button chord: 0+1+2"
+    },
+    {
+      "time": 16.0,
+      "x": 1.0,
+      "y": -1.0,
+      "buttons": [0, 1],
+      "note": "Up-Right with button chord"
+    },
+    {
+      "time": 17.0,
+      "x": -1.0,
+      "y": 1.0,
+      "buttons": [0, 2, 4],
+      "note": "Down-Left with 3-button chord"
+    },
+    {
+      "time": 18.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [],
+      "note": "End at center, all released"
+    }
+  ]
+}
