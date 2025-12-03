@@ -1,0 +1,65 @@
+BOXES_CANVAS_V1
+120.0 100.0
+12
+1 25.0 3.0 45 6 0 6
+atari-style Vision 2025
+2
+Terminal parametric viz
+Human-AI + Unix philosophy
+2 3.0 15.0 22 8 0 1
+P1: Foundation
+3
+#64 Principles
+#71 Aesthetic
+#73 Quality
+3 28.0 15.0 22 8 0 2
+P2: Architecture
+3
+#65 Unix
+#69 Plugins
+#88 Unified
+4 53.0 15.0 22 8 0 3
+P3: AI-Native
+2
+#66 Collab
+#67 Params
+5 78.0 15.0 22 8 0 5
+P4: Ecosystem
+2
+#68 Labs
+#74 Community
+6 3.0 30.0 50 5 0 4
+Active: Video Export
+1
+#78 MERGED - incremental build
+7 56.0 30.0 44 8 0 7
+Q1 2025
+3
+[x] #78 Export
+[ ] PHILOSOPHY.md
+Path: 80->83->84
+8 3.0 42.0 22 7 0 2
+Quick Wins
+3
+#80 GIF
+#83 Thumb
+#84 Preset
+9 28.0 42.0 22 7 0 3
+Capability
+2
+#81 Scripts
+#82 Recorder
+10 53.0 42.0 22 7 0 5
+Quality
+2
+#85 Regress
+#86 Overlay
+11 78.0 42.0 22 7 0 6
+Arch
+2
+#87 Showcase
+#88 Unified
+12 3.0 56.0 70 6 0 0
+Decision Framework
+1
+1.Philosophy 2.Aesthetic 3.Composable 4.AI 5.Quality
