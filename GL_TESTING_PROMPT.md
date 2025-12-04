@@ -33,8 +33,8 @@ python -c "
 from atari_style.core.gl.video_export import VideoExporter
 
 print('=== Test 1: Basic GL Export ===')
-exporter = VideoExporter('plasma', duration=3.0)
-exporter.export('test_plasma_3s.mp4')
+exporter = VideoExporter()
+exporter.export_composite('plasma', 'test_plasma_3s.mp4', duration=3.0)
 print('✓ Export completed')
 "
 
@@ -56,10 +56,10 @@ python -c "
 from atari_style.core.gl.video_export import VideoExporter
 
 print('=== Test 2: YouTube Shorts Preset ===')
-exporter = VideoExporter.from_preset('youtube_shorts', 'lissajous', duration=5.0)
+exporter = VideoExporter.from_preset('youtube_shorts')
 print(f'Resolution: {exporter.width}x{exporter.height}')
 print(f'FPS: {exporter.fps}')
-exporter.export('test_shorts_5s.mp4')
+exporter.export_composite('lissajous', 'test_shorts_5s.mp4', duration=5.0)
 print('✓ Export completed')
 "
 
@@ -79,8 +79,8 @@ python -c "
 from atari_style.core.gl.video_export import VideoExporter
 
 print('=== Test 3: GIF Export ===')
-exporter = VideoExporter('mandelbrot_zoom', duration=2.0, fps=15)
-exporter.export('test_mandelbrot_2s.gif')
+exporter = VideoExporter(fps=15)
+exporter.export_composite('mandelbrot_zoom', 'test_mandelbrot_2s.gif', duration=2.0)
 print('✓ Export completed')
 "
 
@@ -102,18 +102,18 @@ from atari_style.core.gl.video_export import VideoExporter
 print('=== Test 4: Multiple Format Presets ===')
 
 # TikTok vertical
-exporter = VideoExporter.from_preset('tiktok', 'plasma_lissajous', duration=2.0)
-exporter.export('test_tiktok.mp4')
+exporter = VideoExporter.from_preset('tiktok')
+exporter.export_composite('plasma_lissajous', 'test_tiktok.mp4', duration=2.0)
 print('✓ TikTok export complete')
 
 # Instagram square
-exporter = VideoExporter.from_preset('instagram_square', 'flux_spiral', duration=2.0)
-exporter.export('test_instagram.mp4')
+exporter = VideoExporter.from_preset('instagram_square')
+exporter.export_composite('flux_spiral', 'test_instagram.mp4', duration=2.0)
 print('✓ Instagram export complete')
 
 # Twitter landscape
-exporter = VideoExporter.from_preset('twitter', 'spiral', duration=2.0)
-exporter.export('test_twitter.mp4')
+exporter = VideoExporter.from_preset('twitter')
+exporter.export_composite('spiral', 'test_twitter.mp4', duration=2.0)
 print('✓ Twitter export complete')
 "
 
@@ -137,8 +137,8 @@ fmt = VIDEO_FORMATS['youtube_4k']
 print(f'YouTube 4K: {fmt.width}x{fmt.height} @ {fmt.fps}fps')
 
 # Should still work with VideoExporter
-exporter = VideoExporter('plasma', duration=1.0, width=fmt.width, height=fmt.height, fps=fmt.fps)
-exporter.export('test_4k_1s.mp4')
+exporter = VideoExporter(width=fmt.width, height=fmt.height, fps=fmt.fps)
+exporter.export_composite('plasma', 'test_4k_1s.mp4', duration=1.0)
 print('✓ Backward compatibility verified')
 "
 
@@ -160,10 +160,10 @@ print('=== Test 6: Composite Animations ===')
 # Test each composite
 composites = ['plasma_lissajous', 'lissajous_plasma', 'flux_spiral']
 
+exporter = VideoExporter()
 for comp in composites:
-    exporter = VideoExporter(comp, duration=1.0)
     output = f'test_{comp}.mp4'
-    exporter.export(output)
+    exporter.export_composite(comp, output, duration=1.0)
     print(f'✓ {comp} export complete')
 "
 
@@ -180,8 +180,8 @@ python -c "
 from atari_style.core.gl.video_export import VideoExporter
 
 print('=== Test 7: Progress Reporting ===')
-exporter = VideoExporter('plasma', duration=5.0, fps=30)
-exporter.export('test_progress_5s.mp4')
+exporter = VideoExporter(fps=30)
+exporter.export_composite('plasma', 'test_progress_5s.mp4', duration=5.0)
 " | tee progress_output.txt
 
 # Check progress format

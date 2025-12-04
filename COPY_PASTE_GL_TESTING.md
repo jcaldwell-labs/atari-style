@@ -35,20 +35,20 @@ from atari_style.core.gl.video_export import VideoExporter
 
 # Test basic export
 print('Testing basic GL export...')
-exporter = VideoExporter('plasma', duration=2.0)
-exporter.export('quick_test.mp4')
+exporter = VideoExporter()
+exporter.export_composite('plasma', 'quick_test.mp4', duration=2.0)
 print('✓ Success!')
 
 # Test preset
 print('Testing YouTube Shorts preset...')
-exporter = VideoExporter.from_preset('youtube_shorts', 'lissajous', duration=2.0)
-exporter.export('quick_shorts.mp4')
+exporter = VideoExporter.from_preset('youtube_shorts')
+exporter.export_composite('lissajous', 'quick_shorts.mp4', duration=2.0)
 print('✓ Success!')
 
 # Test GIF
 print('Testing GIF export...')
-exporter = VideoExporter('spiral', duration=1.0, fps=15)
-exporter.export('quick_test.gif')
+exporter = VideoExporter(fps=15)
+exporter.export_composite('spiral', 'quick_test.gif', duration=1.0)
 print('✓ Success!')
 "
 
