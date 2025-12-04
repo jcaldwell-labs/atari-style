@@ -6,8 +6,8 @@ authentic retro aesthetics - the original VHS-capture style from:
 https://www.youtube.com/watch?v=ROBHjKZg5IY
 
 Usage:
-    python -m atari_style.demos.lissajous_terminal_gif --sweep circle_to_trefoil -o lissajous.gif
-    python -m atari_style.demos.lissajous_terminal_gif --explore -o explore.gif
+    python -m atari_style.demos.visualizers.educational.lissajous_terminal_gif --sweep circle trefoil -o lissajous.gif
+    python -m atari_style.demos.visualizers.educational.lissajous_terminal_gif --explore -o explore.gif
 """
 
 import os
@@ -16,7 +16,7 @@ import subprocess
 import tempfile
 import shutil
 import platform
-from typing import Tuple, List, Generator
+from typing import Generator
 from dataclasses import dataclass
 from PIL import Image, ImageDraw, ImageFont
 
@@ -92,7 +92,7 @@ def find_monospace_font(size: int):
     for p in paths:
         try:
             return ImageFont.truetype(p, size)
-        except:
+        except Exception:
             pass
     return ImageFont.load_default()
 
@@ -190,7 +190,7 @@ def draw_lissajous(canvas: TerminalCanvas, t: float, a: float, b: float, delta: 
 
     for trail in range(trail_length - 1, -1, -1):
         trail_t = t - trail * 0.02  # Each trail step is slightly in the past
-        alpha = 1.0 - (trail / trail_length)  # Fade factor
+        _alpha = 1.0 - (trail / trail_length)  # Fade factor (kept for future use)  # noqa: F841
 
         for i in range(points):
             angle = (i / points) * 2 * math.pi
@@ -305,7 +305,7 @@ def generate_exploration_frames(canvas: TerminalCanvas, duration: float, fps: in
     # Time to spend transitioning between waypoints
     frames_per_segment = total_frames // (len(waypoints) - 1)
 
-    current_waypoint = 0
+    # Note: segment index is calculated from frame number, so no need to track waypoint index
 
     for frame in range(total_frames):
         t = frame / fps

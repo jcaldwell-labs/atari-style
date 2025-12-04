@@ -11,9 +11,8 @@ settle slowly - creating a "navigation through chaos" effect.
 
 import math
 import time
-import pygame
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
+from typing import List
 
 from ....core.renderer import Renderer, Color
 from ....core.input_handler import InputHandler, InputType

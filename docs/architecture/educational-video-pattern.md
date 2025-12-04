@@ -47,7 +47,7 @@ def encode_video(frames_dir: str, output_path: str, fps: int):
         '-crf', '18',
         output_path
     ]
-    subprocess.run(cmd)
+    subprocess.run(cmd, check=True)
 ```
 
 ### 3. Educational Slides (Ghost Typing)
@@ -82,7 +82,7 @@ python -m atari_style.demos.visualizers.educational.unit_circle_educational
 
 # GIF with options
 python -m atari_style.demos.visualizers.educational.lissajous_terminal_gif \
-    --sweep circle_to_trefoil -o lissajous.gif
+    --sweep circle trefoil -o lissajous.gif
 
 # Interactive mode
 python -m atari_style.demos.visualizers.educational.lissajous_explorer

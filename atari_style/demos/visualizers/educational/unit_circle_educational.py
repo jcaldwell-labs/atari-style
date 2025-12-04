@@ -10,12 +10,12 @@ Features ghost typing intro/outro for meta presentation.
 """
 
 import os
-import time
 import math
+import shutil
 import subprocess
+import tempfile
 from PIL import Image, ImageDraw, ImageFont
 from typing import List, Tuple
-from ....core.renderer import Color
 
 
 COLOR_RGB = {
@@ -83,7 +83,7 @@ class EducationalRenderer:
             self.font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 24)
             self.font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 18)
             self.font_code = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 20)
-        except:
+        except Exception:
             self.font_large = ImageFont.load_default()
             self.font_medium = self.font_large
             self.font_small = self.font_large
@@ -226,7 +226,7 @@ def render_ghost_typing_segment(renderer: EducationalRenderer, commands: List[st
     char_accumulator = 0.0
 
     for frame in range(total_frames):
-        t = frame / fps
+        _t = frame / fps  # noqa: F841 - kept for potential future timing use
         img, draw = renderer.new_frame()
 
         # Update typing progress
@@ -460,13 +460,15 @@ def _save_segment_frames(frames: List[Image.Image], frames_dir: str, start_index
 def render_unit_circle_educational(duration: int = 120, output_path: str = None):
     """Render complete educational video."""
     if output_path is None:
-        output_path = "/home/be-dev-agent/projects/jcaldwell-labs/media/output/unit-circle-educational.mp4"
+        output_path = os.environ.get(
+            "UNIT_CIRCLE_OUTPUT",
+            "./output/unit-circle-educational.mp4"
+        )
+        # Ensure output directory exists
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
-    frames_dir = "/tmp/edu_frames"
-    os.makedirs(frames_dir, exist_ok=True)
-    for f in os.listdir(frames_dir):
-        if f.endswith('.png'):
-            os.remove(os.path.join(frames_dir, f))
+    frames_dir = tempfile.mkdtemp(prefix="edu_frames_")
+    # No need to clean - fresh temp directory
 
     renderer = EducationalRenderer()
     fps = 30
@@ -480,7 +482,7 @@ def render_unit_circle_educational(duration: int = 120, output_path: str = None)
     intro_commands = [
         "$ cd atari-style",
         "$ source venv/bin/activate",
-        "$ python -m atari_style.demos.unit_circle",
+        "$ python -m atari_style.demos.visualizers.educational.unit_circle_educational",
         "# Starting unit circle visualization...",
     ]
     frames = render_ghost_typing_segment(renderer, intro_commands, 8, fps)
@@ -546,13 +548,13 @@ def render_unit_circle_educational(duration: int = 120, output_path: str = None)
         print(f"\nSuccess! {output_path}")
         print(f"Duration: {duration_actual:.1f}s | Size: {size / 1024 / 1024:.1f} MB")
 
-        # Cleanup
-        for f in os.listdir(frames_dir):
-            if f.endswith('.png'):
-                os.remove(os.path.join(frames_dir, f))
+        # Cleanup temp directory
+        shutil.rmtree(frames_dir, ignore_errors=True)
         return True
     else:
         print(f"Error: {result.stderr}")
+        # Cleanup on error too
+        shutil.rmtree(frames_dir, ignore_errors=True)
         return False
 
 
