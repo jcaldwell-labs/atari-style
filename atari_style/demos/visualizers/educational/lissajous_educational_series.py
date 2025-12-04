@@ -15,13 +15,13 @@ Usage:
 
 import math
 from dataclasses import dataclass
-from typing import Generator, List, Tuple
+from typing import Generator, List
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 from .lissajous_terminal_gif import (
     TerminalCanvas, draw_lissajous, render_gif,
-    ease_in_out_cubic, lerp, PATTERNS, THEMES, COLOR_RGB
+    ease_in_out_cubic, lerp, THEMES
 )
 
 

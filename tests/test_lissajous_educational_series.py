@@ -1,7 +1,7 @@
 """Tests for Lissajous Educational Series (Issue #29)."""
 
 import math
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from atari_style.demos.visualizers.educational.lissajous_educational_series import (
     FREQUENCY_RATIOS, PHASE_STEPS, APPLICATIONS, GAME_ENEMIES,
