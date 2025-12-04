@@ -277,9 +277,9 @@ class ShowcaseGenerator:
         fps_str = stream['r_frame_rate']
         if '/' in fps_str:
             num, den = fps_str.split('/')
-            fps = int(num) // int(den)
+            fps = round(int(num) / int(den))
         else:
-            fps = int(float(fps_str))
+            fps = round(float(fps_str))
 
         return width, height, fps
 
@@ -340,7 +340,8 @@ class ShowcaseGenerator:
         # Create temporary directory for intermediate files
         with tempfile.TemporaryDirectory() as temp_dir:
             segments = []
-            total_steps = len(self.manifest.entries) * 2  # normalize + optional title
+            # Count actual steps: one per entry (normalize) + one per entry with title
+            total_steps = len(self.manifest.entries) + sum(1 for e in self.manifest.entries if e.title)
             step = 0
 
             for i, entry in enumerate(self.manifest.entries):
