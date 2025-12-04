@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 from .scripted_input import ScriptedInputHandler, InputScript
 from .headless_renderer import HeadlessRenderer, HeadlessRendererFactory
+from .overlay import OverlayManager
 
 
 # Registry of demos that support video export
@@ -643,6 +644,7 @@ class DemoVideoExporter:
         gif_mode: bool = False,
         gif_fps: Optional[int] = None,
         gif_scale: Optional[int] = None,
+        overlay_manager: Optional[OverlayManager] = None,
     ):
         """Initialize exporter.
 
@@ -657,6 +659,7 @@ class DemoVideoExporter:
             gif_mode: If True, export as GIF instead of MP4
             gif_fps: GIF frame rate (default: 15)
             gif_scale: GIF max width in pixels (default: 480)
+            overlay_manager: Optional OverlayManager for frame/timestamp overlays
         """
         if demo_name not in DEMO_REGISTRY:
             available = ', '.join(DEMO_REGISTRY.keys())
@@ -684,6 +687,9 @@ class DemoVideoExporter:
         factory = DEMO_REGISTRY[demo_name]['factory']
         self.demo = factory(self.renderer, self.input_handler)
 
+        # Overlay manager (optional)
+        self.overlay_manager = overlay_manager
+
     def export(self, progress_callback: Optional[Callable[[int, int], None]] = None):
         """Export demo to video.
 
@@ -707,6 +713,16 @@ class DemoVideoExporter:
 
                 # Render frame
                 self.demo.draw()
+
+                # Render overlays (after demo, so they appear on top)
+                if self.overlay_manager:
+                    self.overlay_manager.render(
+                        self.renderer,
+                        frame=frame_num + 1,  # 1-indexed for display
+                        total_frames=total_frames,
+                        fps=self.script.fps,
+                        demo_name=self.demo_name,
+                    )
 
                 # Save frame
                 frame_path = os.path.join(temp_dir, f'frame_{frame_num:05d}.png')
@@ -819,7 +835,12 @@ Examples:
   %(prog)s joystick_test scripts/demos/joystick-demo.json --gif -o demo.gif
   %(prog)s joystick_test scripts/demos/joystick-demo.json --gif --gif-fps 20 --gif-scale 640
   %(prog)s joystick_test scripts/demos/joystick-demo.json --preview
+  %(prog)s joystick_test scripts/demos/joystick-demo.json --overlay frame,timestamp
+  %(prog)s joystick_test scripts/demos/joystick-demo.json --overlay frame --overlay-position top-left
   %(prog)s --list
+
+Overlay types: frame, timestamp, fps, demo
+Positions: top-left, top-right, bottom-left, bottom-right
 
 Available demos:
 """ + '\n'.join(f"  {name}: {info['description']}" for name, info in DEMO_REGISTRY.items())
@@ -843,6 +864,12 @@ Available demos:
     parser.add_argument('--gif-scale', type=int, default=480,
                         help='GIF max width in pixels (default: 480)')
 
+    # Overlay options
+    parser.add_argument('--overlay', type=str, default=None,
+                        help='Comma-separated overlay types: frame, timestamp, fps, demo')
+    parser.add_argument('--overlay-position', type=str, default=None,
+                        help='Overlay position: top-left, top-right, bottom-left, bottom-right')
+
     args = parser.parse_args()
 
     if args.list:
@@ -862,6 +889,12 @@ Available demos:
         output_path = f"{args.demo}-{script_stem}{ext}"
 
     try:
+        # Create overlay manager if overlays requested
+        overlay_manager = None
+        if args.overlay:
+            overlay_manager = OverlayManager()
+            overlay_manager.add_from_string(args.overlay, args.overlay_position)
+
         exporter = DemoVideoExporter(
             demo_name=args.demo,
             script_path=args.script,
@@ -873,6 +906,7 @@ Available demos:
             gif_mode=args.gif,
             gif_fps=args.gif_fps,
             gif_scale=args.gif_scale,
+            overlay_manager=overlay_manager,
         )
 
         if args.preview:
@@ -897,6 +931,8 @@ Available demos:
         print(f"Duration: {exporter.script.duration}s @ {exporter.script.fps}fps")
         if args.gif:
             print(f"GIF settings: {args.gif_fps}fps, max {args.gif_scale}px width")
+        if overlay_manager:
+            print(f"Overlays: {args.overlay}")
         print()
 
         exporter.export(progress_callback=show_progress)
