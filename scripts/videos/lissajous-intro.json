@@ -1,0 +1,76 @@
+{
+  "name": "lissajous-intro",
+  "version": "1.0",
+  "description": "Introduction to Lissajous curves - from circle to complex patterns",
+  "author": "atari-style",
+  "format": "youtube_landscape",
+  "segments": [
+    {
+      "type": "title",
+      "duration": 3.0,
+      "text": "Lissajous Curves",
+      "subtitle": "Mathematical Beauty in Motion"
+    },
+    {
+      "type": "visualization",
+      "visualizer": "lissajous",
+      "duration": 5.0,
+      "params": {"a": 1, "b": 1, "delta": 1.5708},
+      "color_mode": 0
+    },
+    {
+      "type": "title",
+      "duration": 2.0,
+      "text": "The Circle",
+      "subtitle": "a=1, b=1, δ=π/2"
+    },
+    {
+      "type": "sweep",
+      "visualizer": "lissajous",
+      "duration": 8.0,
+      "from": {"a": 1, "b": 1, "delta": 1.5708},
+      "to": {"a": 1, "b": 2, "delta": 0},
+      "easing": "smooth"
+    },
+    {
+      "type": "title",
+      "duration": 2.0,
+      "text": "Figure Eight",
+      "subtitle": "a=1, b=2, δ=0"
+    },
+    {
+      "type": "visualization",
+      "visualizer": "lissajous",
+      "duration": 5.0,
+      "params": {"a": 1, "b": 2, "delta": 0},
+      "color_mode": 0
+    },
+    {
+      "type": "sweep",
+      "visualizer": "lissajous",
+      "duration": 10.0,
+      "from": {"a": 1, "b": 2, "delta": 0},
+      "to": {"a": 3, "b": 4, "delta": 0.5236},
+      "easing": "smooth"
+    },
+    {
+      "type": "title",
+      "duration": 2.0,
+      "text": "Complex Patterns",
+      "subtitle": "a=3, b=4, δ=π/6"
+    },
+    {
+      "type": "visualization",
+      "visualizer": "lissajous",
+      "duration": 5.0,
+      "params": {"a": 3, "b": 4, "delta": 0.5236},
+      "color_mode": 0
+    },
+    {
+      "type": "title",
+      "duration": 3.0,
+      "text": "Explore More",
+      "subtitle": "github.com/jcaldwell-labs/atari-style"
+    }
+  ]
+}
