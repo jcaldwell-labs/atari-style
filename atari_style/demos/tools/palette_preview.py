@@ -29,7 +29,7 @@ class PalettePreview:
         self.renderer.draw_text(x, y, '████', color)
         self.renderer.draw_text(x, y + 1, '████', color)
         # Label
-        self.renderer.draw_text(x, y + 2, label[:4].center(4), 'white')
+        self.renderer.draw_text(x, y + 2, label[:4].center(4), Color.WHITE)
 
     def draw_all_colors(self, start_y: int):
         """Draw all 16 ANSI colors."""
@@ -44,11 +44,11 @@ class PalettePreview:
         ]
 
         x = 2
-        self.renderer.draw_text(x, start_y, 'Standard Colors:', 'bright_white')
+        self.renderer.draw_text(x, start_y, 'Standard Colors:', Color.BRIGHT_WHITE)
         for i, (color, label) in enumerate(colors):
             self.draw_color_block(x + i * 6, start_y + 1, color, label)
 
-        self.renderer.draw_text(x, start_y + 5, 'Bright Colors:', 'bright_white')
+        self.renderer.draw_text(x, start_y + 5, 'Bright Colors:', Color.BRIGHT_WHITE)
         for i, (color, label) in enumerate(bright_colors):
             self.draw_color_block(x + i * 6, start_y + 6, color, label)
 
@@ -56,7 +56,7 @@ class PalettePreview:
         """Draw a named palette."""
         # Palette name
         prefix = '>' if selected else ' '
-        color = 'bright_cyan' if selected else 'white'
+        color = Color.BRIGHT_CYAN if selected else Color.WHITE
         self.renderer.draw_text(x, y, f"{prefix} {name.upper()}", color)
 
         # Color swatches
@@ -77,14 +77,14 @@ class PalettePreview:
 
         # Title
         title = "PALETTE PREVIEW"
-        self.renderer.draw_text((width - len(title)) // 2, 1, title, 'bright_cyan')
-        self.renderer.draw_text((width - 40) // 2, 2, "See AESTHETIC.md for usage guidelines", 'cyan')
+        self.renderer.draw_text((width - len(title)) // 2, 1, title, Color.BRIGHT_CYAN)
+        self.renderer.draw_text((width - 40) // 2, 2, "See AESTHETIC.md for usage guidelines", Color.CYAN)
 
         # Draw all 16 colors
         self.draw_all_colors(4)
 
         # Draw named palettes
-        self.renderer.draw_text(2, 15, 'Named Palettes (UP/DOWN to select):', 'bright_white')
+        self.renderer.draw_text(2, 15, 'Named Palettes (UP/DOWN to select):', Color.BRIGHT_WHITE)
 
         y = 17
         for i, name in enumerate(self.palette_names):
@@ -95,18 +95,18 @@ class PalettePreview:
 
         # Block character reference
         ref_y = height - 6
-        self.renderer.draw_text(2, ref_y, 'Block Characters:', 'bright_white')
+        self.renderer.draw_text(2, ref_y, 'Block Characters:', Color.BRIGHT_WHITE)
         blocks = "█ ▀ ▄ ▌ ▐ ░ ▒ ▓"
-        self.renderer.draw_text(2, ref_y + 1, blocks, 'bright_green')
+        self.renderer.draw_text(2, ref_y + 1, blocks, Color.BRIGHT_GREEN)
 
         # Box drawing reference
-        self.renderer.draw_text(30, ref_y, 'Box Drawing:', 'bright_white')
-        self.renderer.draw_text(30, ref_y + 1, '┌─┬─┐', 'bright_cyan')
-        self.renderer.draw_text(30, ref_y + 2, '├─┼─┤', 'bright_cyan')
-        self.renderer.draw_text(30, ref_y + 3, '└─┴─┘', 'bright_cyan')
+        self.renderer.draw_text(30, ref_y, 'Box Drawing:', Color.BRIGHT_WHITE)
+        self.renderer.draw_text(30, ref_y + 1, '┌─┬─┐', Color.BRIGHT_CYAN)
+        self.renderer.draw_text(30, ref_y + 2, '├─┼─┤', Color.BRIGHT_CYAN)
+        self.renderer.draw_text(30, ref_y + 3, '└─┴─┘', Color.BRIGHT_CYAN)
 
         # Controls
-        self.renderer.draw_text(2, height - 2, "UP/DOWN: Select palette  Q/ESC: Exit", 'yellow')
+        self.renderer.draw_text(2, height - 2, "UP/DOWN: Select palette  Q/ESC: Exit", Color.YELLOW)
 
         self.renderer.render()
 
