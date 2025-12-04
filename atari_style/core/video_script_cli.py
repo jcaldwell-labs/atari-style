@@ -202,8 +202,10 @@ def cmd_render(args: argparse.Namespace) -> int:
             print("(Dry run - no video will be rendered)")
             return 0
 
-        # Render logic placeholder
-        # TODO: Implement actual rendering using VideoExporter and segment renderers
+        # Segment rendering is planned for Issue #30 Phase 2
+        # The schema and CLI validation are complete (Phase 1)
+        # Rendering requires implementing segment-specific renderers
+        # that connect to the existing VideoExporter infrastructure
         print("⚠️  Video rendering is not yet implemented.")
         print()
         print("The video script CLI currently supports:")
@@ -211,7 +213,7 @@ def cmd_render(args: argparse.Namespace) -> int:
         print("  - info: Display script information")
         print("  - list-formats: Show available format presets")
         print()
-        print("Rendering will be implemented in a future update.")
+        print("Rendering will be implemented in Issue #30 Phase 2.")
         print("For now, you can use the demo_video.py module for rendering demos.")
 
         return 0
