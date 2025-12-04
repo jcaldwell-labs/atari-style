@@ -167,7 +167,12 @@ class Renderer:
 
 
 class Color:
-    """Color constants for easy access."""
+    """Color constants for easy access.
+
+    See AESTHETIC.md for the atari-style color philosophy.
+    """
+    # Standard colors
+    BLACK = 'black'
     RED = 'red'
     GREEN = 'green'
     BLUE = 'blue'
@@ -175,6 +180,9 @@ class Color:
     MAGENTA = 'magenta'
     CYAN = 'cyan'
     WHITE = 'white'
+
+    # Bright colors
+    BRIGHT_BLACK = 'bright_black'  # gray
     BRIGHT_RED = 'bright_red'
     BRIGHT_GREEN = 'bright_green'
     BRIGHT_BLUE = 'bright_blue'
@@ -182,3 +190,71 @@ class Color:
     BRIGHT_MAGENTA = 'bright_magenta'
     BRIGHT_CYAN = 'bright_cyan'
     BRIGHT_WHITE = 'bright_white'
+
+    # Aliases
+    GRAY = 'bright_black'
+
+
+class Palette:
+    """Named color palettes for atari-style visuals.
+
+    Each palette is a list of color names designed to work together.
+    See AESTHETIC.md for palette usage guidelines.
+    """
+
+    # Classic Atari - the original 8-bit feeling
+    CLASSIC = [
+        Color.BRIGHT_CYAN, Color.BRIGHT_GREEN, Color.BRIGHT_YELLOW,
+        Color.BRIGHT_RED, Color.BRIGHT_MAGENTA, Color.WHITE
+    ]
+
+    # Plasma - smooth rainbow for mathematical visualizations
+    PLASMA = [
+        Color.BLUE, Color.CYAN, Color.GREEN, Color.YELLOW,
+        Color.RED, Color.MAGENTA
+    ]
+
+    # Midnight - dark, atmospheric, mysterious
+    MIDNIGHT = [
+        Color.BLUE, Color.MAGENTA, Color.BRIGHT_MAGENTA,
+        Color.CYAN, Color.BRIGHT_CYAN, Color.WHITE
+    ]
+
+    # Forest - organic, natural, growing
+    FOREST = [
+        Color.GREEN, Color.BRIGHT_GREEN, Color.YELLOW,
+        Color.CYAN, Color.BRIGHT_WHITE
+    ]
+
+    # Fire - intense, dynamic, dangerous
+    FIRE = [
+        Color.RED, Color.BRIGHT_RED, Color.YELLOW,
+        Color.BRIGHT_YELLOW, Color.WHITE
+    ]
+
+    # Ocean - deep, calm, flowing
+    OCEAN = [
+        Color.BLUE, Color.CYAN, Color.BRIGHT_CYAN,
+        Color.GREEN, Color.BRIGHT_BLUE, Color.WHITE
+    ]
+
+    # Monochrome - classic green-screen terminal
+    MONOCHROME = [
+        Color.GREEN, Color.BRIGHT_GREEN, Color.BRIGHT_WHITE
+    ]
+
+    # All available palettes for iteration
+    ALL = {
+        'classic': CLASSIC,
+        'plasma': PLASMA,
+        'midnight': MIDNIGHT,
+        'forest': FOREST,
+        'fire': FIRE,
+        'ocean': OCEAN,
+        'monochrome': MONOCHROME,
+    }
+
+    @classmethod
+    def get(cls, name: str) -> list:
+        """Get a palette by name."""
+        return cls.ALL.get(name.lower(), cls.CLASSIC)
