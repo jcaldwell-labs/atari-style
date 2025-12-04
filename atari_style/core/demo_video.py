@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 from .scripted_input import ScriptedInputHandler, InputScript
 from .headless_renderer import HeadlessRenderer, HeadlessRendererFactory
-from .overlay import OverlayManager, OverlayPosition
+from .overlay import OverlayManager
 
 
 # Registry of demos that support video export

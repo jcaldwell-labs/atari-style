@@ -60,7 +60,14 @@ class Overlay:
         self.color = 'yellow'  # Default overlay color
         self.padding = 1  # Padding from edge
 
-    def format(self, **kwargs) -> str:
+    def format(
+        self,
+        frame: int = 0,
+        total_frames: int = 0,
+        fps: int = 30,
+        demo_name: str = '',
+        **kwargs
+    ) -> str:
         """Format the overlay text. Override in subclasses."""
         raise NotImplementedError
 
@@ -184,10 +191,7 @@ class OverlayManager:
 
         # Adjust padding to avoid overlaps at same position
         offset = self._position_offsets[position]
-        if position in (OverlayPosition.TOP_LEFT, OverlayPosition.TOP_RIGHT):
-            overlay.padding = 1 + offset
-        else:
-            overlay.padding = 1 + offset
+        overlay.padding = 1 + offset
 
         self._position_offsets[position] += 1
 
