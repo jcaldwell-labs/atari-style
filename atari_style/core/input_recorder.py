@@ -19,9 +19,9 @@ import argparse
 import json
 import sys
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from .input_handler import InputHandler
 
@@ -50,6 +50,9 @@ class InputRecorder:
     Captures joystick axis positions and button states at a specified
     sample rate, outputting a script compatible with ScriptedInputHandler.
     """
+
+    # Threshold for digital quantization (-1, 0, 1)
+    DIGITAL_THRESHOLD = 0.5
 
     def __init__(
         self,
@@ -80,9 +83,9 @@ class InputRecorder:
 
     def _quantize(self, value: float) -> float:
         """Quantize analog value to digital (-1, 0, 1)."""
-        if value > 0.5:
+        if value > self.DIGITAL_THRESHOLD:
             return 1.0
-        elif value < -0.5:
+        elif value < -self.DIGITAL_THRESHOLD:
             return -1.0
         return 0.0
 

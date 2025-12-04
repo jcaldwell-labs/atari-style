@@ -221,6 +221,89 @@ class TestInputRecorderIntegration(unittest.TestCase):
         # Verify cleanup was called
         mock_handler.cleanup.assert_called_once()
 
+    @patch('atari_style.core.input_recorder.InputHandler')
+    @patch('atari_style.core.input_recorder.time.sleep')
+    def test_record_sparse_mode(self, mock_sleep, mock_handler_class):
+        """Test sparse mode only records on state change."""
+        # Setup mock handler
+        mock_handler = MagicMock()
+        mock_handler.verify_joystick.return_value = {
+            'connected': True,
+            'name': 'Mock Joystick',
+            'axes': 2,
+            'buttons': 6,
+        }
+        # First frame: neutral, second frame: still neutral, third frame: movement
+        mock_handler.get_joystick_state.side_effect = [
+            (0.0, 0.0),  # Frame 0 - recorded (first frame)
+            (0.0, 0.0),  # Frame 1 - not recorded (no change)
+            (0.8, 0.0),  # Frame 2 - recorded (state changed)
+        ]
+        mock_handler.get_joystick_buttons.return_value = {i: False for i in range(6)}
+        mock_handler_class.return_value = mock_handler
+
+        # Record 0.3 seconds at 10 fps = 3 frames
+        recorder = InputRecorder(duration=0.3, fps=10, sparse=True)
+        keyframes = recorder.record()
+
+        # Sparse mode should record fewer keyframes than frames
+        # First frame always recorded, plus any state changes
+        self.assertLess(len(keyframes), 3)
+        self.assertGreaterEqual(len(keyframes), 1)
+
+    @patch('atari_style.core.input_recorder.InputHandler')
+    @patch('atari_style.core.input_recorder.time.sleep')
+    def test_record_digital_mode(self, mock_sleep, mock_handler_class):
+        """Test digital mode quantizes values to -1/0/1."""
+        # Setup mock handler
+        mock_handler = MagicMock()
+        mock_handler.verify_joystick.return_value = {
+            'connected': True,
+            'name': 'Mock Joystick',
+            'axes': 2,
+            'buttons': 6,
+        }
+        # Return analog values that should be quantized
+        mock_handler.get_joystick_state.return_value = (0.75, -0.9)
+        mock_handler.get_joystick_buttons.return_value = {i: False for i in range(6)}
+        mock_handler_class.return_value = mock_handler
+
+        # Record 0.1 seconds at 10 fps = 1 frame
+        recorder = InputRecorder(duration=0.1, fps=10, digital=True)
+        keyframes = recorder.record()
+
+        # Values should be quantized
+        self.assertEqual(len(keyframes), 1)
+        self.assertEqual(keyframes[0].x, 1.0)   # 0.75 > 0.5 -> 1.0
+        self.assertEqual(keyframes[0].y, -1.0)  # -0.9 < -0.5 -> -1.0
+
+    @patch('atari_style.core.input_recorder.InputHandler')
+    @patch('atari_style.core.input_recorder.time.sleep')
+    def test_record_no_joystick(self, mock_sleep, mock_handler_class):
+        """Test recording with no joystick connected."""
+        # Setup mock handler with no joystick
+        mock_handler = MagicMock()
+        mock_handler.verify_joystick.return_value = {
+            'connected': False,
+            'name': None,
+            'axes': 0,
+            'buttons': 0,
+        }
+        # Return neutral values (no joystick)
+        mock_handler.get_joystick_state.return_value = (0.0, 0.0)
+        mock_handler.get_joystick_buttons.return_value = {}
+        mock_handler_class.return_value = mock_handler
+
+        # Record 0.1 seconds at 10 fps = 1 frame
+        recorder = InputRecorder(duration=0.1, fps=10)
+        keyframes = recorder.record()
+
+        # Should still record (with neutral values)
+        self.assertEqual(len(keyframes), 1)
+        self.assertEqual(keyframes[0].x, 0.0)
+        self.assertEqual(keyframes[0].y, 0.0)
+        self.assertEqual(keyframes[0].buttons, [])
+
 
 if __name__ == '__main__':
     unittest.main()
