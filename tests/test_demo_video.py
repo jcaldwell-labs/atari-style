@@ -239,6 +239,18 @@ class TestDemoRegistry(unittest.TestCase):
         """Test that joystick_test is in the registry."""
         self.assertIn('joystick_test', DEMO_REGISTRY)
 
+    def test_starfield_registered(self):
+        """Test that starfield is in the registry."""
+        self.assertIn('starfield', DEMO_REGISTRY)
+        self.assertIn('factory', DEMO_REGISTRY['starfield'])
+        self.assertIn('description', DEMO_REGISTRY['starfield'])
+
+    def test_platonic_solids_registered(self):
+        """Test that platonic_solids is in the registry."""
+        self.assertIn('platonic_solids', DEMO_REGISTRY)
+        self.assertIn('factory', DEMO_REGISTRY['platonic_solids'])
+        self.assertIn('description', DEMO_REGISTRY['platonic_solids'])
+
     def test_registry_has_description(self):
         """Test that registered demos have descriptions."""
         for name, info in DEMO_REGISTRY.items():

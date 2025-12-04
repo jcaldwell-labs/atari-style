@@ -179,10 +179,22 @@ register_demo('joystick_test', create_joystick_test, 'Joystick verification inte
 
 
 class StarfieldDemo:
-    """Headless-compatible starfield demo."""
+    """Headless-compatible starfield demo.
+
+    Renders a starfield animation in the terminal using headless rendering,
+    suitable for automated demo video export. Supports multiple visual modes,
+    color schemes, hyperspace jumps, and scripted input for video generation.
+    """
 
     MODE_STARS = 0
     MODE_ASTEROIDS = 1
+
+    # Hyperspace states
+    HS_NONE = 0
+    HS_PAUSE = 1
+    HS_FLASH = 2
+    HS_BURST = 3
+    HS_RESUME = 4
 
     def __init__(self, renderer: HeadlessRenderer, input_handler: ScriptedInputHandler):
         self.renderer = renderer
@@ -196,8 +208,15 @@ class StarfieldDemo:
         self.lateral_drift = 0.0
         self.color_mode = 0  # 0=white, 1=rainbow, 2=speed
         self.mode = self.MODE_STARS
-        self.nebulae_visible = False
+        self.nebulae_visible = True  # Match original default
         self.time = 0
+
+        # Button debounce tracking
+        self.last_button_time = {0: 0, 1: 0, 2: 0, 3: 0}
+
+        # Hyperspace state
+        self.hyperspace_state = self.HS_NONE
+        self.hyperspace_timer = 0
 
         # Stars: list of (x, y, z, layer)
         self.stars = []
@@ -233,13 +252,23 @@ class StarfieldDemo:
         # Update drift from joystick X
         self.lateral_drift = jx * 10 if abs(jx) > 0.1 else self.lateral_drift * 0.9
 
-        # Button handlers (with simple debounce via time)
-        if buttons.get(0) and int(self.time * 10) % 5 == 0:
+        # Button handlers with proper debounce
+        debounce_time = 0.3
+        if buttons.get(0) and self.time - self.last_button_time[0] > debounce_time:
             self.color_mode = (self.color_mode + 1) % 3
-        if buttons.get(1) and int(self.time * 10) % 5 == 0:
+            self.last_button_time[0] = self.time
+        if buttons.get(1) and self.time - self.last_button_time[1] > debounce_time:
             self.mode = self.MODE_ASTEROIDS if self.mode == self.MODE_STARS else self.MODE_STARS
-        if buttons.get(2) and int(self.time * 10) % 5 == 0:
+            self.last_button_time[1] = self.time
+        if buttons.get(2) and self.time - self.last_button_time[2] > debounce_time:
             self.nebulae_visible = not self.nebulae_visible
+            self.last_button_time[2] = self.time
+        if buttons.get(3) and self.time - self.last_button_time[3] > debounce_time:
+            # Trigger hyperspace jump
+            if self.hyperspace_state == self.HS_NONE:
+                self.hyperspace_state = self.HS_PAUSE
+                self.hyperspace_timer = 0
+            self.last_button_time[3] = self.time
 
         # Calculate current speed
         speed = self.base_speed * self.warp_speed
@@ -258,10 +287,28 @@ class StarfieldDemo:
         if self.nebulae_visible:
             self.renderer.draw_text(width - 12, 2, "NEBULAE ON", 'magenta')
 
+        # Update hyperspace state machine
+        if self.hyperspace_state != self.HS_NONE:
+            self.hyperspace_timer += 1/30
+            if self.hyperspace_state == self.HS_PAUSE and self.hyperspace_timer > 0.5:
+                self.hyperspace_state = self.HS_FLASH
+                self.hyperspace_timer = 0
+            elif self.hyperspace_state == self.HS_FLASH and self.hyperspace_timer > 0.2:
+                self.hyperspace_state = self.HS_BURST
+                self.hyperspace_timer = 0
+            elif self.hyperspace_state == self.HS_BURST and self.hyperspace_timer > 0.5:
+                self.hyperspace_state = self.HS_RESUME
+                self.hyperspace_timer = 0
+            elif self.hyperspace_state == self.HS_RESUME and self.hyperspace_timer > 0.3:
+                self.hyperspace_state = self.HS_NONE
+                self.hyperspace_timer = 0
+
         # Update and draw stars
         layer_speeds = [0.3, 0.7, 1.0]
         layer_colors = ['blue', 'white', 'bright_white']
-        chars = '.·*' if self.mode == self.MODE_STARS else '◊◇◆'
+        star_chars = '.·*'
+        asteroid_chars = '◊◇◆⬖⬗'  # Full asteroid character set
+        chars = star_chars if self.mode == self.MODE_STARS else asteroid_chars
 
         for star in self.stars:
             # Update position
@@ -275,15 +322,27 @@ class StarfieldDemo:
                 star['y'] = self.random.uniform(-height, height)
                 star['z'] = width
 
-            # Project to 2D
+            # Project to 2D (k=128 matches original implementation)
             if star['z'] > 0:
-                k = 64 / star['z']
+                k = 128 / star['z']
                 sx = int(star['x'] * k + width / 2)
                 sy = int(star['y'] * k * 0.5 + height / 2)
 
+                # Hyperspace burst: push stars outward from center
+                if self.hyperspace_state == self.HS_BURST:
+                    cx, cy = width / 2, height / 2
+                    dx, dy = sx - cx, sy - cy
+                    dist = (dx**2 + dy**2)**0.5
+                    if dist > 0:
+                        burst_factor = 1 + self.hyperspace_timer * 3
+                        sx = int(cx + dx * burst_factor)
+                        sy = int(cy + dy * burst_factor)
+
                 if 0 <= sx < width and 3 <= sy < height - 1:
                     # Choose color
-                    if self.color_mode == 0:
+                    if self.hyperspace_state == self.HS_FLASH:
+                        color = 'bright_white'
+                    elif self.color_mode == 0:
                         color = layer_colors[star['layer']]
                     elif self.color_mode == 1:
                         colors = ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta']
@@ -291,17 +350,24 @@ class StarfieldDemo:
                     else:
                         color = 'bright_white' if speed > 3 else 'white' if speed > 1.5 else 'cyan'
 
-                    char = chars[star['layer']]
+                    # Pick char based on layer, handling different char set lengths
+                    char_idx = star['layer'] % len(chars)
+                    char = chars[char_idx]
                     self.renderer.set_pixel(sx, sy, char, color)
 
         # Draw simple nebula effect
-        if self.nebulae_visible:
+        if self.nebulae_visible and self.hyperspace_state == self.HS_NONE:
             for i in range(5):
                 nx = int(width * 0.2 + i * width * 0.15 + self.time * 2) % width
                 ny = int(height * 0.4 + i * 3) % height
                 if 3 <= ny < height - 1:
                     self.renderer.set_pixel(nx, ny, '░', 'magenta')
                     self.renderer.set_pixel((nx + 1) % width, ny, '░', 'blue')
+
+        # Hyperspace status display
+        if self.hyperspace_state != self.HS_NONE:
+            hs_text = ["", "CHARGING...", "JUMP!", "HYPERSPACE!", "EMERGING..."][self.hyperspace_state]
+            self.renderer.draw_text((width - len(hs_text)) // 2, height // 2, hs_text, 'bright_cyan')
 
         # Increment time
         self.time += 1/30
@@ -316,51 +382,76 @@ register_demo('starfield', create_starfield, 'Enhanced 3D starfield with paralla
 
 
 class PlatonicSolidsDemo:
-    """Headless-compatible platonic solids demo."""
+    """Headless-compatible platonic solids demo.
+
+    Renders and animates the five platonic solids (Tetrahedron, Cube, Octahedron,
+    Dodecahedron, Icosahedron) in a headless environment for video export.
+    This class is a headless-compatible version of the interactive platonic solids demo,
+    designed for scripted input and non-interactive rendering.
+    """
 
     # Solid names list (data initialized in __init__)
     SOLID_NAMES = ['Tetrahedron', 'Cube', 'Octahedron', 'Dodecahedron', 'Icosahedron']
 
     @staticmethod
     def _dodeca_vertices():
-        """Generate dodecahedron vertices."""
+        """Generate dodecahedron vertices matching original implementation."""
         phi = (1 + 5**0.5) / 2
-        verts = []
-        for i in [-1, 1]:
-            for j in [-1, 1]:
-                for k in [-1, 1]:
-                    verts.append((i, j, k))
-        for i in [-1, 1]:
-            for j in [-1, 1]:
-                verts.append((0, i * phi, j / phi))
-                verts.append((i / phi, 0, j * phi))
-                verts.append((i * phi, j / phi, 0))
-        return verts
+        return [
+            # Cube vertices scaled by phi
+            (1, 1, 1), (1, 1, -1), (1, -1, 1), (1, -1, -1),
+            (-1, 1, 1), (-1, 1, -1), (-1, -1, 1), (-1, -1, -1),
+            # Golden rectangles in xy plane
+            (0, phi, 1/phi), (0, phi, -1/phi), (0, -phi, 1/phi), (0, -phi, -1/phi),
+            # Golden rectangles in xz plane
+            (1/phi, 0, phi), (1/phi, 0, -phi), (-1/phi, 0, phi), (-1/phi, 0, -phi),
+            # Golden rectangles in yz plane
+            (phi, 1/phi, 0), (phi, -1/phi, 0), (-phi, 1/phi, 0), (-phi, -1/phi, 0)
+        ]
 
     @staticmethod
     def _dodeca_edges():
-        """Generate dodecahedron edges (simplified)."""
-        return [(i, (i + 1) % 20) for i in range(20)] + \
-               [(i, (i + 5) % 20) for i in range(20) if i < 10]
+        """Generate dodecahedron edges matching original implementation."""
+        return [
+            (0, 8), (0, 12), (0, 16), (1, 9), (1, 13), (1, 16),
+            (2, 10), (2, 12), (2, 17), (3, 11), (3, 13), (3, 17),
+            (4, 8), (4, 14), (4, 18), (5, 9), (5, 15), (5, 18),
+            (6, 10), (6, 14), (6, 19), (7, 11), (7, 15), (7, 19),
+            (8, 9), (10, 11), (12, 14), (13, 15), (16, 17), (18, 19)
+        ]
 
     @staticmethod
     def _icosa_vertices():
-        """Generate icosahedron vertices."""
-        phi = (1 + 5**0.5) / 2
-        verts = []
-        for i in [-1, 1]:
-            for j in [-1, 1]:
-                verts.append((0, i, j * phi))
-                verts.append((i, j * phi, 0))
-                verts.append((j * phi, 0, i))
-        return verts
+        """Generate icosahedron vertices matching original implementation."""
+        return [
+            # Top vertex
+            (0, 1, 0),
+            # Upper pentagon
+            (0.894, 0.447, 0), (0.276, 0.447, 0.851),
+            (-0.724, 0.447, 0.526), (-0.724, 0.447, -0.526), (0.276, 0.447, -0.851),
+            # Lower pentagon
+            (0.724, -0.447, 0.526), (0.724, -0.447, -0.526),
+            (-0.276, -0.447, -0.851), (-0.894, -0.447, 0), (-0.276, -0.447, 0.851),
+            # Bottom vertex
+            (0, -1, 0)
+        ]
 
     @staticmethod
     def _icosa_edges():
-        """Generate icosahedron edges (simplified)."""
-        return [(i, (i + 1) % 12) for i in range(12)] + \
-               [(i, (i + 3) % 12) for i in range(12) if i < 6] + \
-               [(i, (i + 5) % 12) for i in range(12) if i < 6]
+        """Generate icosahedron edges matching original implementation."""
+        return [
+            # Top vertex to upper pentagon
+            (0, 1), (0, 2), (0, 3), (0, 4), (0, 5),
+            # Upper pentagon
+            (1, 2), (2, 3), (3, 4), (4, 5), (5, 1),
+            # Upper to lower
+            (1, 6), (1, 7), (2, 6), (2, 10), (3, 10), (3, 9),
+            (4, 9), (4, 8), (5, 8), (5, 7),
+            # Lower pentagon
+            (6, 7), (7, 8), (8, 9), (9, 10), (10, 6),
+            # Lower pentagon to bottom
+            (6, 11), (7, 11), (8, 11), (9, 11), (10, 11)
+        ]
 
     def __init__(self, renderer: HeadlessRenderer, input_handler: ScriptedInputHandler):
         self.renderer = renderer
@@ -371,7 +462,8 @@ class PlatonicSolidsDemo:
         # Build solids data (must be done in __init__ to call static methods)
         self.solids = {
             'Tetrahedron': {
-                'vertices': [(1, 1, 1), (-1, -1, 1), (-1, 1, -1), (1, -1, -1)],
+                # Vertices match original implementation
+                'vertices': [(1, 1, 1), (1, -1, -1), (-1, 1, -1), (-1, -1, 1)],
                 'edges': [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)],
                 'faces': 4, 'v': 4, 'e': 6
             },
@@ -406,7 +498,7 @@ class PlatonicSolidsDemo:
         self.rotation_y = 0
         self.rotation_z = 0
         self.auto_rotate = True
-        self.zoom = 12
+        self.zoom = 15  # Match original implementation
         self.last_button_time = 0
         self.time = 0
 
@@ -427,7 +519,8 @@ class PlatonicSolidsDemo:
     def _project(self, p, width, height):
         """Project 3D to 2D."""
         x, y, z = p
-        factor = 50 / (z + 5)
+        # fov=200, distance=5 matches original implementation
+        factor = 200 / (z + 5)
         sx = int(x * factor * self.zoom + width / 2)
         sy = int(y * factor * self.zoom * 0.5 + height / 2)
         return sx, sy
@@ -501,12 +594,12 @@ class PlatonicSolidsDemo:
 
         while True:
             if 0 <= x1 < self.renderer.width and 0 <= y1 < self.renderer.height:
-                # Choose line character based on direction
-                if dx > dy * 2:
+                # Choose line character based on direction (matches original)
+                if abs(dx) > abs(dy):
                     char = '─'
-                elif dy > dx * 2:
+                elif abs(dy) > abs(dx):
                     char = '│'
-                elif (sx > 0) == (sy > 0):
+                elif (sx > 0 and sy > 0) or (sx < 0 and sy < 0):
                     char = '\\'
                 else:
                     char = '/'
