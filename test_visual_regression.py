@@ -3,7 +3,6 @@
 
 Run with:
     pytest test_visual_regression.py -v
-    pytest test_visual_regression.py -v --save-diffs
 
 Or standalone without pytest:
     python test_visual_regression.py

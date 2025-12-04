@@ -1,4 +1,2 @@
 # Diff images (generated on test failures)
 diffs/
-*.png
-!.gitkeep

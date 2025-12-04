@@ -15,11 +15,10 @@ Usage:
     python -m atari_style.core.visual_test compare joystick_test --save-diff
 """
 
-import os
 import sys
 import json
 from pathlib import Path
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple, Optional
 
 try:
     from PIL import Image, ImageChops, ImageDraw
