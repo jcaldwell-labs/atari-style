@@ -51,6 +51,7 @@ class VideoFormat:
     fps: int
     max_duration: Optional[float]  # Platform limit in seconds, None = unlimited
     description: str
+    crf: int = 18  # FFmpeg quality (lower = better)
 
     @property
     def aspect_ratio(self) -> str:
@@ -135,6 +136,65 @@ VIDEO_FORMATS: Dict[str, VideoFormat] = {
         fps=30,
         max_duration=60.0,
         description='Instagram square format (1:1)'
+    ),
+
+    # Quality presets
+    'high': VideoFormat(
+        name='High Quality',
+        width=1920,
+        height=1080,
+        fps=60,
+        max_duration=None,
+        description='High quality 1080p60 (large files)',
+        crf=18
+    ),
+    'medium': VideoFormat(
+        name='Medium Quality',
+        width=1280,
+        height=720,
+        fps=30,
+        max_duration=None,
+        description='Medium quality 720p30 (balanced)',
+        crf=23
+    ),
+    'low': VideoFormat(
+        name='Low Quality',
+        width=854,
+        height=480,
+        fps=30,
+        max_duration=None,
+        description='Low quality 480p (small files)',
+        crf=28
+    ),
+    'preview': VideoFormat(
+        name='Preview',
+        width=480,
+        height=270,
+        fps=15,
+        max_duration=None,
+        description='Quick preview (very small files)',
+        crf=28
+    ),
+
+    # Twitter/X format
+    'twitter': VideoFormat(
+        name='Twitter/X',
+        width=1280,
+        height=720,
+        fps=30,
+        max_duration=140.0,
+        description='Twitter/X video (720p, max 2:20)'
+    ),
+
+    # Discord format
+    'discord': VideoFormat(
+        name='Discord',
+        width=1280,
+        height=720,
+        fps=30,
+        max_duration=None,
+        description='Discord-friendly 720p (aim for <8MB)',
+        crf=28
     ),
 }
 
@@ -323,7 +383,7 @@ class VideoExporter:
                            format_name: str, duration: Optional[float] = None,
                            params: Optional[Tuple[float, float, float, float]] = None,
                            color_mode: Optional[int] = None,
-                           crf: int = 18) -> bool:
+                           crf: Optional[int] = None) -> bool:
         """Export using a predefined format preset.
 
         Args:
@@ -333,7 +393,7 @@ class VideoExporter:
             duration: Duration in seconds (uses format max if None and format has limit)
             params: Custom parameters (uses defaults if None)
             color_mode: Color palette (uses default if None)
-            crf: FFmpeg CRF quality
+            crf: FFmpeg CRF quality (uses format's crf if None)
 
         Returns:
             True if export succeeded
@@ -349,6 +409,10 @@ class VideoExporter:
         # Use format's max duration if not specified and format has a limit
         if duration is None:
             duration = fmt.max_duration if fmt.max_duration else 10.0
+
+        # Use format's CRF if not explicitly specified
+        if crf is None:
+            crf = fmt.crf
 
         # Warn if duration exceeds platform limit
         if fmt.max_duration and duration > fmt.max_duration:
@@ -506,6 +570,122 @@ class VideoExporter:
 
         return total_frames
 
+    def create_thumbnail(self, composite_name: str, output_path: str,
+                         timestamp: float = 0.0,
+                         width: Optional[int] = None, height: Optional[int] = None,
+                         params: Optional[Tuple[float, float, float, float]] = None,
+                         color_mode: Optional[int] = None) -> bool:
+        """Create a single thumbnail image at a specific timestamp.
+
+        Args:
+            composite_name: Name of composite
+            output_path: Output image path (PNG recommended)
+            timestamp: Time in seconds to capture
+            width: Image width (uses default if None)
+            height: Image height (uses default if None)
+            params: Custom parameters
+            color_mode: Color palette
+
+        Returns:
+            True if thumbnail created successfully
+        """
+        if Image is None:
+            raise ImportError("Pillow required: pip install Pillow")
+
+        if composite_name not in COMPOSITES:
+            raise ValueError(f"Unknown composite: {composite_name}")
+
+        w = width or self.width
+        h = height or self.height
+
+        manager = CompositeManager(w, h)
+        img = manager.render_frame(composite_name, timestamp, params, color_mode, w, h)
+
+        # Ensure output directory exists
+        output_dir = os.path.dirname(output_path)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        img.save(output_path)
+        print(f"Thumbnail saved: {output_path}")
+        print(f"  Resolution: {w}x{h}")
+        print(f"  Timestamp: {timestamp}s")
+        return True
+
+    def create_thumbnails(self, composite_name: str, output_dir: str,
+                          timestamps: list,
+                          width: Optional[int] = None, height: Optional[int] = None,
+                          params: Optional[Tuple[float, float, float, float]] = None,
+                          color_mode: Optional[int] = None,
+                          prefix: Optional[str] = None) -> list:
+        """Create multiple thumbnail images at different timestamps.
+
+        Args:
+            composite_name: Name of composite
+            output_dir: Directory for output images
+            timestamps: List of times in seconds to capture
+            width: Image width (uses default if None)
+            height: Image height (uses default if None)
+            params: Custom parameters
+            color_mode: Color palette
+            prefix: Optional filename prefix (default: composite name)
+
+        Returns:
+            List of output file paths
+        """
+        if Image is None:
+            raise ImportError("Pillow required: pip install Pillow")
+
+        if composite_name not in COMPOSITES:
+            raise ValueError(f"Unknown composite: {composite_name}")
+
+        w = width or self.width
+        h = height or self.height
+        file_prefix = prefix or composite_name
+
+        os.makedirs(output_dir, exist_ok=True)
+        manager = CompositeManager(w, h)
+
+        output_paths = []
+        for ts in timestamps:
+            img = manager.render_frame(composite_name, ts, params, color_mode, w, h)
+            filename = f"{file_prefix}_{ts:.1f}s.png"
+            output_path = os.path.join(output_dir, filename)
+            img.save(output_path)
+            output_paths.append(output_path)
+            print(f"  Saved: {filename}")
+
+        print(f"\nCreated {len(output_paths)} thumbnails in {output_dir}")
+        return output_paths
+
+    def create_all_thumbnails(self, output_dir: str, timestamp: float = 0.0,
+                              width: Optional[int] = None, height: Optional[int] = None) -> dict:
+        """Create thumbnails for all composites at a given timestamp.
+
+        Args:
+            output_dir: Directory for output images
+            timestamp: Time in seconds to capture
+            width: Image width
+            height: Image height
+
+        Returns:
+            Dict mapping composite names to output paths
+        """
+        os.makedirs(output_dir, exist_ok=True)
+        results = {}
+
+        for composite_name in COMPOSITES:
+            output_path = os.path.join(output_dir, f"{composite_name}.png")
+            try:
+                self.create_thumbnail(composite_name, output_path, timestamp,
+                                     width, height)
+                results[composite_name] = output_path
+            except Exception as e:
+                print(f"Error creating thumbnail for {composite_name}: {e}")
+                results[composite_name] = None
+
+        return results
+
     def create_gif(self, composite_name: str, output_path: str,
                    duration: float = 3.0, fps: int = 15,
                    width: int = 480, height: int = 270,
@@ -583,15 +763,11 @@ def main():
         description='Export GPU composite animations to video',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Format presets:
-  youtube_shorts    1080x1920  9:16  (max 60s)
-  tiktok            1080x1920  9:16  (max 180s)
-  instagram_reels   1080x1920  9:16  (max 90s)
-  instagram_story   1080x1920  9:16  (max 15s)
-  instagram_square  1080x1080  1:1   (max 60s)
-  youtube_1080p     1920x1080  16:9
-  youtube_720p      1280x720   16:9
-  youtube_4k        3840x2160  16:9
+Format presets (--format NAME or --list-formats for all):
+  Platform:   youtube_shorts, tiktok, instagram_reels, twitter, discord
+  YouTube:    youtube_1080p, youtube_720p, youtube_4k
+  Quality:    high (1080p60), medium (720p30), low (480p), preview
+  Square:     instagram_square (1:1)
 
 Examples:
   %(prog)s plasma_lissajous --shorts
@@ -602,6 +778,11 @@ Examples:
 Quick preview (GIF):
   %(prog)s plasma_lissajous --preview
   %(prog)s flux_spiral --preview --params 0.4,1.5,0.8,0.6 --color 2
+
+Thumbnails (PNG):
+  %(prog)s plasma_lissajous --thumbnail 5.0 -o thumb.png
+  %(prog)s flux_spiral --thumbnails 0,2.5,5,7.5 -o ./thumbs/
+  %(prog)s --all-thumbnails -o ./all_thumbs/
 """
     )
     parser.add_argument('composite', nargs='?', choices=list(COMPOSITES.keys()),
@@ -630,6 +811,14 @@ Quick preview (GIF):
     parser.add_argument('--all', action='store_true', help='Export all composites')
     parser.add_argument('--list-formats', action='store_true',
                         help='List available format presets')
+
+    # Thumbnail options
+    parser.add_argument('--thumbnail', type=float, metavar='TIME',
+                        help='Generate single thumbnail at TIME seconds')
+    parser.add_argument('--thumbnails', type=str, metavar='T1,T2,...',
+                        help='Generate thumbnails at multiple timestamps')
+    parser.add_argument('--all-thumbnails', action='store_true',
+                        help='Generate thumbnails for all composites')
     args = parser.parse_args()
 
     # List formats and exit
@@ -669,6 +858,32 @@ Quick preview (GIF):
         duration = args.duration or 10.0
 
     exporter = VideoExporter(width, height, fps)
+
+    # Handle thumbnail generation
+    if args.all_thumbnails:
+        output_dir = args.output or '/tmp/gl_thumbnails'
+        timestamp = args.thumbnail if args.thumbnail is not None else 2.0
+        print(f"Generating thumbnails for all composites at t={timestamp}s")
+        results = exporter.create_all_thumbnails(output_dir, timestamp, width, height)
+        print(f"\nGenerated {len([v for v in results.values() if v])} thumbnails in {output_dir}")
+        return
+
+    if args.thumbnail is not None and args.composite:
+        output_path = args.output or f"/tmp/{args.composite}_{args.thumbnail}s.png"
+        exporter.create_thumbnail(args.composite, output_path, args.thumbnail,
+                                  width, height, custom_params, args.color)
+        return
+
+    if args.thumbnails and args.composite:
+        try:
+            timestamps = [float(t.strip()) for t in args.thumbnails.split(',')]
+        except ValueError as e:
+            print(f"Error parsing --thumbnails: {e}")
+            return
+        output_dir = args.output or f"/tmp/{args.composite}_thumbs"
+        exporter.create_thumbnails(args.composite, output_dir, timestamps,
+                                   width, height, custom_params, args.color)
+        return
 
     if args.all:
         if format_name:
