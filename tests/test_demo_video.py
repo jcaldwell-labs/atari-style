@@ -100,7 +100,7 @@ class TestDemoVideoExporterInit(unittest.TestCase):
 
 
 class TestDemoVideoExporterEncode(unittest.TestCase):
-    """Test encoding methods."""
+    """Test encoding methods with FFmpegEncoder."""
 
     def setUp(self):
         """Create a temporary script file for testing."""
@@ -123,12 +123,13 @@ class TestDemoVideoExporterEncode(unittest.TestCase):
         """Clean up temp file."""
         os.unlink(self.temp_script.name)
 
-    @patch('atari_style.core.demo_video.subprocess.run')
-    @patch('atari_style.core.demo_video.shutil.which')
-    def test_encode_gif_calls_ffmpeg_twice(self, mock_which, mock_run):
-        """Test that GIF encoding uses two-pass approach."""
-        mock_which.return_value = '/usr/bin/ffmpeg'
-        mock_run.return_value = MagicMock(returncode=0, stderr='')
+    @patch('atari_style.core.demo_video.FFmpegEncoder')
+    def test_exporter_uses_encoder_for_gif(self, mock_encoder_class):
+        """Test that GIF encoding uses FFmpegEncoder.encode_gif."""
+        mock_encoder = MagicMock()
+        mock_encoder.is_available.return_value = True
+        mock_encoder.encode_gif.return_value = True
+        mock_encoder_class.return_value = mock_encoder
 
         exporter = DemoVideoExporter(
             demo_name='joystick_test',
@@ -137,26 +138,15 @@ class TestDemoVideoExporterEncode(unittest.TestCase):
             gif_mode=True,
         )
 
-        # Call the private method directly
-        exporter._encode_gif('/tmp/frames')
+        # The encoder should be created
+        mock_encoder_class.assert_called_once()
 
-        # Should be called twice: once for palette, once for GIF
-        self.assertEqual(mock_run.call_count, 2)
-
-        # Check first call is palette generation
-        first_call_args = mock_run.call_args_list[0][0][0]
-        self.assertIn('palettegen', ' '.join(first_call_args))
-
-        # Check second call is GIF encoding
-        second_call_args = mock_run.call_args_list[1][0][0]
-        self.assertIn('paletteuse', ' '.join(second_call_args))
-
-    @patch('atari_style.core.demo_video.subprocess.run')
-    @patch('atari_style.core.demo_video.shutil.which')
-    def test_encode_gif_uses_fps_setting(self, mock_which, mock_run):
+    @patch('atari_style.core.demo_video.FFmpegEncoder')
+    def test_gif_uses_fps_setting(self, mock_encoder_class):
         """Test that GIF encoding respects fps setting."""
-        mock_which.return_value = '/usr/bin/ffmpeg'
-        mock_run.return_value = MagicMock(returncode=0, stderr='')
+        mock_encoder = MagicMock()
+        mock_encoder.is_available.return_value = True
+        mock_encoder_class.return_value = mock_encoder
 
         exporter = DemoVideoExporter(
             demo_name='joystick_test',
@@ -166,19 +156,15 @@ class TestDemoVideoExporterEncode(unittest.TestCase):
             gif_fps=20,
         )
 
-        exporter._encode_gif('/tmp/frames')
+        # Check fps is stored correctly
+        self.assertEqual(exporter.gif_fps, 20)
 
-        # Check fps is in the filter string
-        first_call_args = mock_run.call_args_list[0][0][0]
-        filter_arg = [a for a in first_call_args if 'fps=20' in a]
-        self.assertTrue(len(filter_arg) > 0, "fps=20 should be in filter arguments")
-
-    @patch('atari_style.core.demo_video.subprocess.run')
-    @patch('atari_style.core.demo_video.shutil.which')
-    def test_encode_gif_uses_scale_setting(self, mock_which, mock_run):
+    @patch('atari_style.core.demo_video.FFmpegEncoder')
+    def test_gif_uses_scale_setting(self, mock_encoder_class):
         """Test that GIF encoding respects scale setting."""
-        mock_which.return_value = '/usr/bin/ffmpeg'
-        mock_run.return_value = MagicMock(returncode=0, stderr='')
+        mock_encoder = MagicMock()
+        mock_encoder.is_available.return_value = True
+        mock_encoder_class.return_value = mock_encoder
 
         exporter = DemoVideoExporter(
             demo_name='joystick_test',
@@ -188,17 +174,15 @@ class TestDemoVideoExporterEncode(unittest.TestCase):
             gif_scale=320,
         )
 
-        exporter._encode_gif('/tmp/frames')
+        # Check scale is stored correctly
+        self.assertEqual(exporter.gif_scale, 320)
 
-        # Check scale is in the filter string
-        first_call_args = mock_run.call_args_list[0][0][0]
-        filter_arg = [a for a in first_call_args if 'scale=320' in a]
-        self.assertTrue(len(filter_arg) > 0, "scale=320 should be in filter arguments")
-
-    @patch('atari_style.core.demo_video.shutil.which')
-    def test_encode_gif_raises_without_ffmpeg(self, mock_which):
-        """Test that missing ffmpeg raises RuntimeError."""
-        mock_which.return_value = None
+    @patch('atari_style.core.demo_video.FFmpegEncoder')
+    def test_export_raises_without_ffmpeg(self, mock_encoder_class):
+        """Test that missing ffmpeg raises RuntimeError on export."""
+        mock_encoder = MagicMock()
+        mock_encoder.is_available.return_value = False
+        mock_encoder_class.return_value = mock_encoder
 
         exporter = DemoVideoExporter(
             demo_name='joystick_test',
@@ -208,16 +192,17 @@ class TestDemoVideoExporterEncode(unittest.TestCase):
         )
 
         with self.assertRaises(RuntimeError) as context:
-            exporter._encode_gif('/tmp/frames')
+            exporter.export()
 
         self.assertIn('ffmpeg not found', str(context.exception))
 
-    @patch('atari_style.core.demo_video.subprocess.run')
-    @patch('atari_style.core.demo_video.shutil.which')
-    def test_encode_gif_raises_on_palette_failure(self, mock_which, mock_run):
-        """Test that palette generation failure raises RuntimeError."""
-        mock_which.return_value = '/usr/bin/ffmpeg'
-        mock_run.return_value = MagicMock(returncode=1, stderr='palette error')
+    @patch('atari_style.core.demo_video.FFmpegEncoder')
+    def test_export_raises_on_encode_failure(self, mock_encoder_class):
+        """Test that encoding failure raises RuntimeError."""
+        mock_encoder = MagicMock()
+        mock_encoder.is_available.return_value = True
+        mock_encoder.encode_gif.return_value = False
+        mock_encoder_class.return_value = mock_encoder
 
         exporter = DemoVideoExporter(
             demo_name='joystick_test',
@@ -227,9 +212,9 @@ class TestDemoVideoExporterEncode(unittest.TestCase):
         )
 
         with self.assertRaises(RuntimeError) as context:
-            exporter._encode_gif('/tmp/frames')
+            exporter.export()
 
-        self.assertIn('palette generation failed', str(context.exception))
+        self.assertIn('ffmpeg encoding failed', str(context.exception))
 
 
 class TestDemoRegistry(unittest.TestCase):

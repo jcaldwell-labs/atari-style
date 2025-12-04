@@ -62,7 +62,7 @@ class TestVideoFormat(unittest.TestCase):
         self.assertFalse(horizontal.is_vertical)
 
     def test_crf_default(self):
-        """Test CRF default value."""
+        """Test CRF default value (23 for balanced quality/size)."""
         fmt = VideoFormat(
             name='Test',
             width=1920,
@@ -71,7 +71,7 @@ class TestVideoFormat(unittest.TestCase):
             max_duration=None,
             description='Test'
         )
-        self.assertEqual(fmt.crf, 18)
+        self.assertEqual(fmt.crf, 23)
 
     def test_crf_custom(self):
         """Test custom CRF value."""

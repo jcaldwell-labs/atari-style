@@ -28,10 +28,8 @@ import warnings
 warnings.filterwarnings('ignore', category=RuntimeWarning, module='runpy')
 
 import os
-import subprocess
 import tempfile
 import shutil
-from dataclasses import dataclass
 from typing import Optional, Tuple, Callable, Dict
 
 try:
@@ -40,163 +38,10 @@ except ImportError:
     Image = None
 
 from .composites import CompositeManager, COMPOSITES
+from ..video_base import VideoFormat, PresetManager, FFmpegEncoder
 
-
-@dataclass
-class VideoFormat:
-    """Video format preset configuration."""
-    name: str
-    width: int
-    height: int
-    fps: int
-    max_duration: Optional[float]  # Platform limit in seconds, None = unlimited
-    description: str
-    crf: int = 18  # FFmpeg quality (lower = better)
-
-    @property
-    def aspect_ratio(self) -> str:
-        """Return aspect ratio as string (e.g., '16:9', '9:16')."""
-        from math import gcd
-        g = gcd(self.width, self.height)
-        return f"{self.width // g}:{self.height // g}"
-
-    @property
-    def is_vertical(self) -> bool:
-        """Return True if format is vertical (portrait)."""
-        return self.height > self.width
-
-
-# Common video format presets
-VIDEO_FORMATS: Dict[str, VideoFormat] = {
-    # Vertical formats (9:16)
-    'youtube_shorts': VideoFormat(
-        name='YouTube Shorts',
-        width=1080,
-        height=1920,
-        fps=30,
-        max_duration=60.0,
-        description='YouTube Shorts vertical format (9:16)'
-    ),
-    'tiktok': VideoFormat(
-        name='TikTok',
-        width=1080,
-        height=1920,
-        fps=30,
-        max_duration=180.0,  # 3 minutes
-        description='TikTok vertical format (9:16)'
-    ),
-    'instagram_reels': VideoFormat(
-        name='Instagram Reels',
-        width=1080,
-        height=1920,
-        fps=30,
-        max_duration=90.0,
-        description='Instagram Reels vertical format (9:16)'
-    ),
-    'instagram_story': VideoFormat(
-        name='Instagram Story',
-        width=1080,
-        height=1920,
-        fps=30,
-        max_duration=15.0,
-        description='Instagram Story vertical format (9:16)'
-    ),
-
-    # Horizontal formats (16:9)
-    'youtube_1080p': VideoFormat(
-        name='YouTube 1080p',
-        width=1920,
-        height=1080,
-        fps=30,
-        max_duration=None,
-        description='Standard YouTube HD format (16:9)'
-    ),
-    'youtube_4k': VideoFormat(
-        name='YouTube 4K',
-        width=3840,
-        height=2160,
-        fps=30,
-        max_duration=None,
-        description='YouTube 4K UHD format (16:9)'
-    ),
-    'youtube_720p': VideoFormat(
-        name='YouTube 720p',
-        width=1280,
-        height=720,
-        fps=30,
-        max_duration=None,
-        description='YouTube HD Ready format (16:9)'
-    ),
-
-    # Square format (1:1)
-    'instagram_square': VideoFormat(
-        name='Instagram Square',
-        width=1080,
-        height=1080,
-        fps=30,
-        max_duration=60.0,
-        description='Instagram square format (1:1)'
-    ),
-
-    # Quality presets
-    'high': VideoFormat(
-        name='High Quality',
-        width=1920,
-        height=1080,
-        fps=60,
-        max_duration=None,
-        description='High quality 1080p60 (large files)',
-        crf=18
-    ),
-    'medium': VideoFormat(
-        name='Medium Quality',
-        width=1280,
-        height=720,
-        fps=30,
-        max_duration=None,
-        description='Medium quality 720p30 (balanced)',
-        crf=23
-    ),
-    'low': VideoFormat(
-        name='Low Quality',
-        width=854,
-        height=480,
-        fps=30,
-        max_duration=None,
-        description='Low quality 480p (small files)',
-        crf=28
-    ),
-    'preview': VideoFormat(
-        name='Preview',
-        width=480,
-        height=270,
-        fps=15,
-        max_duration=None,
-        description='Quick preview (very small files)',
-        crf=28
-    ),
-
-    # Twitter/X format
-    'twitter': VideoFormat(
-        name='Twitter/X',
-        width=1280,
-        height=720,
-        fps=30,
-        max_duration=140.0,
-        description='Twitter/X video (720p, max 2:20)'
-    ),
-
-    # Discord format
-    'discord': VideoFormat(
-        name='Discord',
-        width=1280,
-        height=720,
-        fps=30,
-        max_duration=None,
-        description='Discord-friendly 720p (aim for <8MB)',
-        crf=28
-    ),
-}
+# Backward compatibility: alias VIDEO_FORMATS to PresetManager.PRESETS
+VIDEO_FORMATS: Dict[str, VideoFormat] = PresetManager.PRESETS
 
 
 def get_format_names() -> list:
@@ -223,16 +68,7 @@ class VideoExporter:
         self.width = width
         self.height = height
         self.fps = fps
-        self._ffmpeg_available = self._check_ffmpeg()
-
-    def _check_ffmpeg(self) -> bool:
-        """Check if ffmpeg is available."""
-        try:
-            result = subprocess.run(['ffmpeg', '-version'],
-                                    capture_output=True, timeout=5)
-            return result.returncode == 0
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            return False
+        self.encoder = FFmpegEncoder()
 
     def export_composite(self, composite_name: str, output_path: str,
                          duration: float = 10.0, fps: Optional[int] = None,
@@ -265,7 +101,7 @@ class VideoExporter:
         if Image is None:
             raise ImportError("Pillow required: pip install Pillow")
 
-        if not self._ffmpeg_available:
+        if not self.encoder.is_available():
             raise RuntimeError("ffmpeg not found. Install ffmpeg to export videos.")
 
         if composite_name not in COMPOSITES:
@@ -308,32 +144,22 @@ class VideoExporter:
 
             print(f"\nAll frames rendered. Encoding video...")
 
-            # Ensure output directory exists
-            output_dir = os.path.dirname(output_path)
-            if output_dir and not os.path.exists(output_dir):
-                os.makedirs(output_dir)
+            # Encode with shared encoder
+            success = self.encoder.encode_video(
+                temp_dir,
+                output_path,
+                frame_rate,
+                frame_pattern='frame_%06d.png',
+                crf=crf,
+            )
 
-            # Encode with ffmpeg
-            cmd = [
-                'ffmpeg', '-y',
-                '-framerate', str(frame_rate),
-                '-i', os.path.join(temp_dir, 'frame_%06d.png'),
-                '-c:v', 'libx264',
-                '-pix_fmt', 'yuv420p',
-                '-crf', str(crf),
-                '-preset', 'medium',
-                output_path
-            ]
-
-            result = subprocess.run(cmd, capture_output=True, text=True)
-
-            if result.returncode == 0:
+            if success:
                 size = os.path.getsize(output_path)
                 print(f"\nSuccess! Video saved to: {output_path}")
                 print(f"File size: {size / 1024 / 1024:.1f} MB")
                 return True
             else:
-                print(f"Error encoding video: {result.stderr}")
+                print(f"Error encoding video")
                 return False
 
         finally:

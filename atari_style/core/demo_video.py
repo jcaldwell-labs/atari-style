@@ -17,7 +17,6 @@ import os
 import sys
 import argparse
 import tempfile
-import subprocess
 import shutil
 from pathlib import Path
 from typing import Optional, Callable, Dict, Any, TYPE_CHECKING
@@ -28,6 +27,7 @@ if TYPE_CHECKING:
 from .scripted_input import ScriptedInputHandler, InputScript
 from .headless_renderer import HeadlessRenderer, HeadlessRendererFactory
 from .overlay import OverlayManager
+from .video_base import FFmpegEncoder
 
 
 # Registry of demos that support video export
@@ -672,6 +672,9 @@ class DemoVideoExporter:
         self.gif_fps = gif_fps or self.DEFAULT_GIF_FPS
         self.gif_scale = gif_scale or self.DEFAULT_GIF_MAX_WIDTH
 
+        # Initialize shared encoder
+        self.encoder = FFmpegEncoder()
+
         # Load script
         self.script = InputScript.from_file(script_path)
 
@@ -696,6 +699,9 @@ class DemoVideoExporter:
         Args:
             progress_callback: Optional callback(current_frame, total_frames)
         """
+        if not self.encoder.is_available():
+            raise RuntimeError("ffmpeg not found. Please install ffmpeg.")
+
         total_frames = self.input_handler.get_frame_count()
         frame_time = 1.0 / self.script.fps
 
@@ -731,84 +737,27 @@ class DemoVideoExporter:
                 if progress_callback:
                     progress_callback(frame_num + 1, total_frames)
 
-            # Encode output with ffmpeg
+            # Encode output using shared encoder
             if self.gif_mode:
-                self._encode_gif(temp_dir)
+                success = self.encoder.encode_gif(
+                    temp_dir,
+                    self.output_path,
+                    self.gif_fps,
+                    scale=self.gif_scale,
+                )
             else:
-                self._encode_video(temp_dir)
+                success = self.encoder.encode_video(
+                    temp_dir,
+                    self.output_path,
+                    self.script.fps,
+                )
+
+            if not success:
+                raise RuntimeError("ffmpeg encoding failed")
 
         finally:
             # Cleanup temp directory
             shutil.rmtree(temp_dir, ignore_errors=True)
-
-    def _encode_video(self, frames_dir: str):
-        """Encode frames to video using ffmpeg."""
-        # Check for ffmpeg
-        if not shutil.which('ffmpeg'):
-            raise RuntimeError("ffmpeg not found. Please install ffmpeg.")
-
-        frame_pattern = os.path.join(frames_dir, 'frame_%05d.png')
-
-        cmd = [
-            'ffmpeg',
-            '-y',  # Overwrite output
-            '-framerate', str(self.script.fps),
-            '-i', frame_pattern,
-            '-c:v', 'libx264',
-            '-preset', 'medium',
-            '-crf', '23',
-            '-pix_fmt', 'yuv420p',
-            self.output_path
-        ]
-
-        result = subprocess.run(cmd, capture_output=True, text=True)
-
-        if result.returncode != 0:
-            raise RuntimeError(f"ffmpeg failed: {result.stderr}")
-
-    def _encode_gif(self, frames_dir: str):
-        """Encode frames to GIF using ffmpeg two-pass palette approach.
-
-        Uses palette generation for high-quality GIF output with small file sizes.
-        """
-        # Check for ffmpeg
-        if not shutil.which('ffmpeg'):
-            raise RuntimeError("ffmpeg not found. Please install ffmpeg.")
-
-        frame_pattern = os.path.join(frames_dir, 'frame_%05d.png')
-        palette_path = os.path.join(frames_dir, 'palette.png')
-
-        # Build filter string for scaling and fps
-        filters = f"fps={self.gif_fps},scale={self.gif_scale}:-1:flags=lanczos"
-
-        # Pass 1: Generate optimized palette
-        palette_cmd = [
-            'ffmpeg',
-            '-y',
-            '-framerate', str(self.script.fps),
-            '-i', frame_pattern,
-            '-vf', f"{filters},palettegen=stats_mode=diff",
-            palette_path
-        ]
-
-        result = subprocess.run(palette_cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"ffmpeg palette generation failed: {result.stderr}")
-
-        # Pass 2: Generate GIF using palette
-        gif_cmd = [
-            'ffmpeg',
-            '-y',
-            '-framerate', str(self.script.fps),
-            '-i', frame_pattern,
-            '-i', palette_path,
-            '-lavfi', f"{filters}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5",
-            self.output_path
-        ]
-
-        result = subprocess.run(gif_cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"ffmpeg GIF encoding failed: {result.stderr}")
 
     def preview_frame(self, time: float) -> 'Image.Image':
         """Render a single frame at the given time.
