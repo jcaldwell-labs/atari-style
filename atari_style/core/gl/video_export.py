@@ -764,7 +764,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Format presets (--format NAME or --list-formats for all):
-  Platform:   youtube_shorts, tiktok, instagram_reels, twitter, discord
+  Platform:   youtube_shorts, tiktok, instagram_reels, instagram_story, twitter, discord
   YouTube:    youtube_1080p, youtube_720p, youtube_4k
   Quality:    high (1080p60), medium (720p30), low (480p), preview
   Square:     instagram_square (1:1)
