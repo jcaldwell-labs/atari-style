@@ -11,9 +11,9 @@ Integration testing plan for unified GL and terminal video export pipelines. Tes
 ## Pre-requisites
 
 1. Agent 2 has completed refactoring:
-   - `atari_style/core/gl/video_export.py` inherits from `VideoExporter`
-   - `atari_style/core/demo_video.py` (`DemoVideoExporter`) inherits from `VideoExporter`
-   - Both use shared `FFmpegEncoder`, `ProgressReporter`, `PresetManager`
+   - `atari_style/core/gl/video_export.py` uses `FFmpegEncoder` via composition
+   - `atari_style/core/demo_video.py` (`DemoVideoExporter`) uses `FFmpegEncoder` via composition
+   - Both use shared `FFmpegEncoder`, `PresetManager`, and `VideoFormat` from `video_base.py`
 
 2. All unit tests passing:
    ```bash
@@ -38,8 +38,8 @@ cd /workspaces/atari-style
 # Export plasma animation
 python -c "
 from atari_style.core.gl.video_export import VideoExporter
-exporter = VideoExporter('plasma', duration=3.0)
-exporter.export('test_plasma.mp4')
+exporter = VideoExporter()
+exporter.export_composite('plasma', 'test_plasma.mp4', duration=3.0)
 "
 ```
 
@@ -63,11 +63,15 @@ exporter.export('test_plasma.mp4')
 **Steps**:
 ```bash
 python -c "
-from atari_style.core.gl.video_export import VideoExporter
-exporter = VideoExporter.from_preset('youtube_shorts', 'plasma', duration=5.0)
-print(f'Resolution: {exporter.width}x{exporter.height}')
-print(f'FPS: {exporter.fps}')
-exporter.export('test_shorts.mp4')
+from atari_style.core.gl.video_export import VideoExporter, VIDEO_FORMATS
+
+# Use format preset
+fmt = VIDEO_FORMATS['youtube_shorts']
+print(f'Resolution: {fmt.width}x{fmt.height}')
+print(f'FPS: {fmt.fps}')
+
+exporter = VideoExporter()
+exporter.export_with_format('plasma', 'test_shorts.mp4', 'youtube_shorts', duration=5.0)
 "
 ```
 
@@ -90,8 +94,8 @@ exporter.export('test_shorts.mp4')
 ```bash
 python -c "
 from atari_style.core.gl.video_export import VideoExporter
-exporter = VideoExporter('lissajous', duration=2.0, fps=15)
-exporter.export('test_lissajous.gif')
+exporter = VideoExporter()
+exporter.create_gif('lissajous', 'test_lissajous.gif', duration=2.0, fps=15)
 "
 ```
 
@@ -110,20 +114,29 @@ exporter.export('test_lissajous.gif')
 
 **Objective**: Verify terminal exporter creates valid MP4 using base infrastructure
 
+**Note**: DemoVideoExporter requires a script file (JSON) that defines input keyframes and timing.
+This is designed for terminal demos with recorded/scripted joystick input.
+
 **Steps**:
 ```bash
+# First, verify a demo script exists
+ls scripts/demos/starfield-demo.json
+
 python -c "
 from atari_style.core.demo_video import DemoVideoExporter
-exporter = DemoVideoExporter('starfield', duration=3.0)
-exporter.export('test_starfield.mp4')
+
+exporter = DemoVideoExporter(
+    demo_name='starfield',
+    script_path='scripts/demos/starfield-demo.json',
+    output_path='test_starfield.mp4'
+)
+exporter.export()
 "
 ```
 
 **Expected Results**:
-- Console shows: "Rendering N frames at 30 FPS"
-- Console shows: "✓ Rendered N frames"
-- Console shows: "Encoding video..."
-- Console shows: "✓ Video saved: test_starfield.mp4"
+- Console shows: "Rendering: [progress bar]"
+- Console shows: "✓ Video exported to: test_starfield.mp4"
 - File exists: `test_starfield.mp4`
 - Video playable with terminal-style ASCII graphics
 
@@ -135,22 +148,33 @@ exporter.export('test_starfield.mp4')
 
 **Objective**: Verify preset system works with terminal exporter
 
+**Note**: DemoVideoExporter uses PresetManager to get format dimensions.
+Preset is applied via width/height constructor parameters.
+
 **Steps**:
 ```bash
 python -c "
 from atari_style.core.demo_video import DemoVideoExporter
-exporter = DemoVideoExporter.from_preset('tiktok', 'screensaver', duration=10.0)
-print(f'Resolution: {exporter.width}x{exporter.height}')
-print(f'FPS: {exporter.fps}')
-exporter.export('test_tiktok.mp4')
+from atari_style.core.video_base import PresetManager
+
+# Get TikTok preset dimensions
+fmt = PresetManager.get_preset('tiktok')
+print(f'TikTok format: {fmt.width}x{fmt.height}')
+
+exporter = DemoVideoExporter(
+    demo_name='joystick_test',
+    script_path='scripts/demos/joystick-demo.json',
+    output_path='test_tiktok.mp4',
+    width=fmt.width,
+    height=fmt.height
+)
+exporter.export()
 "
 ```
 
 **Expected Results**:
-- Console: "Resolution: 1080x1920"
-- Console: "FPS: 30"
+- Console: "TikTok format: 1080x1920"
 - File: `test_tiktok.mp4` is 1080x1920 vertical
-- Duration: 10 seconds
 - Terminal graphics properly scaled to vertical format
 
 **Pass/Fail**: ___________
@@ -161,19 +185,28 @@ exporter.export('test_tiktok.mp4')
 
 **Objective**: Verify GIF export works with terminal exporter
 
+**Note**: DemoVideoExporter supports GIF mode via `gif_mode=True` constructor parameter.
+
 **Steps**:
 ```bash
 python -c "
 from atari_style.core.demo_video import DemoVideoExporter
-exporter = DemoVideoExporter('joystick_test', duration=2.0, fps=15)
-exporter.export('test_joystick.gif')
+
+exporter = DemoVideoExporter(
+    demo_name='joystick_test',
+    script_path='scripts/demos/joystick-demo.json',
+    output_path='test_joystick.gif',
+    gif_mode=True,
+    gif_fps=15
+)
+exporter.export()
 "
 ```
 
 **Expected Results**:
-- Console: "Encoding GIF..."
+- Console shows rendering progress
 - File: `test_joystick.gif` exists
-- GIF format confirmed
+- GIF format confirmed: `file test_joystick.gif` shows "GIF image data"
 - Animated terminal graphics
 
 **Pass/Fail**: ___________
@@ -182,32 +215,42 @@ exporter.export('test_joystick.gif')
 
 ### TC7: Progress Reporting Consistency
 
-**Objective**: Verify both exporters show consistent progress output
+**Objective**: Verify both exporters show progress output
+
+**Note**: GL and Terminal exporters have different progress formats due to their different architectures,
+but both use shared FFmpegEncoder for the encoding step.
 
 **Steps**:
 ```bash
 # Run both exports and compare console output
 python -c "
-from atari_style.core.gl.video_export import VideoExporter as GLExporter
-from atari_style.core.demo_video import DemoVideoExporter
+from atari_style.core.gl.video_export import VideoExporter
 
 print('=== GL Export ===')
-gl = GLExporter('plasma', duration=1.0)
-gl.export('test_gl_progress.mp4')
+exporter = VideoExporter()
+exporter.export_composite('plasma', 'test_gl_progress.mp4', duration=1.0)
+"
 
-print('\n=== Terminal Export ===')
-term = DemoVideoExporter('starfield', duration=1.0)
-term.export('test_term_progress.mp4')
+python -c "
+from atari_style.core.demo_video import DemoVideoExporter
+
+print('=== Terminal Export ===')
+exporter = DemoVideoExporter(
+    demo_name='joystick_test',
+    script_path='scripts/demos/joystick-demo.json',
+    output_path='test_term_progress.mp4'
+)
+exporter.export()
 "
 ```
 
 **Expected Results**:
-- Both show: "Rendering N frames at M FPS"
-- Both show frame progress: "Frame X/N (Y%)"
-- Both show: "✓ Rendered N frames"
-- Both show: "Encoding video..."
-- Both show: "✓ Video saved: filename.mp4"
-- Progress format identical between exporters
+- GL shows: "Rendering [composite]: N frames at M FPS" with frame progress
+- GL shows: "All frames rendered. Encoding video..."
+- GL shows: "Success! Video saved to: test_gl_progress.mp4"
+- Terminal shows: "Rendering: [progress bar]"
+- Terminal shows: "✓ Video exported to: test_term_progress.mp4"
+- Both use FFmpegEncoder for final encoding step
 
 **Pass/Fail**: ___________
 
@@ -225,9 +268,9 @@ export PATH="/usr/bin:/bin"  # Remove ffmpeg
 
 python -c "
 from atari_style.core.gl.video_export import VideoExporter
-exporter = VideoExporter('plasma', duration=1.0)
+exporter = VideoExporter()
 try:
-    exporter.export('should_fail.mp4')
+    exporter.export_composite('plasma', 'should_fail.mp4', duration=1.0)
     print('ERROR: Should have raised RuntimeError')
 except RuntimeError as e:
     print(f'✓ Caught expected error: {e}')
@@ -337,25 +380,33 @@ grep -n "Rendering.*frames" atari_style/core/demo_video.py
 
 ---
 
-### CQ3: Inheritance Verification
+### CQ3: Composition Verification (FFmpegEncoder)
 
-**Objective**: Verify both exporters inherit from `VideoExporter`
+**Objective**: Verify both exporters use shared FFmpegEncoder via composition
 
 **Steps**:
 ```bash
 python -c "
 from atari_style.core.gl.video_export import VideoExporter as GLExporter
 from atari_style.core.demo_video import DemoVideoExporter
-from atari_style.core.video_base import VideoExporter
+from atari_style.core.video_base import FFmpegEncoder
 
-print('GL inherits VideoExporter:', issubclass(GLExporter, VideoExporter))
-print('Demo inherits VideoExporter:', issubclass(DemoVideoExporter, VideoExporter))
+# Check GL exporter has encoder attribute
+gl = GLExporter()
+print('GL uses FFmpegEncoder:', hasattr(gl, 'encoder') and isinstance(gl.encoder, FFmpegEncoder))
+
+# Check Demo exporter has encoder attribute (need to create with valid params)
+# DemoVideoExporter creates encoder in __init__
+import inspect
+sig = inspect.signature(DemoVideoExporter.__init__)
+print('DemoVideoExporter constructor params:', list(sig.parameters.keys()))
 "
 ```
 
 **Expected Results**:
-- Console: "GL inherits VideoExporter: True"
-- Console: "Demo inherits VideoExporter: True"
+- Console: "GL uses FFmpegEncoder: True"
+- Console shows DemoVideoExporter constructor requires: demo_name, script_path, output_path
+- Both exporters contain FFmpegEncoder instance (composition, not inheritance)
 
 **Pass/Fail**: ___________
 
@@ -372,8 +423,8 @@ print('Demo inherits VideoExporter:', issubclass(DemoVideoExporter, VideoExporte
 # Benchmark current implementation
 time python -c "
 from atari_style.core.gl.video_export import VideoExporter
-exporter = VideoExporter('plasma', duration=5.0)
-exporter.export('benchmark.mp4')
+exporter = VideoExporter()
+exporter.export_composite('plasma', 'benchmark.mp4', duration=5.0)
 "
 
 # Compare to baseline (if available)

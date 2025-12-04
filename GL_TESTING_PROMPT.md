@@ -53,13 +53,15 @@ ffprobe test_plasma_3s.mp4 2>&1 | grep -E "Duration|Video:|Stream"
 ### TC2: Preset System (YouTube Shorts)
 ```bash
 python -c "
-from atari_style.core.gl.video_export import VideoExporter
+from atari_style.core.gl.video_export import VideoExporter, VIDEO_FORMATS
 
 print('=== Test 2: YouTube Shorts Preset ===')
-exporter = VideoExporter.from_preset('youtube_shorts')
-print(f'Resolution: {exporter.width}x{exporter.height}')
-print(f'FPS: {exporter.fps}')
-exporter.export_composite('lissajous', 'test_shorts_5s.mp4', duration=5.0)
+fmt = VIDEO_FORMATS['youtube_shorts']
+print(f'Resolution: {fmt.width}x{fmt.height}')
+print(f'FPS: {fmt.fps}')
+
+exporter = VideoExporter()
+exporter.export_with_format('lissajous', 'test_shorts_5s.mp4', 'youtube_shorts', duration=5.0)
 print('✓ Export completed')
 "
 
@@ -79,8 +81,8 @@ python -c "
 from atari_style.core.gl.video_export import VideoExporter
 
 print('=== Test 3: GIF Export ===')
-exporter = VideoExporter(fps=15)
-exporter.export_composite('mandelbrot_zoom', 'test_mandelbrot_2s.gif', duration=2.0)
+exporter = VideoExporter()
+exporter.create_gif('mandelbrot_zoom', 'test_mandelbrot_2s.gif', duration=2.0, fps=15)
 print('✓ Export completed')
 "
 
@@ -100,20 +102,18 @@ python -c "
 from atari_style.core.gl.video_export import VideoExporter
 
 print('=== Test 4: Multiple Format Presets ===')
+exporter = VideoExporter()
 
 # TikTok vertical
-exporter = VideoExporter.from_preset('tiktok')
-exporter.export_composite('plasma_lissajous', 'test_tiktok.mp4', duration=2.0)
+exporter.export_with_format('plasma_lissajous', 'test_tiktok.mp4', 'tiktok', duration=2.0)
 print('✓ TikTok export complete')
 
 # Instagram square
-exporter = VideoExporter.from_preset('instagram_square')
-exporter.export_composite('flux_spiral', 'test_instagram.mp4', duration=2.0)
+exporter.export_with_format('flux_spiral', 'test_instagram.mp4', 'instagram_square', duration=2.0)
 print('✓ Instagram export complete')
 
 # Twitter landscape
-exporter = VideoExporter.from_preset('twitter')
-exporter.export_composite('spiral', 'test_twitter.mp4', duration=2.0)
+exporter.export_with_format('spiral', 'test_twitter.mp4', 'twitter', duration=2.0)
 print('✓ Twitter export complete')
 "
 
@@ -132,11 +132,11 @@ from atari_style.core.gl.video_export import VIDEO_FORMATS, VideoExporter
 
 print('=== Test 5: Backward Compatibility ===')
 
-# Old-style format access
+# Old-style format access (VIDEO_FORMATS dict)
 fmt = VIDEO_FORMATS['youtube_4k']
 print(f'YouTube 4K: {fmt.width}x{fmt.height} @ {fmt.fps}fps')
 
-# Should still work with VideoExporter
+# Use format with VideoExporter
 exporter = VideoExporter(width=fmt.width, height=fmt.height, fps=fmt.fps)
 exporter.export_composite('plasma', 'test_4k_1s.mp4', duration=1.0)
 print('✓ Backward compatibility verified')
@@ -156,11 +156,11 @@ python -c "
 from atari_style.core.gl.video_export import VideoExporter
 
 print('=== Test 6: Composite Animations ===')
+exporter = VideoExporter()
 
 # Test each composite
 composites = ['plasma_lissajous', 'lissajous_plasma', 'flux_spiral']
 
-exporter = VideoExporter()
 for comp in composites:
     output = f'test_{comp}.mp4'
     exporter.export_composite(comp, output, duration=1.0)
@@ -187,16 +187,15 @@ exporter.export_composite('plasma', 'test_progress_5s.mp4', duration=5.0)
 # Check progress format
 grep "Rendering" progress_output.txt
 grep "Frame.*/" progress_output.txt
-grep "Rendered.*frames" progress_output.txt
+grep "All frames rendered" progress_output.txt
 grep "Encoding video" progress_output.txt
 ```
 
 **Expected**:
-- Console: "Rendering 150 frames at 30 FPS"
+- Console: "Rendering plasma: 150 frames at 30 FPS"
 - Console: "Frame X/150 (Y%)" progress updates
-- Console: "✓ Rendered 150 frames"
-- Console: "Encoding video..."
-- Console: "✓ Video saved: test_progress_5s.mp4"
+- Console: "All frames rendered. Encoding video..."
+- Console: "Success! Video saved to: test_progress_5s.mp4"
 
 ## Validation Checklist
 

@@ -31,7 +31,7 @@ python -c "from atari_style.core.gl.renderer import GLRenderer; GLRenderer(100, 
 **Quick test** (validates everything works):
 ```bash
 python -c "
-from atari_style.core.gl.video_export import VideoExporter
+from atari_style.core.gl.video_export import VideoExporter, VIDEO_FORMATS
 
 # Test basic export
 print('Testing basic GL export...')
@@ -39,16 +39,14 @@ exporter = VideoExporter()
 exporter.export_composite('plasma', 'quick_test.mp4', duration=2.0)
 print('✓ Success!')
 
-# Test preset
+# Test preset (YouTube Shorts)
 print('Testing YouTube Shorts preset...')
-exporter = VideoExporter.from_preset('youtube_shorts')
-exporter.export_composite('lissajous', 'quick_shorts.mp4', duration=2.0)
+exporter.export_with_format('lissajous', 'quick_shorts.mp4', 'youtube_shorts', duration=2.0)
 print('✓ Success!')
 
 # Test GIF
 print('Testing GIF export...')
-exporter = VideoExporter(fps=15)
-exporter.export_composite('spiral', 'quick_test.gif', duration=1.0)
+exporter.create_gif('spiral', 'quick_test.gif', duration=1.0, fps=15)
 print('✓ Success!')
 "
 
@@ -62,7 +60,7 @@ file quick_test.gif | grep "GIF"
 **Expected results**:
 - All 3 files created successfully
 - `quick_test.mp4`: 1920x1080, ~2 seconds
-- `quick_shorts.mp4`: 1080x1920 (vertical), ~2 seconds  
+- `quick_shorts.mp4`: 1080x1920 (vertical), ~2 seconds
 - `quick_test.gif`: Animated GIF, ~1 second
 
 **What to report**:
