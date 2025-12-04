@@ -257,7 +257,8 @@ class TestPluginManager:
         result = manager.unregister_plugin("does-not-exist")
         assert result is False
 
-    def _make_shader_manifest(self, name: str) -> PluginManifest:
+    @staticmethod
+    def _make_shader_manifest(name: str) -> PluginManifest:
         """Create a valid shader manifest with 4 parameters."""
         return PluginManifest(
             name=name,
@@ -273,8 +274,8 @@ class TestPluginManager:
 
     def test_list_by_type(self):
         manager = PluginManager()
-        manager.register_plugin(self._make_shader_manifest("s1"))
-        manager.register_plugin(self._make_shader_manifest("s2"))
+        manager.register_plugin(self._make_shader_manifest("s1"), warn_overwrite=False)
+        manager.register_plugin(self._make_shader_manifest("s2"), warn_overwrite=False)
         manager.register_plugin(PluginManifest("c1", "1.0.0", PluginType.COMPOSITE))
 
         # Use auto_discover=False to skip discovery and only return registered plugins
@@ -286,8 +287,8 @@ class TestPluginManager:
 
     def test_get_shader(self):
         manager = PluginManager()
-        manager.register_plugin(self._make_shader_manifest("my-shader"))
-        manager.register_plugin(PluginManifest("my-composite", "1.0.0", PluginType.COMPOSITE))
+        manager.register_plugin(self._make_shader_manifest("my-shader"), warn_overwrite=False)
+        manager.register_plugin(PluginManifest("my-composite", "1.0.0", PluginType.COMPOSITE), warn_overwrite=False)
 
         shader = manager.get_shader("my-shader")
         assert shader is not None
@@ -299,8 +300,117 @@ class TestPluginManager:
 
     def test_get_composite(self):
         manager = PluginManager()
-        manager.register_plugin(PluginManifest("my-composite", "1.0.0", PluginType.COMPOSITE))
+        manager.register_plugin(PluginManifest("my-composite", "1.0.0", PluginType.COMPOSITE), warn_overwrite=False)
 
         composite = manager.get_composite("my-composite")
         assert composite is not None
         assert composite.type == PluginType.COMPOSITE
+
+
+class TestInstallPlugin:
+    """Tests for install_plugin function."""
+
+    def test_install_valid_plugin(self):
+        from atari_style.plugins.discovery import install_plugin
+        import shutil
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a valid source plugin
+            source_dir = Path(tmpdir) / "source-plugin"
+            source_dir.mkdir()
+            manifest_data = {
+                "name": "test-install",
+                "version": "1.0.0",
+                "type": "composite"
+            }
+            (source_dir / "manifest.json").write_text(json.dumps(manifest_data))
+
+            # Install to temp user dir
+            with tempfile.TemporaryDirectory() as user_tmpdir:
+                # Temporarily patch the user dir
+                import atari_style.plugins.discovery as discovery
+                original_fn = discovery.get_user_plugin_dir
+
+                def mock_user_dir():
+                    p = Path(user_tmpdir)
+                    p.mkdir(exist_ok=True)
+                    return p
+
+                discovery.get_user_plugin_dir = mock_user_dir
+                try:
+                    target = install_plugin(source_dir, backup=False)
+                    assert target.exists()
+                    assert (target / "manifest.json").exists()
+                finally:
+                    discovery.get_user_plugin_dir = original_fn
+
+    def test_install_nonexistent_source(self):
+        from atari_style.plugins.discovery import install_plugin
+        import pytest
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_source = Path(tmpdir) / "does-not-exist"
+            try:
+                install_plugin(fake_source)
+                assert False, "Should have raised FileNotFoundError"
+            except FileNotFoundError:
+                pass  # Expected
+
+    def test_install_invalid_plugin(self):
+        from atari_style.plugins.discovery import install_plugin
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create source with invalid manifest (empty name)
+            source_dir = Path(tmpdir) / "invalid-plugin"
+            source_dir.mkdir()
+            manifest_data = {"name": "", "version": "1.0.0", "type": "shader"}
+            (source_dir / "manifest.json").write_text(json.dumps(manifest_data))
+
+            try:
+                install_plugin(source_dir)
+                assert False, "Should have raised ValueError"
+            except ValueError as e:
+                assert "validation failed" in str(e).lower()
+
+
+class TestGlobalPluginManager:
+    """Tests for global plugin manager singleton."""
+
+    def test_reset_plugin_manager(self):
+        from atari_style.plugins.loader import get_plugin_manager, reset_plugin_manager
+
+        # Get manager and note its id
+        manager1 = get_plugin_manager()
+        id1 = id(manager1)
+
+        # Reset and get again
+        reset_plugin_manager()
+        manager2 = get_plugin_manager()
+        id2 = id(manager2)
+
+        # Should be different instances
+        assert id1 != id2
+
+
+class TestSemverValidation:
+    """Tests for semantic versioning validation."""
+
+    def test_valid_semver(self):
+        manifest = PluginManifest("test", "1.2.3", PluginType.COMPOSITE)
+        errors = manifest.validate()
+        assert not any("version" in e.lower() for e in errors)
+
+    def test_invalid_two_part_version(self):
+        manifest = PluginManifest("test", "1.0", PluginType.COMPOSITE)
+        errors = manifest.validate()
+        assert any("MAJOR.MINOR.PATCH" in e for e in errors)
+
+    def test_invalid_non_numeric_version(self):
+        manifest = PluginManifest("test", "1.0.x", PluginType.COMPOSITE)
+        errors = manifest.validate()
+        assert any("numeric" in e.lower() for e in errors)
+
+    def test_invalid_single_part_version(self):
+        manifest = PluginManifest("test", "1", PluginType.COMPOSITE)
+        errors = manifest.validate()
+        assert any("semantic" in e.lower() for e in errors)

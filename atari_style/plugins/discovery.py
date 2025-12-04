@@ -3,11 +3,14 @@
 Scans plugin directories for valid plugins and manages plugin paths.
 """
 
+import logging
 import os
 from pathlib import Path
 from typing import List, Iterator, Optional
 
 from .schema import PluginManifest
+
+logger = logging.getLogger(__name__)
 
 
 def get_user_plugin_dir() -> Path:
@@ -111,26 +114,31 @@ def discover_plugins(plugin_dirs: Optional[List[Path]] = None) -> List[PluginMan
                 # Validate
                 errors = manifest.validate()
                 if errors:
-                    print(f"Warning: Plugin '{manifest.name}' has validation errors:")
-                    for error in errors:
-                        print(f"  - {error}")
+                    logger.warning(
+                        f"Plugin '{manifest.name}' has validation errors: {'; '.join(errors)}"
+                    )
                     continue
 
                 plugins.append(manifest)
                 seen_names.add(manifest.name)
 
             except Exception as e:
-                print(f"Warning: Failed to load plugin from {plugin_dir}: {e}")
+                logger.warning(f"Failed to load plugin from {plugin_dir}: {e}")
 
     return plugins
 
 
-def install_plugin(source: Path, name: Optional[str] = None) -> Path:
+def install_plugin(
+    source: Path,
+    name: Optional[str] = None,
+    backup: bool = True
+) -> Path:
     """Install a plugin to the user plugin directory.
 
     Args:
         source: Source directory containing the plugin
-        name: Optional name override (defaults to directory name)
+        name: Optional name override (defaults to manifest name)
+        backup: If True, create backup of existing plugin before overwriting
 
     Returns:
         Path to installed plugin directory
@@ -161,9 +169,17 @@ def install_plugin(source: Path, name: Optional[str] = None) -> Path:
     user_dir = get_user_plugin_dir()
     target_dir = user_dir / plugin_name
 
-    # Remove existing if present
+    # Handle existing plugin
     if target_dir.exists():
-        shutil.rmtree(target_dir)
+        if backup:
+            # Create backup before removal
+            backup_dir = user_dir / f"{plugin_name}.backup"
+            if backup_dir.exists():
+                shutil.rmtree(backup_dir)
+            shutil.move(str(target_dir), str(backup_dir))
+            logger.info(f"Backed up existing plugin to {backup_dir}")
+        else:
+            shutil.rmtree(target_dir)
 
     # Copy plugin
     shutil.copytree(source, target_dir)

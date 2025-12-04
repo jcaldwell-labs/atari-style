@@ -24,14 +24,17 @@ Usage:
 """
 
 from .schema import PluginManifest, PluginType, PluginParameter
-from .loader import PluginManager
-from .discovery import discover_plugins, get_plugin_dirs
+from .loader import PluginManager, get_plugin_manager, reset_plugin_manager
+from .discovery import discover_plugins, get_plugin_dirs, install_plugin
 
 __all__ = [
     'PluginManifest',
     'PluginType',
     'PluginParameter',
     'PluginManager',
+    'get_plugin_manager',
+    'reset_plugin_manager',
     'discover_plugins',
     'get_plugin_dirs',
+    'install_plugin',
 ]

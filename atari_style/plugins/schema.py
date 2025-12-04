@@ -146,13 +146,15 @@ class PluginManifest:
         elif not self.name.replace('-', '').replace('_', '').isalnum():
             errors.append(f"Plugin name must be alphanumeric with hyphens/underscores: {self.name}")
 
-        # Version validation
+        # Version validation (semantic versioning: MAJOR.MINOR.PATCH)
         if not self.version:
             errors.append("Plugin version is required")
         else:
             parts = self.version.split('.')
-            if len(parts) < 2:
-                errors.append(f"Version must be semantic (e.g., 1.0.0): {self.version}")
+            if len(parts) != 3:
+                errors.append(f"Version must be semantic versioning (MAJOR.MINOR.PATCH, e.g., 1.0.0): {self.version}")
+            elif not all(part.isdigit() for part in parts):
+                errors.append(f"Version parts must be numeric: {self.version}")
 
         # Type-specific validation
         if self.type == PluginType.SHADER:

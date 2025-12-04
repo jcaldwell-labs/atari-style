@@ -43,13 +43,35 @@ float fbm(vec2 p) {
     return value;
 }
 
-// Aurora color palette
-vec3 aurora_color(float t, float shift) {
-    // Green-cyan-magenta aurora colors
-    vec3 c1 = vec3(0.1, 0.8, 0.3);  // Green
-    vec3 c2 = vec3(0.2, 0.9, 0.8);  // Cyan
-    vec3 c3 = vec3(0.8, 0.3, 0.9);  // Magenta
-    vec3 c4 = vec3(0.3, 0.5, 0.9);  // Blue
+// Aurora color palette with color mode support
+vec3 aurora_color(float t, float shift, int color_mode) {
+    vec3 c1, c2, c3, c4;
+
+    if (color_mode == 1) {
+        // Fire palette
+        c1 = vec3(1.0, 0.2, 0.0);  // Red
+        c2 = vec3(1.0, 0.5, 0.0);  // Orange
+        c3 = vec3(1.0, 0.8, 0.0);  // Yellow
+        c4 = vec3(1.0, 0.3, 0.1);  // Red-orange
+    } else if (color_mode == 2) {
+        // Ocean palette
+        c1 = vec3(0.0, 0.3, 0.6);  // Deep blue
+        c2 = vec3(0.0, 0.5, 0.8);  // Blue
+        c3 = vec3(0.2, 0.7, 0.9);  // Light blue
+        c4 = vec3(0.0, 0.6, 0.7);  // Teal
+    } else if (color_mode == 3) {
+        // Grayscale palette
+        c1 = vec3(0.2);
+        c2 = vec3(0.4);
+        c3 = vec3(0.7);
+        c4 = vec3(0.5);
+    } else {
+        // Default: Green-cyan-magenta aurora colors (mode 0)
+        c1 = vec3(0.1, 0.8, 0.3);  // Green
+        c2 = vec3(0.2, 0.9, 0.8);  // Cyan
+        c3 = vec3(0.8, 0.3, 0.9);  // Magenta
+        c4 = vec3(0.3, 0.5, 0.9);  // Blue
+    }
 
     float phase = fract(t + shift);
 
@@ -97,9 +119,9 @@ void main() {
     // Combine effects
     float intensity = glow + ribbons * glow;
 
-    // Apply color
+    // Apply color with color mode support
     float color_phase = uv.x + noise_val * 0.3 + time * 0.1;
-    vec3 color = aurora_color(color_phase, color_shift);
+    vec3 color = aurora_color(color_phase, color_shift, u_color_mode);
 
     // Apply intensity with some vertical fade
     float vert_fade = smoothstep(0.0, 0.3, uv.y) * smoothstep(1.0, 0.7, uv.y);

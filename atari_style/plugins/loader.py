@@ -119,15 +119,22 @@ class PluginManager:
             return plugin
         return None
 
-    def register_plugin(self, manifest: PluginManifest) -> None:
+    def register_plugin(self, manifest: PluginManifest, warn_overwrite: bool = True) -> None:
         """Manually register a plugin.
 
         Args:
             manifest: Plugin manifest to register
+            warn_overwrite: If True, log a warning when overwriting an existing plugin
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         errors = manifest.validate()
         if errors:
             raise ValueError(f"Invalid plugin: {'; '.join(errors)}")
+
+        if warn_overwrite and manifest.name in self._plugins:
+            logger.warning(f"Overwriting existing plugin: {manifest.name}")
 
         self._plugins[manifest.name] = manifest
 
@@ -185,17 +192,40 @@ class PluginManager:
         return len(self.list_plugins(PluginType.SHADER))
 
 
-# Global plugin manager instance
+# Global plugin manager instance (singleton)
 _manager: Optional[PluginManager] = None
 
 
 def get_plugin_manager() -> PluginManager:
     """Get the global plugin manager instance.
 
-    Creates the manager and discovers plugins on first call.
+    This function returns a singleton PluginManager instance.
+    On first call, it creates the manager and discovers plugins.
+    The instance persists for the lifetime of the process.
+
+    Use `reset_plugin_manager()` to clear the singleton for test isolation
+    or to reload plugins after installation.
+
+    Returns:
+        The global PluginManager instance
     """
     global _manager
     if _manager is None:
         _manager = PluginManager()
         _manager.discover()
     return _manager
+
+
+def reset_plugin_manager() -> None:
+    """Reset the global plugin manager instance.
+
+    This clears the singleton, so the next call to `get_plugin_manager()`
+    will create a new instance and re-discover plugins.
+
+    Useful for:
+    - Test isolation (each test gets a fresh manager)
+    - Reloading plugins after installation
+    - Clearing cached plugin state
+    """
+    global _manager
+    _manager = None
