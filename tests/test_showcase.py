@@ -201,8 +201,10 @@ class TestShowcaseGenerator(unittest.TestCase):
             gen.generate()
         self.assertIn('ffmpeg', str(ctx.exception))
 
-    def test_generate_raises_with_empty_manifest(self):
+    @patch('shutil.which')
+    def test_generate_raises_with_empty_manifest(self, mock_which):
         """Test generate raises with empty manifest."""
+        mock_which.return_value = '/usr/bin/ffmpeg'
         manifest = ShowcaseManifest()
         gen = ShowcaseGenerator(manifest)
 
