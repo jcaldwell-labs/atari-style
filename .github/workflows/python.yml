@@ -79,3 +79,20 @@ jobs:
       run: |
         # Test failures must fail the build - no continue-on-error
         python -m unittest discover -s . -p "test_*.py" -v
+
+    - name: Run visual regression tests
+      if: steps.check_tests.outputs.has_tests == 'true'
+      env:
+        DISPLAY: ':99'
+        LIBGL_ALWAYS_SOFTWARE: '1'
+      run: |
+        # Generate baselines for joystick_test
+        python -m atari_style.core.visual_test generate joystick_test --frames 0,5,10
+        # Compare against baselines (should match perfectly)
+        python -m atari_style.core.visual_test compare joystick_test
+        # Run pytest visual regression tests if pytest is available
+        if command -v pytest &> /dev/null; then
+          pytest test_visual_regression.py -v || python test_visual_regression.py
+        else
+          python test_visual_regression.py
+        fi

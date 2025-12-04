@@ -228,11 +228,41 @@ See [docs/shader-roadmap.md](docs/shader-roadmap.md) for GPU implementation deta
 - **Undo/redo system**: Stack-based command pattern for ASCII Painter
 - **File I/O**: Save/load for ASCII art in .txt and .ansi formats
 
+## Testing
+
+### Visual Regression Tests
+
+Catch unintended visual changes with automated baseline comparison:
+
+```bash
+# Generate baseline images (commit these to repo)
+python -m atari_style.core.visual_test generate joystick_test --frames 0,5,10
+
+# Compare current render against baselines
+python -m atari_style.core.visual_test compare joystick_test
+
+# Run all visual tests with pytest
+pytest test_visual_regression.py -v
+```
+
+See [baselines/README.md](baselines/README.md) for complete documentation.
+
+### Unit Tests
+
+```bash
+# Run all tests
+python -m unittest discover -s . -p "test_*.py" -v
+
+# Or with pytest
+pytest --cov=. --cov-report=term
+```
+
 ## Documentation
 
 | Guide | Description |
 |-------|-------------|
 | [GPU Visualizer CLI](docs/guides/gpu-visualizer-guide.md) | Interactive shaders, GIF/video export, storyboards |
+| [Visual Regression Tests](baselines/README.md) | Automated visual regression testing |
 | [Joystick Controls](docs/joystick-controls.md) | Controller mappings and troubleshooting |
 | [Getting Started](docs/getting-started/) | Installation and basic usage |
 | [Architecture](docs/architecture.md) | System design overview |

@@ -21,6 +21,7 @@ Step-by-step guides for specific tasks:
 | Guide | Description |
 |-------|-------------|
 | [GPU Visualizer CLI](guides/gpu-visualizer-guide.md) | Interactive shaders, GIF/video export, storyboards |
+| [Visual Regression Testing](guides/visual-regression-guide.md) | Automated visual regression testing framework |
 | [Joystick Controls](joystick-controls.md) | Detailed controller documentation |
 
 ## Reference
