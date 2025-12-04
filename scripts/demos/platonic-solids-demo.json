@@ -1,0 +1,176 @@
+{
+  "name": "Platonic Solids Demo - All Five Solids",
+  "description": "Showcases all five Platonic solids with rotation and transitions",
+  "duration": 45.0,
+  "fps": 30,
+  "interpolation": "linear",
+  "controller": {
+    "model": "Virtual Controller",
+    "type": "analog",
+    "buttons": 6,
+    "note": "Cycles through all Platonic solids"
+  },
+  "keyframes": [
+    {
+      "time": 0.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [],
+      "note": "Start - Tetrahedron, auto-rotate"
+    },
+    {
+      "time": 3.0,
+      "x": 0.3,
+      "y": 0.0,
+      "buttons": [],
+      "note": "Manual rotation - Y axis"
+    },
+    {
+      "time": 5.0,
+      "x": 0.0,
+      "y": 0.3,
+      "buttons": [],
+      "note": "Manual rotation - X axis"
+    },
+    {
+      "time": 7.0,
+      "x": 0.2,
+      "y": -0.2,
+      "buttons": [],
+      "note": "Combined rotation"
+    },
+    {
+      "time": 8.5,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [0],
+      "note": "Switch to Cube"
+    },
+    {
+      "time": 9.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [],
+      "note": "Release - viewing Cube"
+    },
+    {
+      "time": 11.0,
+      "x": 0.4,
+      "y": 0.1,
+      "buttons": [],
+      "note": "Rotate cube - show 6 faces"
+    },
+    {
+      "time": 14.0,
+      "x": -0.3,
+      "y": 0.2,
+      "buttons": [],
+      "note": "Reverse rotation"
+    },
+    {
+      "time": 16.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [0],
+      "note": "Switch to Octahedron"
+    },
+    {
+      "time": 16.5,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [],
+      "note": "Release - viewing Octahedron"
+    },
+    {
+      "time": 18.0,
+      "x": 0.0,
+      "y": 0.4,
+      "buttons": [],
+      "note": "Rotate to show 8 triangular faces"
+    },
+    {
+      "time": 21.0,
+      "x": 0.3,
+      "y": -0.1,
+      "buttons": [],
+      "note": "Different angle"
+    },
+    {
+      "time": 23.5,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [0],
+      "note": "Switch to Dodecahedron"
+    },
+    {
+      "time": 24.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [],
+      "note": "Release - viewing Dodecahedron (12 pentagons)"
+    },
+    {
+      "time": 26.0,
+      "x": 0.25,
+      "y": 0.15,
+      "buttons": [],
+      "note": "Slow rotation to appreciate complexity"
+    },
+    {
+      "time": 30.0,
+      "x": -0.2,
+      "y": 0.25,
+      "buttons": [],
+      "note": "Continue exploring dodecahedron"
+    },
+    {
+      "time": 33.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [0],
+      "note": "Switch to Icosahedron"
+    },
+    {
+      "time": 33.5,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [],
+      "note": "Release - viewing Icosahedron (20 triangles)"
+    },
+    {
+      "time": 35.0,
+      "x": 0.0,
+      "y": 0.35,
+      "buttons": [],
+      "note": "Rotate to show triangular faces"
+    },
+    {
+      "time": 38.0,
+      "x": 0.35,
+      "y": 0.0,
+      "buttons": [],
+      "note": "Y-axis rotation"
+    },
+    {
+      "time": 41.0,
+      "x": 0.2,
+      "y": 0.2,
+      "buttons": [],
+      "note": "Final combined rotation"
+    },
+    {
+      "time": 44.0,
+      "x": 0.1,
+      "y": 0.1,
+      "buttons": [],
+      "note": "Slow down"
+    },
+    {
+      "time": 45.0,
+      "x": 0.0,
+      "y": 0.0,
+      "buttons": [],
+      "note": "End - gentle stop"
+    }
+  ]
+}
