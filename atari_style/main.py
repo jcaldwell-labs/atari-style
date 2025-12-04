@@ -19,7 +19,9 @@ from .demos.visualizers.flux_control_rhythm import run_rhythm_flux
 from .demos.visualizers.flux_control_zen import run_flux_zen
 from .demos.visualizers.flux_control_explorer import run_flux_explorer
 from .demos.visualizers.gl_mandelbrot import run_gl_mandelbrot
-from .demos.lissajous_explorer import run_lissajous_explorer
+
+# Educational
+from .demos.visualizers.educational import run_lissajous_explorer
 
 # Tools
 from .demos.tools.ascii_painter import run_ascii_painter
