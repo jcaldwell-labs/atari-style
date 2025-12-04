@@ -13,7 +13,7 @@ import unittest
 import tempfile
 import shutil
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from atari_style.core.video_base import (
     VideoFormat,

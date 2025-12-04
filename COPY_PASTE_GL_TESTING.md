@@ -71,7 +71,7 @@ Use this template:
 ## GL Video Export Test Results
 
 **Environment**: [OS, Python version, GPU]
-**Commit**: 62310b1
+**Commit**: [current-commit]
 
 ### Quick Test Results
 - [ ] Basic export (plasma MP4) - PASS/FAIL

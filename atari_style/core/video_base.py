@@ -16,8 +16,7 @@ import tempfile
 import shutil
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Callable, Dict, List, Tuple
-from pathlib import Path
+from typing import Optional, Callable, Dict, List
 
 
 @dataclass

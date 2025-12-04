@@ -23,7 +23,7 @@ Successfully unified GL and terminal video export pipelines by consolidating dup
   - 39 unit tests for all base components
   - 100% pass rate
 
-- Created `docs/uat/video-export-integration.md` (421 lines)
+- Created `docs/uat/video-export-integration.md` (472 lines)
   - 10 functional test cases
   - 3 code quality checks
   - 1 performance check

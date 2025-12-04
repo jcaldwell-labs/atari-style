@@ -218,7 +218,7 @@ Copy this template and fill in results:
 
 **Environment**: [OS, Python version, GPU info]
 **Date**: [Date]
-**Commit**: 69cfae5
+**Commit**: [current-commit]
 
 ### Test Results
 
