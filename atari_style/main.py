@@ -24,6 +24,7 @@ from .demos.lissajous_explorer import run_lissajous_explorer
 # Tools
 from .demos.tools.ascii_painter import run_ascii_painter
 from .demos.tools.joystick_test import run_joystick_test
+from .demos.tools.canvas_explorer import run_canvas_explorer
 
 
 def main():
@@ -40,6 +41,7 @@ def main():
         MenuItem("Flux Control: Zen", run_flux_zen),
         MenuItem("Flux Control: Explorer", run_flux_explorer),
         MenuItem("ASCII Painter", run_ascii_painter),
+        MenuItem("Canvas Explorer", run_canvas_explorer),
         MenuItem("Starfield", run_starfield),
         MenuItem("Screen Saver", run_screensaver),
         MenuItem("GPU Mandelbrot", run_gl_mandelbrot),
