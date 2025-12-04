@@ -3,7 +3,6 @@
 import json
 import tempfile
 from pathlib import Path
-import pytest
 
 from atari_style.plugins.schema import PluginManifest, PluginType, PluginParameter
 from atari_style.plugins.discovery import discover_plugins, find_plugin_dirs
@@ -88,8 +87,9 @@ class TestPluginManifest:
             ]
         )
         errors = manifest.validate()
-        # Should have no errors except missing shader file
-        assert len([e for e in errors if "Shader file not found" not in e]) == 0
+        # Should have no errors except missing shader file (expected since no actual file)
+        non_shader_errors = [e for e in errors if "Shader file not found" not in e]
+        assert not non_shader_errors, f"Unexpected errors: {non_shader_errors}"
 
     def test_validate_missing_name(self):
         manifest = PluginManifest(

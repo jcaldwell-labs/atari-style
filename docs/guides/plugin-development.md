@@ -73,7 +73,9 @@ my-plugin/
       "default": 0.5,
       "description": "What this parameter controls"
     },
-    // ... 3 more parameters for shader plugins
+    {"name": "param_b", "display_name": "Parameter B", "min": 0.0, "max": 1.0, "default": 0.5},
+    {"name": "param_c", "display_name": "Parameter C", "min": 0.0, "max": 1.0, "default": 0.5},
+    {"name": "param_d", "display_name": "Parameter D", "min": 0.0, "max": 1.0, "default": 0.5}
   ],
   "shader": "shader.glsl",
   "preview": "preview.png",

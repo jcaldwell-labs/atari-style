@@ -53,7 +53,7 @@ def get_plugin_dirs() -> List[Path]:
     # Additional paths from environment
     env_paths = os.environ.get('ATARI_STYLE_PLUGINS', '')
     if env_paths:
-        for path in env_paths.split(':'):
+        for path in env_paths.split(os.pathsep):
             if path:
                 p = Path(path)
                 if p.exists() and p.is_dir():

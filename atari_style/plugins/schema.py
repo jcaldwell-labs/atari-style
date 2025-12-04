@@ -164,7 +164,7 @@ class PluginManifest:
 
         # Parameter validation
         for i, param in enumerate(self.parameters):
-            if param.min_value >= param.max_value:
+            if param.min_value > param.max_value:
                 errors.append(f"Parameter {param.name}: min must be less than max")
             if not param.validate_value(param.default):
                 errors.append(f"Parameter {param.name}: default {param.default} outside range [{param.min_value}, {param.max_value}]")

@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 from .schema import PluginManifest, PluginType, PluginParameter
-from .discovery import discover_plugins, get_plugin_dirs, install_plugin, get_user_plugin_dir
+from .discovery import get_plugin_dirs, install_plugin, get_user_plugin_dir
 from .loader import PluginManager
 
 
@@ -52,7 +52,9 @@ def cmd_list(args):
             status = "✓" if not p.validate() else "⚠"
             print(f"  {status} {p.name} v{p.version}")
             if p.description:
-                print(f"      {p.description[:60]}...")
+                desc = p.description[:60]
+                suffix = "..." if len(p.description) > 60 else ""
+                print(f"      {desc}{suffix}")
             if args.verbose:
                 print(f"      Author: {p.author or 'unknown'}")
                 print(f"      Path: {p.plugin_dir}")
