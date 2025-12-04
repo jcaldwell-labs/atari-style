@@ -20,3 +20,7 @@ mandelbrot_*.png
 # Local demo files (not part of main project)
 atari_style/demos/lissajous_game.py
 atari_style/demos/unit_circle_*.py
+
+# Generated output files
+*.gif
+output/
