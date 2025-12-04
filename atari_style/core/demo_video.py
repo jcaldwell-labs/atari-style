@@ -178,6 +178,359 @@ def create_joystick_test(renderer: HeadlessRenderer, input_handler: ScriptedInpu
 register_demo('joystick_test', create_joystick_test, 'Joystick verification interface')
 
 
+class StarfieldDemo:
+    """Headless-compatible starfield demo."""
+
+    MODE_STARS = 0
+    MODE_ASTEROIDS = 1
+
+    def __init__(self, renderer: HeadlessRenderer, input_handler: ScriptedInputHandler):
+        self.renderer = renderer
+        self.input_handler = input_handler
+        import random
+        self.random = random
+
+        # Animation state
+        self.base_speed = 2.0
+        self.warp_speed = 1.0
+        self.lateral_drift = 0.0
+        self.color_mode = 0  # 0=white, 1=rainbow, 2=speed
+        self.mode = self.MODE_STARS
+        self.nebulae_visible = False
+        self.time = 0
+
+        # Stars: list of (x, y, z, layer)
+        self.stars = []
+        self._init_stars()
+
+    def _init_stars(self):
+        """Initialize star field."""
+        width = self.renderer.width
+        height = self.renderer.height
+        for _ in range(150):
+            layer = self.random.randint(0, 2)
+            self.stars.append({
+                'x': self.random.uniform(-width, width),
+                'y': self.random.uniform(-height, height),
+                'z': self.random.uniform(1, width),
+                'layer': layer
+            })
+
+    def draw(self):
+        """Render the starfield."""
+        self.renderer.clear_buffer()
+        width = self.renderer.width
+        height = self.renderer.height
+
+        # Get input state for speed/drift
+        jx, jy = self.input_handler.get_joystick_state()
+        buttons = self.input_handler.get_joystick_buttons()
+
+        # Update speed from joystick Y
+        if abs(jy) > 0.1:
+            self.warp_speed = max(0.1, min(5.0, self.warp_speed - jy * 0.1))
+
+        # Update drift from joystick X
+        self.lateral_drift = jx * 10 if abs(jx) > 0.1 else self.lateral_drift * 0.9
+
+        # Button handlers (with simple debounce via time)
+        if buttons.get(0) and int(self.time * 10) % 5 == 0:
+            self.color_mode = (self.color_mode + 1) % 3
+        if buttons.get(1) and int(self.time * 10) % 5 == 0:
+            self.mode = self.MODE_ASTEROIDS if self.mode == self.MODE_STARS else self.MODE_STARS
+        if buttons.get(2) and int(self.time * 10) % 5 == 0:
+            self.nebulae_visible = not self.nebulae_visible
+
+        # Calculate current speed
+        speed = self.base_speed * self.warp_speed
+
+        # Draw title
+        title = "STARFIELD"
+        mode_text = "ASTEROIDS" if self.mode == self.MODE_ASTEROIDS else "STARS"
+        self.renderer.draw_text((width - len(title)) // 2, 1, title, 'bright_cyan')
+        self.renderer.draw_text(2, 1, f"Mode: {mode_text}", 'yellow')
+        self.renderer.draw_text(width - 15, 1, f"Speed: {self.warp_speed:.1f}x", 'green')
+
+        # Color mode names
+        color_names = ['WHITE', 'RAINBOW', 'SPEED']
+        self.renderer.draw_text(2, 2, f"Colors: {color_names[self.color_mode]}", 'cyan')
+
+        if self.nebulae_visible:
+            self.renderer.draw_text(width - 12, 2, "NEBULAE ON", 'magenta')
+
+        # Update and draw stars
+        layer_speeds = [0.3, 0.7, 1.0]
+        layer_colors = ['blue', 'white', 'bright_white']
+        chars = '.·*' if self.mode == self.MODE_STARS else '◊◇◆'
+
+        for star in self.stars:
+            # Update position
+            layer_speed = layer_speeds[star['layer']]
+            star['z'] -= speed * layer_speed * 0.5
+            star['x'] += self.lateral_drift * layer_speed * 0.1
+
+            # Respawn if behind camera
+            if star['z'] <= 0:
+                star['x'] = self.random.uniform(-width, width)
+                star['y'] = self.random.uniform(-height, height)
+                star['z'] = width
+
+            # Project to 2D
+            if star['z'] > 0:
+                k = 64 / star['z']
+                sx = int(star['x'] * k + width / 2)
+                sy = int(star['y'] * k * 0.5 + height / 2)
+
+                if 0 <= sx < width and 3 <= sy < height - 1:
+                    # Choose color
+                    if self.color_mode == 0:
+                        color = layer_colors[star['layer']]
+                    elif self.color_mode == 1:
+                        colors = ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta']
+                        color = colors[int(self.time * 2 + star['z']) % len(colors)]
+                    else:
+                        color = 'bright_white' if speed > 3 else 'white' if speed > 1.5 else 'cyan'
+
+                    char = chars[star['layer']]
+                    self.renderer.set_pixel(sx, sy, char, color)
+
+        # Draw simple nebula effect
+        if self.nebulae_visible:
+            for i in range(5):
+                nx = int(width * 0.2 + i * width * 0.15 + self.time * 2) % width
+                ny = int(height * 0.4 + i * 3) % height
+                if 3 <= ny < height - 1:
+                    self.renderer.set_pixel(nx, ny, '░', 'magenta')
+                    self.renderer.set_pixel((nx + 1) % width, ny, '░', 'blue')
+
+        # Increment time
+        self.time += 1/30
+
+
+def create_starfield(renderer: HeadlessRenderer, input_handler: ScriptedInputHandler):
+    """Factory for StarfieldDemo."""
+    return StarfieldDemo(renderer, input_handler)
+
+
+register_demo('starfield', create_starfield, 'Enhanced 3D starfield with parallax')
+
+
+class PlatonicSolidsDemo:
+    """Headless-compatible platonic solids demo."""
+
+    # Solid names list (data initialized in __init__)
+    SOLID_NAMES = ['Tetrahedron', 'Cube', 'Octahedron', 'Dodecahedron', 'Icosahedron']
+
+    @staticmethod
+    def _dodeca_vertices():
+        """Generate dodecahedron vertices."""
+        phi = (1 + 5**0.5) / 2
+        verts = []
+        for i in [-1, 1]:
+            for j in [-1, 1]:
+                for k in [-1, 1]:
+                    verts.append((i, j, k))
+        for i in [-1, 1]:
+            for j in [-1, 1]:
+                verts.append((0, i * phi, j / phi))
+                verts.append((i / phi, 0, j * phi))
+                verts.append((i * phi, j / phi, 0))
+        return verts
+
+    @staticmethod
+    def _dodeca_edges():
+        """Generate dodecahedron edges (simplified)."""
+        return [(i, (i + 1) % 20) for i in range(20)] + \
+               [(i, (i + 5) % 20) for i in range(20) if i < 10]
+
+    @staticmethod
+    def _icosa_vertices():
+        """Generate icosahedron vertices."""
+        phi = (1 + 5**0.5) / 2
+        verts = []
+        for i in [-1, 1]:
+            for j in [-1, 1]:
+                verts.append((0, i, j * phi))
+                verts.append((i, j * phi, 0))
+                verts.append((j * phi, 0, i))
+        return verts
+
+    @staticmethod
+    def _icosa_edges():
+        """Generate icosahedron edges (simplified)."""
+        return [(i, (i + 1) % 12) for i in range(12)] + \
+               [(i, (i + 3) % 12) for i in range(12) if i < 6] + \
+               [(i, (i + 5) % 12) for i in range(12) if i < 6]
+
+    def __init__(self, renderer: HeadlessRenderer, input_handler: ScriptedInputHandler):
+        self.renderer = renderer
+        self.input_handler = input_handler
+        import math
+        self.math = math
+
+        # Build solids data (must be done in __init__ to call static methods)
+        self.solids = {
+            'Tetrahedron': {
+                'vertices': [(1, 1, 1), (-1, -1, 1), (-1, 1, -1), (1, -1, -1)],
+                'edges': [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)],
+                'faces': 4, 'v': 4, 'e': 6
+            },
+            'Cube': {
+                'vertices': [(-1, -1, -1), (1, -1, -1), (1, 1, -1), (-1, 1, -1),
+                            (-1, -1, 1), (1, -1, 1), (1, 1, 1), (-1, 1, 1)],
+                'edges': [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4),
+                         (0, 4), (1, 5), (2, 6), (3, 7)],
+                'faces': 6, 'v': 8, 'e': 12
+            },
+            'Octahedron': {
+                'vertices': [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)],
+                'edges': [(0, 2), (0, 3), (0, 4), (0, 5), (1, 2), (1, 3), (1, 4), (1, 5),
+                         (2, 4), (2, 5), (3, 4), (3, 5)],
+                'faces': 8, 'v': 6, 'e': 12
+            },
+            'Dodecahedron': {
+                'vertices': PlatonicSolidsDemo._dodeca_vertices(),
+                'edges': PlatonicSolidsDemo._dodeca_edges(),
+                'faces': 12, 'v': 20, 'e': 30
+            },
+            'Icosahedron': {
+                'vertices': PlatonicSolidsDemo._icosa_vertices(),
+                'edges': PlatonicSolidsDemo._icosa_edges(),
+                'faces': 20, 'v': 12, 'e': 30
+            }
+        }
+
+        self.solid_names = self.SOLID_NAMES
+        self.current_index = 0
+        self.rotation_x = 0
+        self.rotation_y = 0
+        self.rotation_z = 0
+        self.auto_rotate = True
+        self.zoom = 12
+        self.last_button_time = 0
+        self.time = 0
+
+    def _rotate_point(self, p, rx, ry, rz):
+        """Rotate a 3D point."""
+        x, y, z = p
+        # Rotate X
+        cos_rx, sin_rx = self.math.cos(rx), self.math.sin(rx)
+        y, z = y * cos_rx - z * sin_rx, y * sin_rx + z * cos_rx
+        # Rotate Y
+        cos_ry, sin_ry = self.math.cos(ry), self.math.sin(ry)
+        x, z = x * cos_ry + z * sin_ry, -x * sin_ry + z * cos_ry
+        # Rotate Z
+        cos_rz, sin_rz = self.math.cos(rz), self.math.sin(rz)
+        x, y = x * cos_rz - y * sin_rz, x * sin_rz + y * cos_rz
+        return (x, y, z)
+
+    def _project(self, p, width, height):
+        """Project 3D to 2D."""
+        x, y, z = p
+        factor = 50 / (z + 5)
+        sx = int(x * factor * self.zoom + width / 2)
+        sy = int(y * factor * self.zoom * 0.5 + height / 2)
+        return sx, sy
+
+    def draw(self):
+        """Render the platonic solid."""
+        self.renderer.clear_buffer()
+        width = self.renderer.width
+        height = self.renderer.height
+
+        # Get input
+        jx, jy = self.input_handler.get_joystick_state()
+        buttons = self.input_handler.get_joystick_buttons()
+
+        # Manual rotation
+        if abs(jx) > 0.1 or abs(jy) > 0.1:
+            self.auto_rotate = False
+            self.rotation_y += jx * 0.05
+            self.rotation_x += jy * 0.05
+        elif self.auto_rotate:
+            self.rotation_y += 0.02
+            self.rotation_x += 0.01
+
+        # Cycle solids with button 0
+        if buttons.get(0) and self.time - self.last_button_time > 0.3:
+            self.current_index = (self.current_index + 1) % len(self.solid_names)
+            self.last_button_time = self.time
+
+        solid_name = self.solid_names[self.current_index]
+
+        # Get solid data from pre-computed dict
+        solid = self.solids[solid_name]
+        vertices = solid['vertices']
+        edges = solid['edges']
+        info = f"{solid['faces']} faces, {solid['v']} vertices, {solid['e']} edges"
+
+        # Draw title and info
+        self.renderer.draw_text((width - len(solid_name)) // 2, 1, solid_name.upper(), 'bright_cyan')
+        self.renderer.draw_text((width - len(info)) // 2, 2, info, 'yellow')
+
+        # Transform and project vertices
+        projected = []
+        for v in vertices:
+            rv = self._rotate_point(v, self.rotation_x, self.rotation_y, self.rotation_z)
+            projected.append(self._project(rv, width, height))
+
+        # Draw edges
+        for e in edges:
+            if e[0] < len(projected) and e[1] < len(projected):
+                x1, y1 = projected[e[0]]
+                x2, y2 = projected[e[1]]
+                self._draw_line(x1, y1, x2, y2, 'green')
+
+        # Draw vertices
+        for sx, sy in projected:
+            if 0 <= sx < width and 0 <= sy < height:
+                self.renderer.set_pixel(sx, sy, '●', 'bright_white')
+
+        # Controls hint
+        self.renderer.draw_text(2, height - 2, "BTN0: Next solid  Joystick: Rotate", 'cyan')
+
+        self.time += 1/30
+
+    def _draw_line(self, x1, y1, x2, y2, color):
+        """Draw a line using Bresenham's algorithm."""
+        dx = abs(x2 - x1)
+        dy = abs(y2 - y1)
+        sx = 1 if x1 < x2 else -1
+        sy = 1 if y1 < y2 else -1
+        err = dx - dy
+
+        while True:
+            if 0 <= x1 < self.renderer.width and 0 <= y1 < self.renderer.height:
+                # Choose line character based on direction
+                if dx > dy * 2:
+                    char = '─'
+                elif dy > dx * 2:
+                    char = '│'
+                elif (sx > 0) == (sy > 0):
+                    char = '\\'
+                else:
+                    char = '/'
+                self.renderer.set_pixel(x1, y1, char, color)
+
+            if x1 == x2 and y1 == y2:
+                break
+            e2 = 2 * err
+            if e2 > -dy:
+                err -= dy
+                x1 += sx
+            if e2 < dx:
+                err += dx
+                y1 += sy
+
+
+def create_platonic_solids(renderer: HeadlessRenderer, input_handler: ScriptedInputHandler):
+    """Factory for PlatonicSolidsDemo."""
+    return PlatonicSolidsDemo(renderer, input_handler)
+
+
+register_demo('platonic_solids', create_platonic_solids, 'Interactive 3D Platonic solids viewer')
+
+
 class DemoVideoExporter:
     """Exports terminal demos to video using scripted input."""
 
