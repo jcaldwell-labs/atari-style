@@ -32,6 +32,16 @@ The project now includes:
 
 This project is similar to "terminal-stars" but expanded with a menu system and multiple playable demos.
 
+### Project Philosophy
+
+See [PHILOSOPHY.md](./PHILOSOPHY.md) for core principles guiding development decisions:
+1. The Terminal is a Canvas, Not a Cage
+2. Parameters are Territory, Not Settings
+3. Small Tools, Composed Freely
+4. Show, Don't Document
+5. AI-Native Development
+6. Play is Serious Work
+
 ## Technology Stack
 
 **Language**: Python 3.8+
