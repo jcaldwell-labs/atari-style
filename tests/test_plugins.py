@@ -273,14 +273,13 @@ class TestPluginManager:
 
     def test_list_by_type(self):
         manager = PluginManager()
-        # Manually set _loaded to prevent auto-discover in list_plugins
-        manager._loaded = True
         manager.register_plugin(self._make_shader_manifest("s1"))
         manager.register_plugin(self._make_shader_manifest("s2"))
         manager.register_plugin(PluginManifest("c1", "1.0.0", PluginType.COMPOSITE))
 
-        shaders = manager.list_plugins(PluginType.SHADER)
-        composites = manager.list_plugins(PluginType.COMPOSITE)
+        # Use auto_discover=False to skip discovery and only return registered plugins
+        shaders = manager.list_plugins(PluginType.SHADER, auto_discover=False)
+        composites = manager.list_plugins(PluginType.COMPOSITE, auto_discover=False)
 
         assert len(shaders) == 2
         assert len(composites) == 1

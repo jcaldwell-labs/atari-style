@@ -55,16 +55,21 @@ class PluginManager:
         self._loaded = True
         return len(self._plugins)
 
-    def list_plugins(self, plugin_type: Optional[PluginType] = None) -> List[PluginManifest]:
+    def list_plugins(
+        self,
+        plugin_type: Optional[PluginType] = None,
+        auto_discover: bool = True
+    ) -> List[PluginManifest]:
         """List all loaded plugins.
 
         Args:
             plugin_type: Filter by type (None for all)
+            auto_discover: If True, auto-discover plugins if not loaded (default True)
 
         Returns:
             List of plugin manifests
         """
-        if not self._loaded:
+        if auto_discover and not self._loaded:
             self.discover()
 
         if plugin_type is None:
@@ -156,7 +161,7 @@ class PluginManager:
         for plugin in self.list_plugins(PluginType.SHADER):
             if plugin.shader_path and plugin.shader_path.exists():
                 config = CompositeConfig(
-                    name=plugin.name.replace('-', '_').title().replace('_', '-'),
+                    name=plugin.name,  # Use original plugin name for consistency
                     shader_path=str(plugin.shader_path),
                     description=plugin.description,
                     default_params=plugin.default_params,
