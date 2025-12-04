@@ -344,7 +344,7 @@ class CanvasRenderer:
                 while wy < bounds[3]:
                     sx, sy = viewport.world_to_screen(wx, wy)
                     if 0 <= sx < self.renderer.width and 0 <= sy < self.renderer.height:
-                        self.renderer.set_pixel(sx, sy, '.', Color.DARK_GRAY)
+                        self.renderer.set_pixel(sx, sy, '.', Color.BLUE)
                     wy += minor
                 wx += minor
 
@@ -359,7 +359,7 @@ class CanvasRenderer:
             if 0 <= sx < self.renderer.width:
                 for sy in range(self.renderer.height):
                     char = '|' if wx != 0 else '|'
-                    color = Color.DARK_CYAN if wx != 0 else Color.CYAN
+                    color = Color.CYAN if wx != 0 else Color.BRIGHT_CYAN
                     self.renderer.set_pixel(sx, sy, char, color)
             wx += major
 
@@ -370,7 +370,7 @@ class CanvasRenderer:
             if 0 <= sy < self.renderer.height:
                 for sx in range(self.renderer.width):
                     char = '-' if wy != 0 else '-'
-                    color = Color.DARK_CYAN if wy != 0 else Color.CYAN
+                    color = Color.CYAN if wy != 0 else Color.BRIGHT_CYAN
                     self.renderer.set_pixel(sx, sy, char, color)
             wy += major
 
@@ -404,7 +404,7 @@ class CanvasRenderer:
                 sy = min(sy_origin + 1, self.renderer.height - 1)
                 if 0 <= sx < self.renderer.width - len(label) and 0 <= sy < self.renderer.height:
                     for i, c in enumerate(label):
-                        self.renderer.set_pixel(sx + i, sy, c, Color.DARK_YELLOW)
+                        self.renderer.set_pixel(sx + i, sy, c, Color.YELLOW)
                 wx += major
 
     def draw_marker(self, marker: Marker, viewport: Viewport) -> None:
@@ -551,7 +551,7 @@ class CanvasRenderer:
         help_start = self.renderer.width - len(help_text) - 1
         if help_start > offset:
             for i, c in enumerate(help_text):
-                self.renderer.set_pixel(help_start + i, y, c, Color.DARK_GRAY)
+                self.renderer.set_pixel(help_start + i, y, c, Color.CYAN)
 
     def draw_help(self) -> None:
         """Draw help overlay."""
