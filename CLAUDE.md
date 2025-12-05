@@ -336,3 +336,65 @@ All demos support both keyboard and joystick:
 - Use `timeout` parameter in `get_input()` to avoid blocking
 - Limit pixel density for complex animations (draw every 2nd pixel)
 - pygame event pumping happens in input handler automatically
+## Code Quality Standards
+
+These standards apply to all code contributions. Following them reduces PR review cycles.
+
+### Security Requirements
+
+**HTML Output**: Always escape user data when generating HTML:
+```python
+import html
+filename_safe = html.escape(filename)
+f'<h2>{filename_safe}</h2>'  # Safe
+```
+
+**Path Validation**: Validate file paths to prevent traversal attacks:
+```python
+requested = (base_dir / user_path).resolve()
+if not str(requested).startswith(str(base_dir.resolve())):
+    return error_forbidden()
+```
+
+**Large Files**: Stream instead of loading into memory:
+```python
+CHUNK_SIZE = 8192
+with open(path, 'rb') as f:
+    while chunk := f.read(CHUNK_SIZE):
+        output.write(chunk)
+```
+
+### Code Conventions
+
+**Constants**: Extract magic numbers as named constants:
+```python
+DIGITAL_THRESHOLD = 0.5  # Not: if value > 0.5
+```
+
+**Imports**: Only import what you use. Remove unused imports.
+
+**Type Hints**: All public functions must have type hints.
+
+**Docstrings**: Document public APIs with Args, Returns, and example usage.
+
+### Testing Standards
+
+- **Core modules**: 80% coverage minimum
+- **Integration tests**: Required for all features (not just unit tests)
+- **Edge cases**: Test empty inputs, missing dependencies, error conditions
+- **Test data consistency**: Match test filenames/types to what's being tested
+
+### Before Submitting PRs
+
+```bash
+# Lint
+ruff check atari_style/ tests/
+
+# Tests
+python -m unittest discover -s tests -p "test_*.py" -v
+
+# Security audit
+# - Verify html.escape() for all user data in HTML
+# - Verify path validation for file operations
+# - Verify streaming for large file handling
+```
