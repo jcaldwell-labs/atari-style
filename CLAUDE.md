@@ -336,6 +336,44 @@ All demos support both keyboard and joystick:
 - Use `timeout` parameter in `get_input()` to avoid blocking
 - Limit pixel density for complex animations (draw every 2nd pixel)
 - pygame event pumping happens in input handler automatically
+
+## Pre-Commit Checklist
+
+Before committing code, verify these items to reduce review cycles:
+
+### Always Check
+- [ ] **Run the code** - Actually execute and observe the behavior, don't just trust tests
+- [ ] **Tests assert outcomes** - Every test should have meaningful assertions, not just "runs without error"
+- [ ] **Input validation** - Validate user inputs at boundaries (CLI args, API params)
+- [ ] **Cross-platform** - File paths, fonts, and system calls work on Linux/macOS/Windows
+
+### For Algorithm/Math Changes
+- [ ] **Verify the math** - Work through calculations by hand for a simple case
+- [ ] **Test edge cases** - Zero, negative, very large values, empty inputs
+- [ ] **Check units** - FPS, seconds, frame counts - ensure consistent units throughout
+
+### For CLI Tools
+- [ ] **Test all flags** - Run with each combination of arguments
+- [ ] **Help text accuracy** - Verify --help matches actual behavior
+- [ ] **Error messages** - Invalid inputs produce clear, actionable errors
+
+### For Web/Server Code
+- [ ] **Escape user input** - Use `html.escape()` for HTML, parameterized queries for SQL
+- [ ] **Validate paths** - Prevent path traversal with `.resolve()` and prefix checks
+- [ ] **Resource limits** - Stream large files, set timeouts, limit memory usage
+
+### For Performance-Sensitive Code
+- [ ] **Profile first** - Measure before optimizing
+- [ ] **Cache expensive operations** - Font loading, file parsing, network calls
+- [ ] **Avoid per-frame allocations** - Reuse objects in tight loops
+
+### Common Mistakes to Avoid
+- Alpha values on RGB images (PIL)
+- Hardcoded paths (use cross-platform detection)
+- Tests that don't actually assert anything
+- Missing decimation when changing frame rates
+- Loading resources inside loops
+
 ## Code Quality Standards
 
 These standards apply to all code contributions. Following them reduces PR review cycles.
