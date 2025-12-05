@@ -373,6 +373,87 @@ class TestCLI:
             sys.argv = original_argv
 
 
+class TestCLIValidation:
+    """Tests for CLI argument validation error handling."""
+
+    def test_cli_negative_start_rejected(self):
+        """Verify --start with negative value causes error."""
+        import sys
+        import pytest
+        from atari_style.demos.visualizers.educational.lissajous_educational_series import main
+
+        original_argv = sys.argv
+        try:
+            sys.argv = ['prog', '--part', '1', '--preview', '--start', '-5', '-o', 'test.gif']
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            assert exc_info.value.code != 0
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_end_before_start_rejected(self):
+        """Verify --end <= --start causes error."""
+        import sys
+        import pytest
+        from atari_style.demos.visualizers.educational.lissajous_educational_series import main
+
+        original_argv = sys.argv
+        try:
+            sys.argv = ['prog', '--part', '1', '--preview',
+                        '--start', '10', '--end', '5', '-o', 'test.gif']
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            assert exc_info.value.code != 0
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_end_equals_start_rejected(self):
+        """Verify --end == --start causes error."""
+        import sys
+        import pytest
+        from atari_style.demos.visualizers.educational.lissajous_educational_series import main
+
+        original_argv = sys.argv
+        try:
+            sys.argv = ['prog', '--part', '1', '--preview',
+                        '--start', '5', '--end', '5', '-o', 'test.gif']
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            assert exc_info.value.code != 0
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_zero_duration_rejected(self):
+        """Verify --duration 0 causes error."""
+        import sys
+        import pytest
+        from atari_style.demos.visualizers.educational.lissajous_educational_series import main
+
+        original_argv = sys.argv
+        try:
+            sys.argv = ['prog', '--part', '1', '--preview', '--duration', '0', '-o', 'test.gif']
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            assert exc_info.value.code != 0
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_negative_duration_rejected(self):
+        """Verify --duration with negative value causes error."""
+        import sys
+        import pytest
+        from atari_style.demos.visualizers.educational.lissajous_educational_series import main
+
+        original_argv = sys.argv
+        try:
+            sys.argv = ['prog', '--part', '1', '--preview', '--duration', '-3', '-o', 'test.gif']
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            assert exc_info.value.code != 0
+        finally:
+            sys.argv = original_argv
+
+
 class TestGameEnemy:
     """Tests for GameEnemy dataclass."""
 

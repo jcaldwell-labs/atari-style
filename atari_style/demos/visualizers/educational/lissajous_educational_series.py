@@ -1391,11 +1391,11 @@ Preview mode examples:
     preview_group.add_argument('--preview', action='store_true',
                                help='Enable preview mode (5 FPS, limited duration, watermarked)')
     preview_group.add_argument('--start', type=float, default=0.0,
-                               help='Start time in seconds (default: 0, requires --preview)')
+                               help='Start time in seconds (default: 0, only used with --preview)')
     preview_group.add_argument('--end', type=float, default=None,
                                help='End time in seconds (if not specified, uses --start + --duration)')
     preview_group.add_argument('--duration', type=float, default=5.0,
-                               help='Max preview duration in seconds (default: 5, requires --preview)')
+                               help='Max preview duration in seconds (default: 5, only used with --preview)')
 
     args = parser.parse_args()
 
