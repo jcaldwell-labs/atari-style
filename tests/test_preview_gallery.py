@@ -1,7 +1,6 @@
 """Tests for the preview gallery module."""
 
 import json
-import os
 import tempfile
 import unittest
 from datetime import datetime
