@@ -459,8 +459,9 @@ class PreviewServer:
         self.gallery.scan()
         summary = self.gallery.get_summary()
 
-        print("Atari-Style Preview Server")
-        print("=" * 40)
+        title = "Atari-Style Preview Server"
+        print(title)
+        print("=" * len(title))
         print(f"Scanning: {', '.join(str(d) for d in self.gallery.directories)}")
         print(f"Found: {summary['total_files']} files ({summary['total_size_human']})")
         print(f"  Videos: {summary['by_type']['video']['count']}")
