@@ -433,6 +433,42 @@ class TestGallery(unittest.TestCase):
         self.assertIsNotNone(file2)
         self.assertNotEqual(file1.path, file2.path)
 
+    def test_multi_directory_unique_ids(self):
+        """Test that multi-directory scans have unique IDs to avoid collisions."""
+        import os
+
+        # Create two directories with same-named files
+        dir1 = Path(self.temp_dir) / 'dir1'
+        dir2 = Path(self.temp_dir) / 'dir2'
+        dir1.mkdir()
+        dir2.mkdir()
+
+        # Same relative path in both directories
+        subdir1 = dir1 / 'sub'
+        subdir2 = dir2 / 'sub'
+        subdir1.mkdir()
+        subdir2.mkdir()
+
+        (subdir1 / 'video.mp4').write_bytes(b'video1')
+        (subdir2 / 'video.mp4').write_bytes(b'video2')
+
+        # Create gallery with multiple directories
+        multi_gallery = Gallery(directories=[dir1, dir2])
+        files = multi_gallery.scan()
+
+        # Should find both files
+        self.assertEqual(len(files), 2)
+
+        # Each should have unique relative_path (prefixed with directory name)
+        paths = {f.relative_path for f in files}
+        self.assertEqual(len(paths), 2)  # Must be unique
+
+        # Both files should be retrievable by their unique_id
+        unique_ids = [f.unique_id for f in files]
+        for uid in unique_ids:
+            result = multi_gallery.get_by_id(uid)
+            self.assertIsNotNone(result)
+
     def test_get_summary(self):
         """Test summary statistics."""
         # Create various file types

@@ -5,12 +5,8 @@ import json
 import tempfile
 import unittest
 from datetime import datetime
-from http.server import HTTPServer
 from pathlib import Path
-from threading import Thread
-from unittest.mock import MagicMock, patch
-import urllib.request
-import urllib.error
+from unittest.mock import MagicMock
 
 from atari_style.preview.server import PreviewHandler, PreviewServer, main
 from atari_style.preview.gallery import Gallery, MediaFile

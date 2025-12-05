@@ -13,6 +13,10 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 
+# Constants
+BYTES_PER_KB = 1024
+
+
 def format_bytes(size_bytes: int) -> str:
     """Convert bytes to human-readable format.
 
@@ -24,9 +28,9 @@ def format_bytes(size_bytes: int) -> str:
     """
     size = float(size_bytes)
     for unit in ['B', 'KB', 'MB', 'GB']:
-        if size < 1024:
+        if size < BYTES_PER_KB:
             return f"{size:.1f} {unit}"
-        size /= 1024
+        size /= BYTES_PER_KB
     return f"{size:.1f} TB"
 
 
@@ -347,6 +351,11 @@ class Gallery:
                     relative_path = str(path.relative_to(directory))
                 except ValueError:
                     relative_path = path.name
+
+                # For multi-directory scans, prefix with directory name to avoid collisions
+                if len(self.directories) > 1:
+                    dir_prefix = directory.name
+                    relative_path = f"{dir_prefix}/{relative_path}"
 
                 media_file = MediaFile(
                     path=path,
