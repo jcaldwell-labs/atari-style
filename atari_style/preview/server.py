@@ -7,7 +7,6 @@ and storyboard JSON files. Uses Python's built-in http.server.
 import argparse
 import json
 import mimetypes
-import os
 import sys
 import urllib.parse
 from functools import partial
@@ -460,8 +459,8 @@ class PreviewServer:
         self.gallery.scan()
         summary = self.gallery.get_summary()
 
-        print(f"Atari-Style Preview Server")
-        print(f"=" * 40)
+        print("Atari-Style Preview Server")
+        print("=" * 40)
         print(f"Scanning: {', '.join(str(d) for d in self.gallery.directories)}")
         print(f"Found: {summary['total_files']} files ({summary['total_size_human']})")
         print(f"  Videos: {summary['by_type']['video']['count']}")
@@ -470,7 +469,7 @@ class PreviewServer:
         print(f"  Input Scripts: {summary['by_type']['input_script']['count']}")
         print()
         print(f"Server running at http://{self.host}:{self.port}/")
-        print(f"Press Ctrl+C to stop")
+        print("Press Ctrl+C to stop")
         print()
 
         # Create handler with gallery reference

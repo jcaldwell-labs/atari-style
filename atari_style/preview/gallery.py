@@ -5,7 +5,6 @@ for display in the preview server.
 """
 
 import json
-import os
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
