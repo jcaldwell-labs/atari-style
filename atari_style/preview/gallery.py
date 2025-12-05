@@ -6,6 +6,7 @@ for display in the preview server.
 
 import json
 import subprocess
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -95,11 +96,12 @@ class Gallery:
         'storyboard': {'.json'},  # Will check content to differentiate
     }
 
-    def __init__(self, directories: Optional[List[Path]] = None):
+    def __init__(self, directories: Optional[List[Path]] = None, cache_ttl: float = 30.0):
         """Initialize gallery with directories to scan.
 
         Args:
             directories: List of directories to scan. Defaults to ['output/']
+            cache_ttl: Cache time-to-live in seconds. Set to 0 to disable caching.
         """
         if directories is None:
             # Default to output directory relative to project root
@@ -109,6 +111,8 @@ class Gallery:
         self.directories = [Path(d) for d in directories]
         self.files: List[MediaFile] = []
         self._ffprobe_available: Optional[bool] = None
+        self._cache_ttl = cache_ttl
+        self._last_scan_time: float = 0
 
     def _check_ffprobe(self) -> bool:
         """Check if ffprobe is available."""
@@ -270,15 +274,22 @@ class Gallery:
         except (json.JSONDecodeError, IOError):
             return {}
 
-    def scan(self, recursive: bool = True) -> List[MediaFile]:
+    def scan(self, recursive: bool = True, force: bool = False) -> List[MediaFile]:
         """Scan directories for media files.
 
         Args:
             recursive: Whether to scan subdirectories
+            force: Force rescan even if cache is still valid
 
         Returns:
             List of MediaFile objects
         """
+        # Check if cache is still valid
+        if not force and self._cache_ttl > 0 and self.files:
+            elapsed = time.time() - self._last_scan_time
+            if elapsed < self._cache_ttl:
+                return self.files
+
         self.files = []
 
         for directory in self.directories:
@@ -330,6 +341,9 @@ class Gallery:
 
         # Sort by modification time (newest first)
         self.files.sort(key=lambda f: f.modified_time, reverse=True)
+
+        # Update cache timestamp
+        self._last_scan_time = time.time()
 
         return self.files
 

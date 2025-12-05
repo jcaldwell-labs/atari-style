@@ -137,8 +137,9 @@ class PreviewHandler(SimpleHTTPRequestHandler):
 
     def _serve_gallery(self, query: dict):
         """Serve the main gallery page."""
-        # Refresh file list
-        self.gallery.scan()
+        # Refresh file list (force refresh if ?refresh=1)
+        force_refresh = query.get('refresh', ['0'])[0] == '1'
+        self.gallery.scan(force=force_refresh)
 
         # Filter by type if requested
         type_filter = query.get('type', [None])[0]
@@ -230,7 +231,7 @@ class PreviewHandler(SimpleHTTPRequestHandler):
             <div class="info-panel">
                 <h2>{html.escape(filename)}</h2>
                 <dl>
-                    <dt>Type</dt><dd>{media_file.file_type}</dd>
+                    <dt>Type</dt><dd>{html.escape(media_file.file_type)}</dd>
                     <dt>Size</dt><dd>{media_file.size_human}</dd>
                     <dt>Modified</dt><dd>{media_file.modified_human}</dd>
         '''
@@ -243,11 +244,11 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         info_html += '</dl></div>'
 
         template = self._load_template('viewer.html')
-        html = template.replace('{{FILENAME}}', filename)
-        html = html.replace('{{MEDIA}}', media_html)
-        html = html.replace('{{INFO}}', info_html)
+        page_html = template.replace('{{FILENAME}}', html.escape(filename))
+        page_html = page_html.replace('{{MEDIA}}', media_html)
+        page_html = page_html.replace('{{INFO}}', info_html)
 
-        self._send_html(html)
+        self._send_html(page_html)
 
     def _serve_storyboard(self, query: dict):
         """Serve the storyboard timeline viewer."""
@@ -423,7 +424,8 @@ class PreviewHandler(SimpleHTTPRequestHandler):
 
     def _serve_api_files(self, query: dict):
         """Serve file list as JSON."""
-        self.gallery.scan()
+        force_refresh = query.get('refresh', ['0'])[0] == '1'
+        self.gallery.scan(force=force_refresh)
 
         type_filter = query.get('type', [None])[0]
         if type_filter and type_filter != 'all':
@@ -438,7 +440,7 @@ class PreviewHandler(SimpleHTTPRequestHandler):
 
     def _serve_api_summary(self):
         """Serve gallery summary as JSON."""
-        self.gallery.scan()
+        self.gallery.scan()  # Uses cache by default
         self._send_json(self.gallery.get_summary())
 
     def log_message(self, format, *args):
