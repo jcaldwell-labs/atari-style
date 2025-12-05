@@ -1210,6 +1210,12 @@ class PreviewOptions:
     max_duration: float = 5.0
 
 
+# Watermark styling constants
+WATERMARK_FONT_SIZE = 24
+WATERMARK_MARGIN_RIGHT = 10
+WATERMARK_MARGIN_TOP = 10
+WATERMARK_BACKGROUND_PADDING = 5
+
 # Module-level font cache for watermark
 _watermark_font = None
 
@@ -1235,7 +1241,7 @@ def _get_watermark_font():
     ]
     for path in font_paths:
         try:
-            _watermark_font = ImageFont.truetype(path, 24)
+            _watermark_font = ImageFont.truetype(path, WATERMARK_FONT_SIZE)
             return _watermark_font
         except OSError:
             continue
@@ -1271,14 +1277,14 @@ def add_preview_watermark(frame: Image.Image) -> Image.Image:
     text_width = bbox[2] - bbox[0]
     text_height = bbox[3] - bbox[1]
 
-    # Position in top-right corner with padding, ensure non-negative
-    x = max(0, frame.width - text_width - 10)
-    y = 10
+    # Position in top-right corner with margin, ensure non-negative
+    x = max(0, frame.width - text_width - WATERMARK_MARGIN_RIGHT)
+    y = WATERMARK_MARGIN_TOP
 
     # Draw background (RGB - no alpha needed since we're on RGB image)
-    padding = 5
     draw.rectangle(
-        [x - padding, y - padding, x + text_width + padding, y + text_height + padding],
+        [x - WATERMARK_BACKGROUND_PADDING, y - WATERMARK_BACKGROUND_PADDING,
+         x + text_width + WATERMARK_BACKGROUND_PADDING, y + text_height + WATERMARK_BACKGROUND_PADDING],
         fill=(0, 0, 0)
     )
 
@@ -1352,10 +1358,10 @@ def filter_frames_for_preview(
 
         frame_idx += 1
 
-    # Print summary - duration based on preview FPS (actual playback)
-    duration = frames_yielded / preview.fps if preview.fps > 0 else 0
+    # Print summary - duration based on effective FPS (actual playback)
+    duration = frames_yielded / effective_fps if effective_fps > 0 else 0
     source_duration = frames_in_range / source_fps if source_fps > 0 else 0
-    print(f"Preview: {frames_yielded} frames at {preview.fps} FPS = {duration:.1f}s playback "
+    print(f"Preview: {frames_yielded} frames at {effective_fps} FPS = {duration:.1f}s playback "
           f"(from {source_duration:.1f}s source @ {source_fps} FPS, decimation {decimation_ratio}:1)")
 
 

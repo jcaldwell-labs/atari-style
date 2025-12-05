@@ -453,6 +453,26 @@ class TestCLIValidation:
         finally:
             sys.argv = original_argv
 
+    @patch('atari_style.demos.visualizers.educational.lissajous_educational_series.render_gif')
+    def test_cli_time_args_without_preview_warns(self, mock_render, capsys):
+        """Verify warning when --start/--end/--duration used without --preview."""
+        mock_render.return_value = True
+        import sys
+        from atari_style.demos.visualizers.educational.lissajous_educational_series import main
+
+        original_argv = sys.argv
+        try:
+            # Use --start without --preview
+            sys.argv = ['prog', '--part', '1', '--start', '2.0', '-o', 'test.gif', '--fps', '5']
+            result = main()
+            assert result == 0
+
+            # Verify warning was printed
+            captured = capsys.readouterr()
+            assert "Warning: --start, --end, and --duration are only used with --preview" in captured.out
+        finally:
+            sys.argv = original_argv
+
 
 class TestGameEnemy:
     """Tests for GameEnemy dataclass."""
