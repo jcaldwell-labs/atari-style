@@ -438,25 +438,27 @@ class TestPreviewMode:
         assert len(yellow_pixels) > 0, "Watermark should contain yellow text pixels"
 
     def test_filter_frames_limits_duration(self):
-        """Verify filter_frames_for_preview limits frame count."""
+        """Verify filter_frames_for_preview limits frame count with decimation."""
         canvas = TerminalCanvas(cols=40, rows=12)
-        fps = 10
+        source_fps = 10
+        preview_fps = 5  # 2:1 decimation
 
         # Generate 30 frames (3 seconds at 10 FPS)
         def generate_test_frames():
             for i in range(30):
                 yield canvas.render()
 
-        preview = PreviewOptions(enabled=True, max_duration=1.0)  # 1 second max
-        filtered = list(filter_frames_for_preview(generate_test_frames(), fps, preview))
+        preview = PreviewOptions(enabled=True, fps=preview_fps, max_duration=1.0)
+        filtered = list(filter_frames_for_preview(generate_test_frames(), source_fps, preview))
 
-        # Should have ~10 frames (1 second at 10 FPS)
-        assert len(filtered) == 10
+        # 1s at 10 FPS = 10 source frames, decimated 2:1 = 5 output frames
+        assert len(filtered) == 5
 
     def test_filter_frames_start_time(self):
-        """Verify filter_frames_for_preview respects start time."""
+        """Verify filter_frames_for_preview respects start time with decimation."""
         canvas = TerminalCanvas(cols=40, rows=12)
-        fps = 10
+        source_fps = 10
+        preview_fps = 5  # 2:1 decimation
 
         # Generate 50 frames (5 seconds at 10 FPS)
         def generate_test_frames():
@@ -465,18 +467,20 @@ class TestPreviewMode:
 
         preview = PreviewOptions(
             enabled=True,
+            fps=preview_fps,
             start_time=2.0,  # Start at 2s
             max_duration=1.0  # 1 second duration
         )
-        filtered = list(filter_frames_for_preview(generate_test_frames(), fps, preview))
+        filtered = list(filter_frames_for_preview(generate_test_frames(), source_fps, preview))
 
-        # Should have 10 frames (from 2s to 3s)
-        assert len(filtered) == 10
+        # 1s at 10 FPS = 10 source frames, decimated 2:1 = 5 output frames
+        assert len(filtered) == 5
 
     def test_filter_frames_start_end_range(self):
-        """Verify filter_frames_for_preview respects start and end times."""
+        """Verify filter_frames_for_preview respects start and end times with decimation."""
         canvas = TerminalCanvas(cols=40, rows=12)
-        fps = 10
+        source_fps = 10
+        preview_fps = 5  # 2:1 decimation
 
         # Generate 100 frames (10 seconds at 10 FPS)
         def generate_test_frames():
@@ -485,13 +489,14 @@ class TestPreviewMode:
 
         preview = PreviewOptions(
             enabled=True,
+            fps=preview_fps,
             start_time=3.0,  # Start at 3s
             end_time=5.0     # End at 5s
         )
-        filtered = list(filter_frames_for_preview(generate_test_frames(), fps, preview))
+        filtered = list(filter_frames_for_preview(generate_test_frames(), source_fps, preview))
 
-        # Should have 20 frames (from 3s to 5s = 2 seconds)
-        assert len(filtered) == 20
+        # 2s at 10 FPS = 20 source frames, decimated 2:1 = 10 output frames
+        assert len(filtered) == 10
 
     def test_filter_frames_adds_watermark(self):
         """Verify filtered frames have watermark."""
@@ -502,12 +507,13 @@ class TestPreviewMode:
             for i in range(10):
                 yield canvas.render()
 
-        preview = PreviewOptions(enabled=True, max_duration=0.5)
+        preview = PreviewOptions(enabled=True, fps=5, max_duration=0.5)
         filtered = list(filter_frames_for_preview(generate_test_frames(), fps, preview))
 
-        # Each frame should be watermarked (we can't easily check content,
-        # but we can verify frames were processed)
-        assert len(filtered) == 5  # 0.5s at 10 FPS
+        # With 10 FPS source, 5 FPS preview, decimation is 2:1
+        # 0.5s at 10 FPS = 5 source frames, decimated to ~3 frames at 5 FPS
+        # (5 frames / 2 decimation = 2.5, which yields frames 0, 2, 4 = 3 frames)
+        assert len(filtered) == 3
 
     @patch('atari_style.demos.visualizers.educational.lissajous_educational_series.render_gif')
     def test_cli_preview_mode(self, mock_render):
@@ -522,9 +528,11 @@ class TestPreviewMode:
             result = main()
             assert result == 0
             assert mock_render.called
-            # Check that FPS was set to 5 (preview default)
+            # Check that FPS was set to 5 (preview default) using kwargs for robustness
             call_args = mock_render.call_args
-            assert call_args[0][2] == 5  # Third positional arg is fps
+            # render_gif(path, frames, fps) - check fps via position or keyword
+            fps_arg = call_args.kwargs.get('fps') or call_args[0][2]
+            assert fps_arg == 5
         finally:
             sys.argv = original_argv
 
@@ -544,3 +552,28 @@ class TestPreviewMode:
             assert mock_render.called
         finally:
             sys.argv = original_argv
+
+    def test_filter_frames_decimates_for_fps_reduction(self):
+        """Verify frames are decimated when preview FPS < source FPS.
+
+        This test ensures correct playback speed: a 2-second segment at 15 FPS
+        previewed at 5 FPS should yield 10 frames (not 30) to play back in 2s.
+        """
+        canvas = TerminalCanvas(cols=40, rows=12)
+        source_fps = 15
+        preview_fps = 5
+        duration = 2.0  # 2 seconds
+
+        # Generate 30 frames (2s at 15 FPS)
+        def generate_frames():
+            for _ in range(int(duration * source_fps)):
+                yield canvas.render()
+
+        preview = PreviewOptions(enabled=True, fps=preview_fps, max_duration=duration)
+        filtered = list(filter_frames_for_preview(generate_frames(), source_fps, preview))
+
+        # With decimation ratio of 3:1 (15/5), 30 source frames become 10 output frames
+        # 10 frames at 5 FPS = 2 seconds - correct playback speed maintained
+        expected_frames = int(duration * source_fps) // (source_fps // preview_fps)
+        assert len(filtered) == expected_frames
+        assert len(filtered) == 10  # 2s at 5 FPS

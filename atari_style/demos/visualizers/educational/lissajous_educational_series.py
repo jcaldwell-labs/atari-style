@@ -1194,26 +1194,38 @@ def generate_full_series_frames(canvas: TerminalCanvas, fps: int
 
 @dataclass
 class PreviewOptions:
-    """Options for quick preview rendering."""
+    """Options for quick preview rendering.
+
+    Attributes:
+        enabled: Whether preview mode is active. Enables fast rendering and watermark.
+        fps: Target frames per second for preview. Lower values render faster.
+        start_time: Start time in seconds for the preview window. Must be >= 0.
+        end_time: End time in seconds. If None, uses start_time + max_duration.
+        max_duration: Maximum duration in seconds when end_time is None. Must be > 0.
+    """
     enabled: bool = False
-    fps: int = 5  # Low FPS for fast preview
-    start_time: float = 0.0  # Start time in seconds
-    end_time: Optional[float] = None  # End time in seconds (None = no limit)
-    max_duration: float = 5.0  # Max duration when no end_time specified
+    fps: int = 5
+    start_time: float = 0.0
+    end_time: Optional[float] = None
+    max_duration: float = 5.0
 
 
-def add_preview_watermark(frame: Image.Image) -> Image.Image:
-    """Add PREVIEW watermark to frame."""
-    from PIL import ImageDraw, ImageFont
+# Module-level font cache for watermark
+_watermark_font = None
 
-    # Create a copy to avoid modifying original
-    watermarked = frame.copy()
-    draw = ImageDraw.Draw(watermarked)
 
-    # Watermark text
-    text = "PREVIEW"
+def _get_watermark_font():
+    """Get cached font for watermark text.
 
-    # Try to use a larger monospace font across platforms, fall back to default
+    Returns:
+        PIL ImageFont instance, cached after first load.
+    """
+    global _watermark_font
+    if _watermark_font is not None:
+        return _watermark_font
+
+    from PIL import ImageFont
+
     font_paths = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",  # Linux
         "/System/Library/Fonts/Monaco.ttf",  # macOS
@@ -1221,23 +1233,46 @@ def add_preview_watermark(frame: Image.Image) -> Image.Image:
         "C:/Windows/Fonts/consola.ttf",  # Windows Consolas Regular
         "C:/Windows/Fonts/lucon.ttf",  # Windows Lucida Console
     ]
-    font = None
     for path in font_paths:
         try:
-            font = ImageFont.truetype(path, 24)
-            break
-        except (OSError, IOError):
+            _watermark_font = ImageFont.truetype(path, 24)
+            return _watermark_font
+        except OSError:
             continue
-    if font is None:
-        font = ImageFont.load_default()
+
+    _watermark_font = ImageFont.load_default()
+    return _watermark_font
+
+
+def add_preview_watermark(frame: Image.Image) -> Image.Image:
+    """Add PREVIEW watermark to frame.
+
+    Args:
+        frame: Source image to watermark.
+
+    Returns:
+        New image with yellow "PREVIEW" text in top-right corner.
+
+    Note:
+        Creates a copy of the frame to avoid mutation.
+        Font is cached after first load for performance.
+    """
+    from PIL import ImageDraw
+
+    # Create a copy to avoid modifying original
+    watermarked = frame.copy()
+    draw = ImageDraw.Draw(watermarked)
+
+    text = "PREVIEW"
+    font = _get_watermark_font()
 
     # Get text bounding box
     bbox = draw.textbbox((0, 0), text, font=font)
     text_width = bbox[2] - bbox[0]
     text_height = bbox[3] - bbox[1]
 
-    # Position in top-right corner with padding
-    x = frame.width - text_width - 10
+    # Position in top-right corner with padding, ensure non-negative
+    x = max(0, frame.width - text_width - 10)
     y = 10
 
     # Draw background (RGB - no alpha needed since we're on RGB image)
@@ -1255,37 +1290,44 @@ def add_preview_watermark(frame: Image.Image) -> Image.Image:
 
 def filter_frames_for_preview(
     frames: Generator[Image.Image, None, None],
-    fps: int,
+    source_fps: int,
     preview: PreviewOptions
 ) -> Generator[Image.Image, None, None]:
-    """Filter frames based on preview options.
+    """Filter and decimate frames based on preview options.
+
+    Decimates frames to maintain correct playback speed when preview FPS
+    differs from source FPS. For example, if source is 15 FPS and preview
+    is 5 FPS, yields every 3rd frame to maintain real-time playback.
 
     Args:
-        frames: Original frame generator
-        fps: Original FPS of the content
-        preview: Preview options including time range
+        frames: Original frame generator at source_fps
+        source_fps: Original FPS of the content
+        preview: Preview options including time range and target FPS
 
     Yields:
-        Filtered and watermarked frames
+        Filtered, decimated, and watermarked frames
     """
-    # Calculate frame indices to avoid floating point issues
-    start_frame = int(preview.start_time * fps)
+    # Calculate frame decimation ratio to maintain playback speed
+    # E.g., 15 FPS source -> 5 FPS preview = keep every 3rd frame
+    decimation_ratio = max(1, source_fps // preview.fps) if preview.fps > 0 else 1
+
+    # Calculate frame indices based on source FPS
+    start_frame = int(preview.start_time * source_fps)
 
     # Calculate effective end time
     if preview.end_time is not None:
-        end_frame = int(preview.end_time * fps)
+        end_frame = int(preview.end_time * source_fps)
     elif preview.start_time > 0:
-        # If start specified but no end, use start + max_duration
-        end_frame = int((preview.start_time + preview.max_duration) * fps)
+        end_frame = int((preview.start_time + preview.max_duration) * source_fps)
     else:
-        # Default: just use max_duration from start
-        end_frame = int(preview.max_duration * fps)
+        end_frame = int(preview.max_duration * source_fps)
 
     frames_yielded = 0
     frame_idx = 0
+    frames_in_range = 0  # Count frames within time range
 
     for frame in frames:
-        # Stop at end frame (check first, before yielding)
+        # Stop at end frame
         if frame_idx >= end_frame:
             break
 
@@ -1294,16 +1336,20 @@ def filter_frames_for_preview(
             frame_idx += 1
             continue
 
-        # Add watermark and yield
-        yield add_preview_watermark(frame)
-        frames_yielded += 1
+        frames_in_range += 1
+
+        # Decimate: only yield every Nth frame to maintain playback speed
+        if (frames_in_range - 1) % decimation_ratio == 0:
+            yield add_preview_watermark(frame)
+            frames_yielded += 1
+
         frame_idx += 1
 
-    # Print summary
-    duration = frames_yielded / fps if fps > 0 else 0
-    end_time = frame_idx / fps if fps > 0 else 0
-    print(f"Preview: {frames_yielded} frames ({duration:.1f}s) "
-          f"from {preview.start_time:.1f}s to {end_time:.1f}s")
+    # Print summary - duration based on preview FPS (actual playback)
+    duration = frames_yielded / preview.fps if preview.fps > 0 else 0
+    source_duration = frames_in_range / source_fps if source_fps > 0 else 0
+    print(f"Preview: {frames_yielded} frames at {preview.fps} FPS = {duration:.1f}s playback "
+          f"(from {source_duration:.1f}s source @ {source_fps} FPS, decimation {decimation_ratio}:1)")
 
 
 # =============================================================================
@@ -1345,13 +1391,25 @@ Preview mode examples:
     preview_group.add_argument('--preview', action='store_true',
                                help='Enable preview mode (5 FPS, limited duration, watermarked)')
     preview_group.add_argument('--start', type=float, default=0.0,
-                               help='Start time in seconds (default: 0)')
+                               help='Start time in seconds (default: 0, requires --preview)')
     preview_group.add_argument('--end', type=float, default=None,
-                               help='End time in seconds (default: start + duration)')
+                               help='End time in seconds (if not specified, uses --start + --duration)')
     preview_group.add_argument('--duration', type=float, default=5.0,
-                               help='Max preview duration in seconds (default: 5)')
+                               help='Max preview duration in seconds (default: 5, requires --preview)')
 
     args = parser.parse_args()
+
+    # Validate time range arguments
+    if args.start < 0:
+        parser.error("--start must be non-negative")
+    if args.end is not None and args.end <= args.start:
+        parser.error("--end must be greater than --start")
+    if args.duration <= 0:
+        parser.error("--duration must be positive")
+
+    # Warn if time args specified without --preview
+    if not args.preview and (args.start != 0.0 or args.end is not None or args.duration != 5.0):
+        print("Warning: --start, --end, and --duration are only used with --preview")
 
     # Build preview options
     preview = PreviewOptions(
