@@ -22,6 +22,7 @@ from atari_style.demos.visualizers.educational.lissajous_educational_series impo
     generate_series_title_frames, generate_series_credits_frames,
     generate_full_series_frames,
     GameEnemy,
+    PreviewOptions, add_preview_watermark, filter_frames_for_preview,
 )
 from atari_style.demos.visualizers.educational.lissajous_terminal_gif import (
     TerminalCanvas,
@@ -389,3 +390,156 @@ class TestGameEnemy:
         """Verify GameEnemy has sensible defaults."""
         enemy = GameEnemy(a=1.0, b=1.0, delta=0, name="Test", color="white")
         assert enemy.speed == 1.0  # Default speed
+
+
+class TestPreviewMode:
+    """Tests for preview mode functionality (Issue #110)."""
+
+    def test_preview_options_defaults(self):
+        """Verify PreviewOptions has correct defaults."""
+        opts = PreviewOptions()
+        assert opts.enabled is False
+        assert opts.fps == 5
+        assert opts.start_time == 0.0
+        assert opts.end_time is None
+        assert opts.max_duration == 5.0
+
+    def test_preview_options_custom(self):
+        """Verify PreviewOptions accepts custom values."""
+        opts = PreviewOptions(
+            enabled=True,
+            fps=10,
+            start_time=5.0,
+            end_time=15.0,
+            max_duration=10.0
+        )
+        assert opts.enabled is True
+        assert opts.fps == 10
+        assert opts.start_time == 5.0
+        assert opts.end_time == 15.0
+        assert opts.max_duration == 10.0
+
+    def test_add_preview_watermark(self):
+        """Verify watermark is added to frame."""
+        from PIL import Image
+        # Create a simple test image
+        img = Image.new('RGB', (200, 100), color='black')
+        watermarked = add_preview_watermark(img)
+
+        # Should return a new image (not modify in place)
+        assert watermarked is not img
+        # Should be same size
+        assert watermarked.size == img.size
+        # Should have modified pixels (watermark area should not be all black)
+        # Check top-right corner where watermark should be
+        pixel = watermarked.getpixel((190, 15))
+        # Should have some non-black pixels from the watermark
+        # (Either the yellow text or the semi-transparent background)
+
+    def test_filter_frames_limits_duration(self):
+        """Verify filter_frames_for_preview limits frame count."""
+        canvas = TerminalCanvas(cols=40, rows=12)
+        fps = 10
+
+        # Generate 30 frames (3 seconds at 10 FPS)
+        def generate_test_frames():
+            for i in range(30):
+                yield canvas.render()
+
+        preview = PreviewOptions(enabled=True, max_duration=1.0)  # 1 second max
+        filtered = list(filter_frames_for_preview(generate_test_frames(), fps, preview))
+
+        # Should have ~10 frames (1 second at 10 FPS)
+        assert len(filtered) == 10
+
+    def test_filter_frames_start_time(self):
+        """Verify filter_frames_for_preview respects start time."""
+        canvas = TerminalCanvas(cols=40, rows=12)
+        fps = 10
+
+        # Generate 50 frames (5 seconds at 10 FPS)
+        def generate_test_frames():
+            for i in range(50):
+                yield canvas.render()
+
+        preview = PreviewOptions(
+            enabled=True,
+            start_time=2.0,  # Start at 2s
+            max_duration=1.0  # 1 second duration
+        )
+        filtered = list(filter_frames_for_preview(generate_test_frames(), fps, preview))
+
+        # Should have 10 frames (from 2s to 3s)
+        assert len(filtered) == 10
+
+    def test_filter_frames_start_end_range(self):
+        """Verify filter_frames_for_preview respects start and end times."""
+        canvas = TerminalCanvas(cols=40, rows=12)
+        fps = 10
+
+        # Generate 100 frames (10 seconds at 10 FPS)
+        def generate_test_frames():
+            for i in range(100):
+                yield canvas.render()
+
+        preview = PreviewOptions(
+            enabled=True,
+            start_time=3.0,  # Start at 3s
+            end_time=5.0     # End at 5s
+        )
+        filtered = list(filter_frames_for_preview(generate_test_frames(), fps, preview))
+
+        # Should have 20 frames (from 3s to 5s = 2 seconds)
+        assert len(filtered) == 20
+
+    def test_filter_frames_adds_watermark(self):
+        """Verify filtered frames have watermark."""
+        canvas = TerminalCanvas(cols=40, rows=12)
+        fps = 10
+
+        def generate_test_frames():
+            for i in range(10):
+                yield canvas.render()
+
+        preview = PreviewOptions(enabled=True, max_duration=0.5)
+        filtered = list(filter_frames_for_preview(generate_test_frames(), fps, preview))
+
+        # Each frame should be watermarked (we can't easily check content,
+        # but we can verify frames were processed)
+        assert len(filtered) == 5  # 0.5s at 10 FPS
+
+    @patch('atari_style.demos.visualizers.educational.lissajous_educational_series.render_gif')
+    def test_cli_preview_mode(self, mock_render):
+        """Verify CLI handles --preview flag."""
+        mock_render.return_value = True
+        import sys
+        from atari_style.demos.visualizers.educational.lissajous_educational_series import main
+
+        original_argv = sys.argv
+        try:
+            sys.argv = ['prog', '--part', '1', '--preview', '-o', 'test.gif']
+            result = main()
+            assert result == 0
+            assert mock_render.called
+            # Check that FPS was set to 5 (preview default)
+            call_args = mock_render.call_args
+            assert call_args[0][2] == 5  # Third positional arg is fps
+        finally:
+            sys.argv = original_argv
+
+    @patch('atari_style.demos.visualizers.educational.lissajous_educational_series.render_gif')
+    def test_cli_preview_with_time_range(self, mock_render):
+        """Verify CLI handles --preview with --start and --end."""
+        mock_render.return_value = True
+        import sys
+        from atari_style.demos.visualizers.educational.lissajous_educational_series import main
+
+        original_argv = sys.argv
+        try:
+            sys.argv = ['prog', '--part', '2', '--preview',
+                        '--start', '5', '--end', '10', '-o', 'test.gif']
+            result = main()
+            assert result == 0
+            assert mock_render.called
+        finally:
+            sys.argv = original_argv

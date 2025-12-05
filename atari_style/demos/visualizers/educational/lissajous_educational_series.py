@@ -15,11 +15,16 @@ Usage:
     python -m atari_style.demos.visualizers.educational.lissajous_educational_series --part 4 -o applications.gif
     python -m atari_style.demos.visualizers.educational.lissajous_educational_series --part 5 -o game.gif
     python -m atari_style.demos.visualizers.educational.lissajous_educational_series --full-series -o full_series.gif
+
+Preview mode (fast iteration):
+    python -m atari_style.demos.visualizers.educational.lissajous_educational_series --part 1 --preview
+    python -m atari_style.demos.visualizers.educational.lissajous_educational_series --part 2 --preview --start 10 --end 20
+    python -m atari_style.demos.visualizers.educational.lissajous_educational_series --full-series --preview --duration 10
 """
 
 import math
 from dataclasses import dataclass
-from typing import Generator, List
+from typing import Generator, List, Optional
 
 from PIL import Image
 
@@ -1184,6 +1189,112 @@ def generate_full_series_frames(canvas: TerminalCanvas, fps: int
 
 
 # =============================================================================
+# PREVIEW MODE
+# =============================================================================
+
+@dataclass
+class PreviewOptions:
+    """Options for quick preview rendering."""
+    enabled: bool = False
+    fps: int = 5  # Low FPS for fast preview
+    start_time: float = 0.0  # Start time in seconds
+    end_time: Optional[float] = None  # End time in seconds (None = no limit)
+    max_duration: float = 5.0  # Max duration when no end_time specified
+
+
+def add_preview_watermark(frame: Image.Image) -> Image.Image:
+    """Add PREVIEW watermark to frame."""
+    from PIL import ImageDraw, ImageFont
+
+    # Create a copy to avoid modifying original
+    watermarked = frame.copy()
+    draw = ImageDraw.Draw(watermarked)
+
+    # Watermark text
+    text = "PREVIEW"
+
+    # Try to use a larger font, fall back to default
+    try:
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", 24)
+    except (OSError, IOError):
+        font = ImageFont.load_default()
+
+    # Get text bounding box
+    bbox = draw.textbbox((0, 0), text, font=font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+
+    # Position in top-right corner with padding
+    x = frame.width - text_width - 10
+    y = 10
+
+    # Draw semi-transparent background
+    padding = 5
+    draw.rectangle(
+        [x - padding, y - padding, x + text_width + padding, y + text_height + padding],
+        fill=(0, 0, 0, 180)
+    )
+
+    # Draw text in bright yellow
+    draw.text((x, y), text, font=font, fill=(255, 255, 0, 255))
+
+    return watermarked
+
+
+def filter_frames_for_preview(
+    frames: Generator[Image.Image, None, None],
+    fps: int,
+    preview: PreviewOptions
+) -> Generator[Image.Image, None, None]:
+    """Filter frames based on preview options.
+
+    Args:
+        frames: Original frame generator
+        fps: Original FPS of the content
+        preview: Preview options including time range
+
+    Yields:
+        Filtered and watermarked frames
+    """
+    # Calculate frame indices to avoid floating point issues
+    start_frame = int(preview.start_time * fps)
+
+    # Calculate effective end time
+    if preview.end_time is not None:
+        end_frame = int(preview.end_time * fps)
+    elif preview.start_time > 0:
+        # If start specified but no end, use start + max_duration
+        end_frame = int((preview.start_time + preview.max_duration) * fps)
+    else:
+        # Default: just use max_duration from start
+        end_frame = int(preview.max_duration * fps)
+
+    frames_yielded = 0
+    frame_idx = 0
+
+    for frame in frames:
+        # Stop at end frame (check first, before yielding)
+        if frame_idx >= end_frame:
+            break
+
+        # Skip frames before start frame
+        if frame_idx < start_frame:
+            frame_idx += 1
+            continue
+
+        # Add watermark and yield
+        yield add_preview_watermark(frame)
+        frames_yielded += 1
+        frame_idx += 1
+
+    # Print summary
+    duration = frames_yielded / fps if fps > 0 else 0
+    end_time = frame_idx / fps if fps > 0 else 0
+    print(f"Preview: {frames_yielded} frames ({duration:.1f}s) "
+          f"from {preview.start_time:.1f}s to {end_time:.1f}s")
+
+
+# =============================================================================
 # CLI
 # =============================================================================
 
@@ -1191,7 +1302,15 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Lissajous Educational Series - Complete 5-Part Video Course"
+        description="Lissajous Educational Series - Complete 5-Part Video Course",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Preview mode examples:
+  --preview                    Quick 5s preview at 5 FPS
+  --preview --start 10         Preview 5s starting at 10s mark
+  --preview --start 10 --end 20  Preview from 10s to 20s
+  --preview --duration 15      Preview first 15s at 5 FPS
+"""
     )
 
     parser.add_argument('-o', '--output', default='lissajous_education.gif',
@@ -1209,12 +1328,40 @@ def main():
     part_group.add_argument('--full-series', action='store_true',
                             help='Render the complete 5-part series')
 
+    # Preview mode options
+    preview_group = parser.add_argument_group('preview options')
+    preview_group.add_argument('--preview', action='store_true',
+                               help='Enable preview mode (5 FPS, limited duration, watermarked)')
+    preview_group.add_argument('--start', type=float, default=0.0,
+                               help='Start time in seconds (default: 0)')
+    preview_group.add_argument('--end', type=float, default=None,
+                               help='End time in seconds (default: start + duration)')
+    preview_group.add_argument('--duration', type=float, default=5.0,
+                               help='Max preview duration in seconds (default: 5)')
+
     args = parser.parse_args()
+
+    # Build preview options
+    preview = PreviewOptions(
+        enabled=args.preview,
+        fps=5 if args.preview else args.fps,
+        start_time=args.start,
+        end_time=args.end,
+        max_duration=args.duration
+    )
+
+    # Use preview FPS if in preview mode
+    render_fps = preview.fps if preview.enabled else args.fps
 
     canvas = TerminalCanvas(cols=args.cols, rows=args.rows)
 
     print(f"Canvas: {canvas.cols}x{canvas.rows} chars = "
           f"{canvas.img_width}x{canvas.img_height} pixels")
+
+    if preview.enabled:
+        print(f"PREVIEW MODE: {preview.fps} FPS, "
+              f"start={preview.start_time}s, "
+              f"end={preview.end_time or f'start+{preview.max_duration}s'}")
 
     if args.part == 1:
         print("Rendering Part I: Introduction to Lissajous Curves")
@@ -1235,7 +1382,11 @@ def main():
         print("Rendering Full Series (Parts I-V)")
         frames = generate_full_series_frames(canvas, args.fps)
 
-    success = render_gif(args.output, frames, args.fps)
+    # Apply preview filtering if enabled
+    if preview.enabled:
+        frames = filter_frames_for_preview(frames, args.fps, preview)
+
+    success = render_gif(args.output, frames, render_fps)
     return 0 if success else 1
 
 
