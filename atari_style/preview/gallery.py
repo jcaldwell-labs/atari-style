@@ -5,6 +5,7 @@ for display in the preview server.
 """
 
 import json
+import os
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -355,7 +356,7 @@ class Gallery:
                 # For multi-directory scans, prefix with directory name to avoid collisions
                 if len(self.directories) > 1:
                     dir_prefix = directory.name
-                    relative_path = f"{dir_prefix}/{relative_path}"
+                    relative_path = os.path.join(dir_prefix, relative_path)
 
                 media_file = MediaFile(
                     path=path,
