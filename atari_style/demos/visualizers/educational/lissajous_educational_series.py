@@ -1213,10 +1213,22 @@ def add_preview_watermark(frame: Image.Image) -> Image.Image:
     # Watermark text
     text = "PREVIEW"
 
-    # Try to use a larger font, fall back to default
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", 24)
-    except (OSError, IOError):
+    # Try to use a larger monospace font across platforms, fall back to default
+    font_paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",  # Linux
+        "/System/Library/Fonts/Monaco.ttf",  # macOS
+        "C:/Windows/Fonts/consolab.ttf",  # Windows Consolas Bold
+        "C:/Windows/Fonts/consola.ttf",  # Windows Consolas Regular
+        "C:/Windows/Fonts/lucon.ttf",  # Windows Lucida Console
+    ]
+    font = None
+    for path in font_paths:
+        try:
+            font = ImageFont.truetype(path, 24)
+            break
+        except (OSError, IOError):
+            continue
+    if font is None:
         font = ImageFont.load_default()
 
     # Get text bounding box
@@ -1228,15 +1240,15 @@ def add_preview_watermark(frame: Image.Image) -> Image.Image:
     x = frame.width - text_width - 10
     y = 10
 
-    # Draw semi-transparent background
+    # Draw background (RGB - no alpha needed since we're on RGB image)
     padding = 5
     draw.rectangle(
         [x - padding, y - padding, x + text_width + padding, y + text_height + padding],
-        fill=(0, 0, 0, 180)
+        fill=(0, 0, 0)
     )
 
     # Draw text in bright yellow
-    draw.text((x, y), text, font=font, fill=(255, 255, 0, 255))
+    draw.text((x, y), text, font=font, fill=(255, 255, 0))
 
     return watermarked
 

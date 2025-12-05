@@ -422,19 +422,20 @@ class TestPreviewMode:
     def test_add_preview_watermark(self):
         """Verify watermark is added to frame."""
         from PIL import Image
-        # Create a simple test image
-        img = Image.new('RGB', (200, 100), color='black')
+        # Create a simple test image (large enough for watermark)
+        img = Image.new('RGB', (400, 200), color='blue')
         watermarked = add_preview_watermark(img)
 
         # Should return a new image (not modify in place)
         assert watermarked is not img
         # Should be same size
         assert watermarked.size == img.size
-        # Should have modified pixels (watermark area should not be all black)
-        # Check top-right corner where watermark should be
-        pixel = watermarked.getpixel((190, 15))
-        # Should have some non-black pixels from the watermark
-        # (Either the yellow text or the semi-transparent background)
+
+        # Verify watermark was added by checking for yellow pixels
+        # The watermark text is drawn in yellow (255, 255, 0)
+        pixels = list(watermarked.getdata())
+        yellow_pixels = [p for p in pixels if p[0] > 200 and p[1] > 200 and p[2] < 50]
+        assert len(yellow_pixels) > 0, "Watermark should contain yellow text pixels"
 
     def test_filter_frames_limits_duration(self):
         """Verify filter_frames_for_preview limits frame count."""
