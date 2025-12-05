@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{FILENAME}} - Atari-Style Preview</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-card: #0f3460;
+            --text-primary: #e94560;
+            --text-secondary: #fff;
+            --text-muted: #aaa;
+            --accent: #e94560;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            min-height: 100vh;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            padding: 1rem 2rem;
+            border-bottom: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 1.5rem;
+        }
+
+        .back-btn:hover {
+            color: var(--text-secondary);
+        }
+
+        header h1 {
+            color: var(--accent);
+            font-size: 1.2rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .viewer-container {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            min-height: calc(100vh - 60px);
+        }
+
+        .media-container {
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .media-content {
+            max-width: 100%;
+            max-height: calc(100vh - 100px);
+        }
+
+        video.media-content {
+            width: 100%;
+            height: auto;
+        }
+
+        img.media-content {
+            object-fit: contain;
+        }
+
+        .json-content {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 4px;
+            overflow: auto;
+            max-height: calc(100vh - 100px);
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: var(--text-muted);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .info-panel {
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            border-left: 1px solid var(--bg-card);
+        }
+
+        .info-panel h2 {
+            color: var(--accent);
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            word-break: break-all;
+        }
+
+        .info-panel dl {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.5rem 1rem;
+        }
+
+        .info-panel dt {
+            color: var(--text-muted);
+        }
+
+        .info-panel dd {
+            color: var(--text-secondary);
+        }
+
+        .error {
+            color: var(--accent);
+            text-align: center;
+            padding: 2rem;
+        }
+
+        @media (max-width: 800px) {
+            .viewer-container {
+                grid-template-columns: 1fr;
+            }
+
+            .info-panel {
+                border-left: none;
+                border-top: 1px solid var(--bg-card);
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/" class="back-btn">←</a>
+        <h1>{{FILENAME}}</h1>
+    </header>
+
+    <div class="viewer-container">
+        <div class="media-container">
+            {{MEDIA}}
+        </div>
+        {{INFO}}
+    </div>
+
+    <script>
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' || e.key === 'Backspace') {
+                window.location.href = '/';
+            }
+        });
+    </script>
+</body>
+</html>
