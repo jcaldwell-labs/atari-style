@@ -658,3 +658,32 @@ class TestPreviewMode:
         expected_frames = int(duration * source_fps) // (source_fps // preview_fps)
         assert len(filtered) == expected_frames
         assert len(filtered) == 10  # 2s at 5 FPS
+
+    def test_filter_frames_caps_preview_fps_to_source_fps(self, capsys):
+        """Verify preview FPS > source FPS is capped with warning.
+
+        When preview FPS exceeds source FPS, we can't create more frames than
+        exist in the source. The function should cap to source FPS to maintain
+        correct playback speed and print a warning.
+        """
+        canvas = TerminalCanvas(cols=40, rows=12)
+        source_fps = 5
+        preview_fps = 15  # Higher than source - should be capped
+        duration = 2.0
+
+        # Generate 10 frames (2s at 5 FPS)
+        def generate_frames():
+            for _ in range(int(duration * source_fps)):
+                yield canvas.render()
+
+        preview = PreviewOptions(enabled=True, fps=preview_fps, max_duration=duration)
+        filtered = list(filter_frames_for_preview(generate_frames(), source_fps, preview))
+
+        # Should yield all 10 source frames (capped to source FPS = no decimation)
+        # 10 frames at 5 FPS = 2 seconds - correct playback speed maintained
+        assert len(filtered) == 10
+
+        # Verify warning was printed
+        captured = capsys.readouterr()
+        assert "Warning: Preview FPS (15) exceeds source FPS (5)" in captured.out
+        assert "Capping preview FPS to source FPS" in captured.out

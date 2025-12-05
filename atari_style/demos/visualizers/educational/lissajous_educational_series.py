@@ -1307,9 +1307,16 @@ def filter_frames_for_preview(
     Yields:
         Filtered, decimated, and watermarked frames
     """
+    # Validate preview FPS does not exceed source FPS
+    effective_fps = preview.fps
+    if preview.fps > source_fps:
+        print(f"Warning: Preview FPS ({preview.fps}) exceeds source FPS ({source_fps}). "
+              f"Capping preview FPS to source FPS for correct playback speed.")
+        effective_fps = source_fps
+
     # Calculate frame decimation ratio to maintain playback speed
     # E.g., 15 FPS source -> 5 FPS preview = keep every 3rd frame
-    decimation_ratio = max(1, source_fps // preview.fps) if preview.fps > 0 else 1
+    decimation_ratio = max(1, source_fps // effective_fps) if effective_fps > 0 else 1
 
     # Calculate frame indices based on source FPS
     start_frame = int(preview.start_time * source_fps)
