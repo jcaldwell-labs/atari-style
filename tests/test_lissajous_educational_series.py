@@ -4,8 +4,13 @@ import math
 from unittest.mock import patch
 
 from atari_style.demos.visualizers.educational.lissajous_educational_series import (
-    FREQUENCY_RATIOS, PHASE_STEPS, APPLICATIONS, GAME_ENEMIES,
+    FREQUENCY_RATIOS, PHASE_STEPS, APPLICATIONS, GAME_ENEMIES, GALLERY_PATTERNS,
     draw_title_card, draw_info_overlay, draw_equation,
+    generate_part1_intro_frames, generate_what_is_lissajous_frames,
+    generate_equation_explanation_frames, generate_xy_visualization_frames,
+    generate_part1_frames,
+    generate_part2_intro_frames, generate_pattern_showcase_frames,
+    generate_ratio_comparison_frames, generate_part2_frames,
     generate_part3_intro_frames, generate_phase_sweep_frames,
     generate_frequency_comparison_frames, generate_musical_intervals_frames,
     generate_part3_frames,
@@ -82,6 +87,86 @@ class TestTitleAndOverlays:
         canvas = TerminalCanvas(cols=80, rows=24)
         draw_equation(canvas, y=10)
         # Should not raise
+
+
+class TestPart1Frames:
+    """Tests for Part I frame generation."""
+
+    def test_part1_intro_frames(self):
+        """Verify Part I intro generates frames."""
+        canvas = TerminalCanvas(cols=80, rows=24)
+        frames = list(generate_part1_intro_frames(canvas, fps=10))
+        assert len(frames) > 0
+        assert all(f.size == (canvas.img_width, canvas.img_height) for f in frames)
+
+    def test_what_is_lissajous_frames(self):
+        """Verify what is Lissajous explanation generates frames."""
+        canvas = TerminalCanvas(cols=80, rows=24)
+        fps = 10
+        frames = list(generate_what_is_lissajous_frames(canvas, fps))
+        assert len(frames) == 6 * fps  # 6 seconds
+
+    def test_equation_explanation_frames(self):
+        """Verify equation explanation generates frames."""
+        canvas = TerminalCanvas(cols=80, rows=24)
+        fps = 10
+        frames = list(generate_equation_explanation_frames(canvas, fps))
+        assert len(frames) == 8 * fps  # 8 seconds
+
+    def test_xy_visualization_frames(self):
+        """Verify L-shaped XY visualization generates frames."""
+        canvas = TerminalCanvas(cols=80, rows=24)
+        fps = 10
+        frames = list(generate_xy_visualization_frames(canvas, fps))
+        assert len(frames) == 10 * fps  # 10 seconds
+
+    def test_part1_full_generation(self):
+        """Verify complete Part I generates."""
+        canvas = TerminalCanvas(cols=80, rows=24)
+        frames = list(generate_part1_frames(canvas, fps=10))
+        assert len(frames) > 200  # Should be substantial
+
+
+class TestPart2Frames:
+    """Tests for Part II frame generation."""
+
+    def test_gallery_patterns_structure(self):
+        """Verify gallery patterns have correct structure."""
+        assert len(GALLERY_PATTERNS) >= 5
+        for name, a, b, delta, description in GALLERY_PATTERNS:
+            assert isinstance(name, str)
+            assert isinstance(a, float)
+            assert isinstance(b, float)
+            assert isinstance(delta, (int, float))
+            assert isinstance(description, str)
+
+    def test_part2_intro_frames(self):
+        """Verify Part II intro generates frames."""
+        canvas = TerminalCanvas(cols=80, rows=24)
+        frames = list(generate_part2_intro_frames(canvas, fps=10))
+        assert len(frames) > 0
+
+    def test_pattern_showcase_frames(self):
+        """Verify pattern showcase generates frames for each pattern."""
+        canvas = TerminalCanvas(cols=80, rows=24)
+        fps = 10
+        frames = list(generate_pattern_showcase_frames(canvas, fps))
+        # 4 seconds per pattern
+        expected = len(GALLERY_PATTERNS) * 4 * fps
+        assert len(frames) == expected
+
+    def test_ratio_comparison_frames(self):
+        """Verify ratio comparison generates frames."""
+        canvas = TerminalCanvas(cols=80, rows=24)
+        fps = 10
+        frames = list(generate_ratio_comparison_frames(canvas, fps))
+        assert len(frames) == 8 * fps  # 8 seconds
+
+    def test_part2_full_generation(self):
+        """Verify complete Part II generates."""
+        canvas = TerminalCanvas(cols=80, rows=24)
+        frames = list(generate_part2_frames(canvas, fps=10))
+        assert len(frames) > 200
 
 
 class TestPart3Frames:
@@ -206,12 +291,12 @@ class TestFullSeries:
         assert len(frames) == 3 * 10  # 3 seconds
 
     def test_full_series_combines_all_parts(self):
-        """Verify full series includes all components."""
+        """Verify full series includes all 5 parts."""
         canvas = TerminalCanvas(cols=80, rows=24)
         # Use low fps to reduce frame count for test
         frames = list(generate_full_series_frames(canvas, fps=5))
-        # Should have frames from title + parts 3,4,5 + credits
-        assert len(frames) > 200
+        # Should have frames from title + parts 1,2,3,4,5 + credits
+        assert len(frames) > 400  # 5 parts is substantial
 
 
 class TestCLI:
@@ -221,6 +306,38 @@ class TestCLI:
         """Verify CLI module loads without errors."""
         from atari_style.demos.visualizers.educational import lissajous_educational_series
         assert hasattr(lissajous_educational_series, 'main')
+
+    @patch('atari_style.demos.visualizers.educational.lissajous_educational_series.render_gif')
+    def test_cli_part1(self, mock_render):
+        """Verify CLI handles --part 1."""
+        mock_render.return_value = True
+        import sys
+        from atari_style.demos.visualizers.educational.lissajous_educational_series import main
+
+        original_argv = sys.argv
+        try:
+            sys.argv = ['prog', '--part', '1', '-o', 'test.gif', '--fps', '5']
+            result = main()
+            assert result == 0
+            assert mock_render.called
+        finally:
+            sys.argv = original_argv
+
+    @patch('atari_style.demos.visualizers.educational.lissajous_educational_series.render_gif')
+    def test_cli_part2(self, mock_render):
+        """Verify CLI handles --part 2."""
+        mock_render.return_value = True
+        import sys
+        from atari_style.demos.visualizers.educational.lissajous_educational_series import main
+
+        original_argv = sys.argv
+        try:
+            sys.argv = ['prog', '--part', '2', '-o', 'test.gif', '--fps', '5']
+            result = main()
+            assert result == 0
+            assert mock_render.called
+        finally:
+            sys.argv = original_argv
 
     @patch('atari_style.demos.visualizers.educational.lissajous_educational_series.render_gif')
     def test_cli_part3(self, mock_render):

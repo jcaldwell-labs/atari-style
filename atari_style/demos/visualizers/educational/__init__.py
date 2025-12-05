@@ -22,6 +22,8 @@ Educational Series (Issue #29):
 from .lissajous_explorer import run_lissajous_explorer
 from .unit_circle_educational import render_unit_circle_educational
 from .lissajous_educational_series import (
+    generate_part1_frames,
+    generate_part2_frames,
     generate_part3_frames,
     generate_part4_frames,
     generate_part5_frames,
@@ -31,6 +33,8 @@ from .lissajous_educational_series import (
 __all__ = [
     'run_lissajous_explorer',
     'render_unit_circle_educational',
+    'generate_part1_frames',
+    'generate_part2_frames',
     'generate_part3_frames',
     'generate_part4_frames',
     'generate_part5_frames',

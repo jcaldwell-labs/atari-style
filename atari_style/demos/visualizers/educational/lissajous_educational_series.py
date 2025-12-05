@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Lissajous Educational Series - Parts III-V.
+"""Lissajous Educational Series - Complete 5-Part Video Course.
 
 Renders educational video segments explaining Lissajous curve mathematics:
+- Part I: Introduction - What are Lissajous curves?
+- Part II: Pattern Gallery - Classic shapes and their ratios
 - Part III: Phase and Frequency Exploration
 - Part IV: Real-World Applications
 - Part V: Complete Game Demo
 
 Usage:
+    python -m atari_style.demos.visualizers.educational.lissajous_educational_series --part 1 -o intro.gif
+    python -m atari_style.demos.visualizers.educational.lissajous_educational_series --part 2 -o gallery.gif
     python -m atari_style.demos.visualizers.educational.lissajous_educational_series --part 3 -o phase.gif
     python -m atari_style.demos.visualizers.educational.lissajous_educational_series --part 4 -o applications.gif
     python -m atari_style.demos.visualizers.educational.lissajous_educational_series --part 5 -o game.gif
@@ -112,6 +116,381 @@ def draw_equation(canvas: TerminalCanvas, y: int):
         canvas.set_pixel(x1 + i, y, char, 'bright_green')
     for i, char in enumerate(eq2):
         canvas.set_pixel(x2 + i, y + 1, char, 'bright_green')
+
+
+# =============================================================================
+# PART I: INTRODUCTION - What are Lissajous Curves?
+# =============================================================================
+
+def generate_part1_intro_frames(canvas: TerminalCanvas, fps: int
+                                ) -> Generator[Image, None, None]:
+    """Generate title frames for Part I."""
+    duration = 3.0
+    total_frames = int(duration * fps)
+
+    for frame in range(total_frames):
+        canvas.clear()
+        alpha = min(1.0, frame / (fps * 0.5))
+
+        if alpha > 0.3:
+            draw_title_card(canvas, "PART I", "Introduction to Lissajous Curves")
+
+        yield canvas.render()
+
+
+def generate_what_is_lissajous_frames(canvas: TerminalCanvas, fps: int
+                                      ) -> Generator[Image, None, None]:
+    """Generate frames explaining what Lissajous curves are."""
+    duration = 6.0
+    total_frames = int(duration * fps)
+
+    for frame in range(total_frames):
+        t = frame / fps
+        canvas.clear()
+
+        # Draw a simple Lissajous curve building up
+        progress = min(1.0, frame / (total_frames * 0.7))
+        cx = canvas.cols // 2
+        cy = canvas.rows // 2
+        scale_x = canvas.cols // 4
+        scale_y = canvas.rows // 4
+
+        # Draw partial curve based on progress
+        points = int(400 * progress)
+        for i in range(points):
+            angle = (i / 400) * 2 * math.pi
+            px = math.sin(1 * angle + t)
+            py = math.sin(2 * angle + math.pi / 2)
+
+            screen_x = int(cx + px * scale_x * 1.2)
+            screen_y = int(cy + py * scale_y * 0.7)
+
+            if 0 <= screen_x < canvas.cols and 0 <= screen_y < canvas.rows:
+                color = 'bright_cyan' if i > points - 20 else 'cyan'
+                canvas.set_pixel(screen_x, screen_y, '●', color)
+
+        # Explanation text
+        info = [
+            "LISSAJOUS CURVES",
+            "─" * 18,
+            "",
+            "Named after Jules",
+            "Antoine Lissajous",
+            "(1822-1880)",
+            "",
+            "Curves formed by",
+            "combining two",
+            "perpendicular",
+            "oscillations.",
+        ]
+        draw_info_overlay(canvas, info, x=2, y=2)
+
+        yield canvas.render()
+
+
+def generate_equation_explanation_frames(canvas: TerminalCanvas, fps: int
+                                         ) -> Generator[Image, None, None]:
+    """Generate frames explaining the parametric equations."""
+    duration = 8.0
+    total_frames = int(duration * fps)
+
+    for frame in range(total_frames):
+        t = frame / fps
+        canvas.clear()
+
+        # Draw the curve
+        cx = canvas.cols // 2 + 15
+        cy = canvas.rows // 2
+        scale_x = canvas.cols // 5
+        scale_y = canvas.rows // 4
+
+        # Animate through parameter t
+        anim_t = t * 0.5
+        for i in range(300):
+            angle = (i / 300) * 2 * math.pi
+            px = math.sin(2 * angle + anim_t)
+            py = math.sin(3 * angle + anim_t * 0.3)
+
+            screen_x = int(cx + px * scale_x)
+            screen_y = int(cy + py * scale_y * 0.6)
+
+            if 0 <= screen_x < canvas.cols and 0 <= screen_y < canvas.rows:
+                # Color by angle
+                colors = ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta']
+                color = colors[int((i / 300) * len(colors)) % len(colors)]
+                canvas.set_pixel(screen_x, screen_y, '●', color)
+
+        # Equations on left side
+        eq_x = 3
+        eq_y = 4
+
+        lines = [
+            "THE EQUATIONS",
+            "─" * 15,
+            "",
+            "x = sin(a·t + δ)",
+            "y = sin(b·t)",
+            "",
+            "Where:",
+            "  a = x frequency",
+            "  b = y frequency",
+            "  δ = phase offset",
+            "  t = time (0 to 2π)",
+            "",
+            "The ratio a:b",
+            "determines the",
+            "pattern shape!",
+        ]
+
+        for i, line in enumerate(lines):
+            color = 'bright_green' if 'sin' in line else 'white'
+            if line.startswith('─'):
+                color = 'cyan'
+            draw_info_overlay(canvas, [line], x=eq_x, y=eq_y + i, color=color)
+
+        yield canvas.render()
+
+
+def generate_xy_visualization_frames(canvas: TerminalCanvas, fps: int
+                                     ) -> Generator[Image, None, None]:
+    """Generate L-shaped visualization showing X and Y components."""
+    duration = 10.0
+    total_frames = int(duration * fps)
+
+    for frame in range(total_frames):
+        t = frame / fps
+        canvas.clear()
+
+        # Layout: X oscillator on top, Y oscillator on left, curve in center
+        margin = 8
+        curve_cx = canvas.cols // 2 + 10
+        curve_cy = canvas.rows // 2 + 3
+        curve_scale_x = 20
+        curve_scale_y = 8
+
+        # Parameters
+        a, b = 2.0, 3.0
+        delta = math.pi / 4
+        anim_phase = t * 2
+
+        # Current point on curve
+        current_x = math.sin(a * anim_phase + delta)
+        current_y = math.sin(b * anim_phase)
+
+        # Draw X oscillator (horizontal bar at top)
+        x_bar_y = margin
+        x_bar_left = curve_cx - curve_scale_x - 5
+        x_bar_right = curve_cx + curve_scale_x + 5
+        for x in range(x_bar_left, x_bar_right + 1):
+            canvas.set_pixel(x, x_bar_y, '─', 'blue')
+        # X marker
+        x_marker = int(curve_cx + current_x * curve_scale_x)
+        canvas.set_pixel(x_marker, x_bar_y, '●', 'bright_green')
+        canvas.set_pixel(x_marker, x_bar_y - 1, '▼', 'bright_green')
+
+        # Draw Y oscillator (vertical bar on left)
+        y_bar_x = margin
+        y_bar_top = curve_cy - curve_scale_y - 2
+        y_bar_bottom = curve_cy + curve_scale_y + 2
+        for y in range(y_bar_top, y_bar_bottom + 1):
+            canvas.set_pixel(y_bar_x, y, '│', 'blue')
+        # Y marker
+        y_marker = int(curve_cy + current_y * curve_scale_y * 0.8)
+        canvas.set_pixel(y_bar_x, y_marker, '●', 'bright_yellow')
+        canvas.set_pixel(y_bar_x + 1, y_marker, '▶', 'bright_yellow')
+
+        # Draw projection lines (dashed)
+        # Vertical line from X marker
+        for y in range(x_bar_y + 1, int(curve_cy + current_y * curve_scale_y * 0.8)):
+            if y % 2 == 0:
+                canvas.set_pixel(x_marker, y, '┊', 'green')
+        # Horizontal line from Y marker
+        for x in range(y_bar_x + 2, x_marker):
+            if x % 2 == 0:
+                canvas.set_pixel(x, y_marker, '┄', 'yellow')
+
+        # Draw the Lissajous curve
+        for i in range(300):
+            angle = (i / 300) * 2 * math.pi
+            px = math.sin(a * angle + delta)
+            py = math.sin(b * angle)
+
+            screen_x = int(curve_cx + px * curve_scale_x)
+            screen_y = int(curve_cy + py * curve_scale_y * 0.8)
+
+            if 0 <= screen_x < canvas.cols and 0 <= screen_y < canvas.rows:
+                canvas.set_pixel(screen_x, screen_y, '·', 'cyan')
+
+        # Draw current point (bright)
+        point_x = int(curve_cx + current_x * curve_scale_x)
+        point_y = int(curve_cy + current_y * curve_scale_y * 0.8)
+        canvas.set_pixel(point_x, point_y, '●', 'bright_white')
+
+        # Labels
+        draw_info_overlay(canvas, ["X = sin(2t + π/4)"], x=x_bar_left, y=x_bar_y - 2, color='green')
+        draw_info_overlay(canvas, ["Y"], x=margin - 1, y=y_bar_top - 1, color='yellow')
+        draw_info_overlay(canvas, ["="], x=margin - 1, y=y_bar_top, color='yellow')
+        draw_info_overlay(canvas, ["sin(3t)"], x=margin + 2, y=y_bar_top, color='yellow')
+
+        # Info box
+        info = [
+            "L-SHAPED VIEW",
+            "─" * 14,
+            "X and Y oscillate",
+            "independently.",
+            "",
+            "The curve traces",
+            "their combined",
+            "motion over time.",
+        ]
+        draw_info_overlay(canvas, info, x=canvas.cols - 20, y=2, color='white')
+
+        yield canvas.render()
+
+
+def generate_part1_frames(canvas: TerminalCanvas, fps: int
+                          ) -> Generator[Image, None, None]:
+    """Generate all Part I frames."""
+    yield from generate_part1_intro_frames(canvas, fps)
+    yield from generate_what_is_lissajous_frames(canvas, fps)
+    yield from generate_equation_explanation_frames(canvas, fps)
+    yield from generate_xy_visualization_frames(canvas, fps)
+
+
+# =============================================================================
+# PART II: PATTERN GALLERY - Classic Shapes
+# =============================================================================
+
+# Gallery patterns with educational descriptions
+GALLERY_PATTERNS = [
+    ("Circle", 1.0, 1.0, math.pi / 2, "The simplest case: a=b with 90° phase"),
+    ("Figure-8", 1.0, 2.0, 0, "Ratio 1:2 creates the infinity symbol"),
+    ("Trefoil", 2.0, 3.0, 0, "Ratio 2:3 - three interlocking loops"),
+    ("Quatrefoil", 3.0, 4.0, 0, "Ratio 3:4 - four-petaled flower"),
+    ("Star-5", 2.0, 5.0, 0, "Ratio 2:5 - five-pointed star"),
+    ("Pentagram", 3.0, 5.0, 0, "Ratio 3:5 - complex interlaced star"),
+]
+
+
+def generate_part2_intro_frames(canvas: TerminalCanvas, fps: int
+                                ) -> Generator[Image, None, None]:
+    """Generate title frames for Part II."""
+    duration = 3.0
+    total_frames = int(duration * fps)
+
+    for frame in range(total_frames):
+        canvas.clear()
+        alpha = min(1.0, frame / (fps * 0.5))
+
+        if alpha > 0.3:
+            draw_title_card(canvas, "PART II", "The Pattern Gallery")
+
+        yield canvas.render()
+
+
+def generate_pattern_showcase_frames(canvas: TerminalCanvas, fps: int
+                                     ) -> Generator[Image, None, None]:
+    """Generate frames showcasing each classic pattern."""
+    time_per_pattern = 4.0
+
+    for name, a, b, delta, description in GALLERY_PATTERNS:
+        frames = int(time_per_pattern * fps)
+
+        for frame in range(frames):
+            t = frame / fps
+            canvas.clear()
+
+            # Draw the pattern large and centered
+            cx = canvas.cols // 2
+            cy = canvas.rows // 2
+            scale_x = canvas.cols // 3
+            scale_y = canvas.rows // 3
+
+            # Animate the curve
+            for i in range(500):
+                angle = (i / 500) * 2 * math.pi
+                px = math.sin(a * angle + t * 1.5 + delta)
+                py = math.sin(b * angle + t * 0.5)
+
+                screen_x = int(cx + px * scale_x * 1.2)
+                screen_y = int(cy + py * scale_y * 0.7)
+
+                if 0 <= screen_x < canvas.cols and 0 <= screen_y < canvas.rows:
+                    # Rainbow coloring
+                    colors = ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta']
+                    color = colors[int((i / 500) * len(colors)) % len(colors)]
+                    canvas.set_pixel(screen_x, screen_y, '●', color)
+
+            # Pattern info box
+            ratio = f"{int(a)}:{int(b)}"
+            info = [
+                f"═══ {name} ═══",
+                "",
+                f"Ratio: {ratio}",
+                f"Phase: {'π/2' if delta == math.pi/2 else '0'}",
+                "",
+                "─" * 25,
+                description[:25] if len(description) <= 25 else description[:22] + "...",
+            ]
+            draw_info_overlay(canvas, info, x=2, y=2, color='bright_white')
+
+            yield canvas.render()
+
+
+def generate_ratio_comparison_frames(canvas: TerminalCanvas, fps: int
+                                     ) -> Generator[Image, None, None]:
+    """Generate frames comparing multiple patterns side by side."""
+    duration = 8.0
+    total_frames = int(duration * fps)
+
+    # Show 3 patterns at once for comparison
+    patterns = GALLERY_PATTERNS[:3]  # Circle, Figure-8, Trefoil
+
+    for frame in range(total_frames):
+        t = frame / fps
+        canvas.clear()
+
+        # Title
+        title = "RATIO COMPARISON"
+        title_x = (canvas.cols - len(title)) // 2
+        draw_info_overlay(canvas, [title, "═" * len(title)], x=title_x, y=1, color='bright_cyan')
+
+        # Draw 3 patterns side by side
+        section_width = canvas.cols // 3
+        for idx, (name, a, b, delta, _) in enumerate(patterns):
+            cx = section_width // 2 + idx * section_width
+            cy = canvas.rows // 2 + 2
+            scale = min(section_width // 4, canvas.rows // 5)
+
+            # Draw curve
+            for i in range(200):
+                angle = (i / 200) * 2 * math.pi
+                px = math.sin(a * angle + t + delta)
+                py = math.sin(b * angle + t * 0.3)
+
+                screen_x = int(cx + px * scale * 1.2)
+                screen_y = int(cy + py * scale * 0.6)
+
+                if 0 <= screen_x < canvas.cols and 0 <= screen_y < canvas.rows:
+                    colors = ['cyan', 'yellow', 'magenta']
+                    canvas.set_pixel(screen_x, screen_y, '●', colors[idx])
+
+            # Label
+            ratio = f"{int(a)}:{int(b)}"
+            label_x = cx - len(name) // 2
+            draw_info_overlay(canvas, [name], x=label_x, y=4, color='white')
+            draw_info_overlay(canvas, [ratio], x=cx - len(ratio) // 2,
+                              y=canvas.rows - 3, color='bright_yellow')
+
+        yield canvas.render()
+
+
+def generate_part2_frames(canvas: TerminalCanvas, fps: int
+                          ) -> Generator[Image, None, None]:
+    """Generate all Part II frames."""
+    yield from generate_part2_intro_frames(canvas, fps)
+    yield from generate_pattern_showcase_frames(canvas, fps)
+    yield from generate_ratio_comparison_frames(canvas, fps)
 
 
 # =============================================================================
@@ -794,8 +1173,10 @@ def generate_series_credits_frames(canvas: TerminalCanvas, fps: int
 
 def generate_full_series_frames(canvas: TerminalCanvas, fps: int
                                 ) -> Generator[Image.Image, None, None]:
-    """Generate the complete educational series."""
+    """Generate the complete 5-part educational series."""
     yield from generate_series_title_frames(canvas, fps)
+    yield from generate_part1_frames(canvas, fps)
+    yield from generate_part2_frames(canvas, fps)
     yield from generate_part3_frames(canvas, fps)
     yield from generate_part4_frames(canvas, fps)
     yield from generate_part5_frames(canvas, fps)
@@ -810,7 +1191,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Lissajous Educational Series - Parts III-V"
+        description="Lissajous Educational Series - Complete 5-Part Video Course"
     )
 
     parser.add_argument('-o', '--output', default='lissajous_education.gif',
@@ -823,10 +1204,10 @@ def main():
                         help='Frames per second (default: 15)')
 
     part_group = parser.add_mutually_exclusive_group(required=True)
-    part_group.add_argument('--part', type=int, choices=[3, 4, 5],
-                            help='Render specific part (3, 4, or 5)')
+    part_group.add_argument('--part', type=int, choices=[1, 2, 3, 4, 5],
+                            help='Render specific part (1-5)')
     part_group.add_argument('--full-series', action='store_true',
-                            help='Render the complete series')
+                            help='Render the complete 5-part series')
 
     args = parser.parse_args()
 
@@ -835,7 +1216,13 @@ def main():
     print(f"Canvas: {canvas.cols}x{canvas.rows} chars = "
           f"{canvas.img_width}x{canvas.img_height} pixels")
 
-    if args.part == 3:
+    if args.part == 1:
+        print("Rendering Part I: Introduction to Lissajous Curves")
+        frames = generate_part1_frames(canvas, args.fps)
+    elif args.part == 2:
+        print("Rendering Part II: The Pattern Gallery")
+        frames = generate_part2_frames(canvas, args.fps)
+    elif args.part == 3:
         print("Rendering Part III: Phase & Frequency Exploration")
         frames = generate_part3_frames(canvas, args.fps)
     elif args.part == 4:
@@ -845,7 +1232,7 @@ def main():
         print("Rendering Part V: The Game")
         frames = generate_part5_frames(canvas, args.fps)
     else:  # args.full_series (required=True ensures one option is set)
-        print("Rendering Full Series (Parts III-V)")
+        print("Rendering Full Series (Parts I-V)")
         frames = generate_full_series_frames(canvas, args.fps)
 
     success = render_gif(args.output, frames, args.fps)
