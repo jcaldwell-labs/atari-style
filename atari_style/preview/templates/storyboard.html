@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{FILENAME}} - Storyboard View</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-card: #0f3460;
+            --text-primary: #e94560;
+            --text-secondary: #fff;
+            --text-muted: #aaa;
+            --accent: #e94560;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            min-height: 100vh;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            padding: 1rem 2rem;
+            border-bottom: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 1.5rem;
+        }
+
+        .back-btn:hover {
+            color: var(--text-secondary);
+        }
+
+        header h1 {
+            color: var(--accent);
+            font-size: 1.2rem;
+        }
+
+        .tabs {
+            display: flex;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--bg-card);
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--text-secondary);
+        }
+
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+            padding: 2rem;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Timeline */
+        .timeline-container {
+            margin-bottom: 2rem;
+        }
+
+        .timeline {
+            display: flex;
+            height: 60px;
+            border-radius: 4px;
+            overflow: hidden;
+            background: var(--bg-card);
+        }
+
+        .timeline-segment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 30px;
+            transition: filter 0.2s;
+        }
+
+        .timeline-segment:hover {
+            filter: brightness(1.2);
+        }
+
+        .segment-label {
+            color: rgba(0, 0, 0, 0.7);
+            font-size: 0.75rem;
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 0.5rem;
+        }
+
+        .timeline-duration {
+            text-align: right;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .timeline-empty {
+            background: var(--bg-card);
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-muted);
+            border-radius: 4px;
+        }
+
+        /* Scene Grid */
+        .scene-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .scene-card {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 4px solid var(--accent);
+        }
+
+        .scene-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .scene-num {
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .scene-time {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .scene-effect {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .scene-duration {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .scene-params {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .scene-params .param {
+            margin-bottom: 0.25rem;
+        }
+
+        .scene-params .param span {
+            color: var(--accent);
+        }
+
+        /* JSON View */
+        .json-view {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 4px;
+            overflow: auto;
+            max-height: calc(100vh - 200px);
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .json-view pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .empty {
+            color: var(--text-muted);
+            text-align: center;
+            padding: 2rem;
+        }
+
+        @media (max-width: 600px) {
+            header, .tab-content {
+                padding: 1rem;
+            }
+
+            .scene-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/" class="back-btn">←</a>
+        <h1>📋 {{FILENAME}}</h1>
+    </header>
+
+    <nav class="tabs">
+        <a href="#timeline" class="tab active" data-tab="timeline">Timeline</a>
+        <a href="#scenes" class="tab" data-tab="scenes">Scenes</a>
+        <a href="#json" class="tab" data-tab="json">JSON</a>
+    </nav>
+
+    <div id="timeline" class="tab-content active">
+        <div class="timeline-container">
+            {{TIMELINE}}
+        </div>
+    </div>
+
+    <div id="scenes" class="tab-content">
+        {{SCENES}}
+    </div>
+
+    <div id="json" class="tab-content">
+        <div class="json-view">
+            <pre>{{JSON}}</pre>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = tab.dataset.tab;
+
+                // Update active tab
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Update active content
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(targetId).classList.add('active');
+
+                // Update URL hash
+                history.replaceState(null, '', `#${targetId}`);
+            });
+        });
+
+        // Handle initial hash
+        if (window.location.hash) {
+            const hash = window.location.hash.substring(1);
+            const tab = document.querySelector(`.tab[data-tab="${hash}"]`);
+            if (tab) tab.click();
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' || e.key === 'Backspace') {
+                window.location.href = '/';
+            }
+        });
+    </script>
+</body>
+</html>
