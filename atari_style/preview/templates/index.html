@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atari-Style Preview Gallery</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-card: #0f3460;
+            --text-primary: #e94560;
+            --text-secondary: #fff;
+            --text-muted: #aaa;
+            --accent: #e94560;
+            --success: #2ecc71;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            min-height: 100vh;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            padding: 1rem 2rem;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        header h1 {
+            color: var(--accent);
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+        }
+
+        .header-stats {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .filters {
+            padding: 1rem 2rem;
+            background: var(--bg-secondary);
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 4px;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .filter-btn:hover {
+            background: var(--accent);
+            color: var(--bg-primary);
+        }
+
+        .filter-btn.active {
+            border-color: var(--accent);
+            background: var(--accent);
+            color: var(--bg-primary);
+        }
+
+        .filter-btn .count {
+            opacity: 0.7;
+            font-size: 0.9em;
+        }
+
+        main {
+            padding: 2rem;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .file-card {
+            background: var(--bg-card);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .file-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(233, 69, 96, 0.3);
+        }
+
+        .file-card a {
+            color: inherit;
+            text-decoration: none;
+            display: block;
+        }
+
+        .preview {
+            aspect-ratio: 16/9;
+            background: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .preview video,
+        .preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview .play-overlay {
+            position: absolute;
+            font-size: 3rem;
+            color: rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .file-card:hover .play-overlay {
+            opacity: 0;
+        }
+
+        .file-card:hover video {
+            opacity: 1;
+        }
+
+        .icon-preview {
+            font-size: 4rem;
+        }
+
+        .file-info {
+            padding: 1rem;
+        }
+
+        .filename {
+            font-weight: bold;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .meta {
+            display: flex;
+            gap: 1rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .modified {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state .icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .empty-state .hint {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        /* Video hover preview */
+        .video-preview video {
+            opacity: 0.9;
+        }
+
+        .file-card:hover .video-preview video {
+            opacity: 1;
+        }
+
+        @media (max-width: 600px) {
+            .gallery-grid {
+                grid-template-columns: 1fr;
+            }
+
+            header, .filters, main {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>⬛ ATARI-STYLE PREVIEW</h1>
+        <div class="header-stats">
+            {{TOTAL_FILES}} files · {{TOTAL_SIZE}}
+        </div>
+    </header>
+
+    <nav class="filters">
+        {{FILTERS}}
+    </nav>
+
+    <main>
+        <div class="gallery-grid">
+            {{CARDS}}
+        </div>
+    </main>
+
+    <script>
+        // Auto-play videos on hover
+        document.querySelectorAll('.video-preview video').forEach(video => {
+            const card = video.closest('.file-card');
+            card.addEventListener('mouseenter', () => video.play());
+            card.addEventListener('mouseleave', () => {
+                video.pause();
+                video.currentTime = 0;
+            });
+        });
+    </script>
+</body>
+</html>
