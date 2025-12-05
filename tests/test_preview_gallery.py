@@ -118,10 +118,10 @@ class TestMediaFile(unittest.TestCase):
     def test_resolution_none(self):
         """Test resolution when not set."""
         mf = MediaFile(
-            path=Path('/test/audio.mp3'),
-            filename='audio.mp3',
+            path=Path('/test/video.mp4'),
+            filename='video.mp4',
             file_type='video',
-            extension='.mp3',
+            extension='.mp4',
             size_bytes=1000,
             modified_time=datetime.now(),
         )
@@ -165,7 +165,7 @@ class TestGallery(unittest.TestCase):
         """Test default directory initialization."""
         gallery = Gallery()
         self.assertEqual(len(gallery.directories), 1)
-        self.assertTrue(gallery.directories[0].name == 'output')
+        self.assertEqual(gallery.directories[0].name, 'output')
 
     def test_scan_empty_directory(self):
         """Test scanning empty directory."""

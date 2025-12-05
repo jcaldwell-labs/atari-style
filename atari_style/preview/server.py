@@ -5,6 +5,7 @@ and storyboard JSON files. Uses Python's built-in http.server.
 """
 
 import argparse
+import html
 import json
 import mimetypes
 import sys
@@ -98,7 +99,7 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         elif f.file_type == 'image':
             preview = f'''
                 <div class="preview image-preview">
-                    <img src="/media/{urllib.parse.quote(f.filename)}" alt="{f.filename}" loading="lazy">
+                    <img src="/media/{urllib.parse.quote(f.filename)}" alt="{html.escape(f.filename)}" loading="lazy">
                 </div>
             '''
         else:
@@ -120,15 +121,15 @@ class PreviewHandler(SimpleHTTPRequestHandler):
             view_url = f'/storyboard?file={urllib.parse.quote(f.filename)}'
 
         return f'''
-            <div class="file-card" data-type="{f.file_type}">
+            <div class="file-card" data-type="{html.escape(f.file_type)}">
                 <a href="{view_url}">
                     {preview}
                     <div class="file-info">
-                        <div class="filename" title="{f.filename}">{icon} {f.filename}</div>
+                        <div class="filename" title="{html.escape(f.filename)}">{icon} {html.escape(f.filename)}</div>
                         <div class="meta">
                             {' '.join(info_items)}
                         </div>
-                        <div class="modified">{f.modified_human}</div>
+                        <div class="modified">{html.escape(f.modified_human)}</div>
                     </div>
                 </a>
             </div>
@@ -212,7 +213,7 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         elif media_file.file_type == 'image':
             media_html = f'''
                 <img src="/media/{urllib.parse.quote(filename)}"
-                     alt="{filename}" class="media-content">
+                     alt="{html.escape(filename)}" class="media-content">
             '''
         else:
             # JSON files - show formatted content
@@ -220,14 +221,14 @@ class PreviewHandler(SimpleHTTPRequestHandler):
                 with open(media_file.path, 'r') as f:
                     data = json.load(f)
                 json_str = json.dumps(data, indent=2)
-                media_html = f'<pre class="json-content">{json_str}</pre>'
+                media_html = f'<pre class="json-content">{html.escape(json_str)}</pre>'
             except (json.JSONDecodeError, IOError):
                 media_html = '<p class="error">Error loading file</p>'
 
         # Build info panel
         info_html = f'''
             <div class="info-panel">
-                <h2>{filename}</h2>
+                <h2>{html.escape(filename)}</h2>
                 <dl>
                     <dt>Type</dt><dd>{media_file.file_type}</dd>
                     <dt>Size</dt><dd>{media_file.size_human}</dd>
@@ -275,12 +276,12 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         scenes_html = self._render_scenes(data)
 
         template = self._load_template('storyboard.html')
-        html = template.replace('{{FILENAME}}', filename)
-        html = html.replace('{{TIMELINE}}', timeline_html)
-        html = html.replace('{{SCENES}}', scenes_html)
-        html = html.replace('{{JSON}}', json.dumps(data, indent=2))
+        page_html = template.replace('{{FILENAME}}', html.escape(filename))
+        page_html = page_html.replace('{{TIMELINE}}', timeline_html)
+        page_html = page_html.replace('{{SCENES}}', scenes_html)
+        page_html = page_html.replace('{{JSON}}', html.escape(json.dumps(data, indent=2)))
 
-        self._send_html(html)
+        self._send_html(page_html)
 
     def _render_timeline(self, data: dict) -> str:
         """Render storyboard timeline visualization."""
@@ -301,7 +302,7 @@ class PreviewHandler(SimpleHTTPRequestHandler):
             duration = scene.get('duration', 0)
             width_pct = (duration / total_duration) * 100
             color = colors[i % len(colors)]
-            effect = scene.get('effect', scene.get('animation', 'unknown'))
+            effect = html.escape(str(scene.get('effect', scene.get('animation', 'unknown'))))
 
             timeline_html += f'''
                 <div class="timeline-segment"
@@ -323,21 +324,21 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         if not scenes:
             return '<p class="empty">No scenes defined</p>'
 
-        html = '<div class="scene-grid">'
+        output = '<div class="scene-grid">'
         current_time = 0
 
         for i, scene in enumerate(scenes):
             duration = scene.get('duration', 0)
-            effect = scene.get('effect', scene.get('animation', 'unknown'))
+            effect = html.escape(str(scene.get('effect', scene.get('animation', 'unknown'))))
             params = scene.get('params', scene.get('parameters', {}))
 
             # Format parameters
             params_html = ''
             if params:
                 for key, value in params.items():
-                    params_html += f'<div class="param"><span>{key}:</span> {value}</div>'
+                    params_html += f'<div class="param"><span>{html.escape(str(key))}:</span> {html.escape(str(value))}</div>'
 
-            html += f'''
+            output += f'''
                 <div class="scene-card">
                     <div class="scene-header">
                         <span class="scene-num">Scene {i + 1}</span>
@@ -350,11 +351,11 @@ class PreviewHandler(SimpleHTTPRequestHandler):
             '''
             current_time += duration
 
-        html += '</div>'
-        return html
+        output += '</div>'
+        return output
 
     def _serve_media_file(self, filename: str):
-        """Serve a media file directly."""
+        """Serve a media file directly with chunked streaming for large files."""
         filename = urllib.parse.unquote(filename)
         media_file = self.gallery.get_by_filename(filename)
 
@@ -362,29 +363,42 @@ class PreviewHandler(SimpleHTTPRequestHandler):
             self.send_error(404, "File not found")
             return
 
-        # Serve the file
+        # Serve the file with chunked streaming
         try:
-            with open(media_file.path, 'rb') as f:
-                content = f.read()
-
             # Determine content type
             content_type, _ = mimetypes.guess_type(str(media_file.path))
             if not content_type:
                 content_type = 'application/octet-stream'
 
+            file_size = Path(media_file.path).stat().st_size
+
             self.send_response(200)
             self.send_header('Content-Type', content_type)
-            self.send_header('Content-Length', str(len(content)))
+            self.send_header('Content-Length', str(file_size))
             self.send_header('Cache-Control', 'max-age=3600')
             self.end_headers()
-            self.wfile.write(content)
+
+            # Stream file in chunks to avoid loading large files into memory
+            chunk_size = 8192
+            with open(media_file.path, 'rb') as f:
+                while True:
+                    chunk = f.read(chunk_size)
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
 
         except IOError:
             self.send_error(500, "Error reading file")
 
     def _serve_static(self, path: str):
         """Serve static files (CSS, JS)."""
-        static_path = self.templates_dir / 'static' / path
+        static_path = (self.templates_dir / 'static' / path).resolve()
+        allowed_dir = (self.templates_dir / 'static').resolve()
+
+        # Prevent path traversal attacks
+        if not str(static_path).startswith(str(allowed_dir)):
+            self.send_error(403, "Forbidden")
+            return
 
         if not static_path.exists() or not static_path.is_file():
             self.send_error(404, "Static file not found")
