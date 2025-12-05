@@ -846,12 +846,9 @@ def main():
     elif args.part == 5:
         print("Rendering Part V: The Game")
         frames = generate_part5_frames(canvas, args.fps)
-    elif args.full_series:
+    else:  # args.full_series (required=True ensures one option is set)
         print("Rendering Full Series (Parts III-V)")
         frames = generate_full_series_frames(canvas, args.fps)
-    else:
-        parser.print_help()
-        return 1
 
     success = render_gif(args.output, frames, args.fps)
     return 0 if success else 1
