@@ -229,7 +229,7 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         # Build info panel
         info_html = f'''
             <div class="info-panel">
-                <h2>{html.escape(filename)}</h2>
+                <h2>{html.escape(media_file.filename)}</h2>
                 <dl>
                     <dt>Type</dt><dd>{html.escape(media_file.file_type)}</dd>
                     <dt>Size</dt><dd>{media_file.size_human}</dd>
@@ -244,7 +244,7 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         info_html += '</dl></div>'
 
         template = self._load_template('viewer.html')
-        page_html = template.replace('{{FILENAME}}', html.escape(filename))
+        page_html = template.replace('{{FILENAME}}', html.escape(media_file.filename))
         page_html = page_html.replace('{{MEDIA}}', media_html)
         page_html = page_html.replace('{{INFO}}', info_html)
 
@@ -277,7 +277,7 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         scenes_html = self._render_scenes(data)
 
         template = self._load_template('storyboard.html')
-        page_html = template.replace('{{FILENAME}}', html.escape(filename))
+        page_html = template.replace('{{FILENAME}}', html.escape(media_file.filename))
         page_html = page_html.replace('{{TIMELINE}}', timeline_html)
         page_html = page_html.replace('{{SCENES}}', scenes_html)
         page_html = page_html.replace('{{JSON}}', html.escape(json.dumps(data, indent=2)))
