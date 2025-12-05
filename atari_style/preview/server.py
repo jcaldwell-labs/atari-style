@@ -91,7 +91,7 @@ class PreviewHandler(SimpleHTTPRequestHandler):
             preview = f'''
                 <div class="preview video-preview">
                     <video muted loop preload="metadata">
-                        <source src="/media/{urllib.parse.quote(f.filename)}" type="video/mp4">
+                        <source src="/media/{urllib.parse.quote(f.unique_id)}" type="video/mp4">
                     </video>
                     <div class="play-overlay">▶</div>
                 </div>
@@ -99,7 +99,7 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         elif f.file_type == 'image':
             preview = f'''
                 <div class="preview image-preview">
-                    <img src="/media/{urllib.parse.quote(f.filename)}" alt="{html.escape(f.filename)}" loading="lazy">
+                    <img src="/media/{urllib.parse.quote(f.unique_id)}" alt="{html.escape(f.filename)}" loading="lazy">
                 </div>
             '''
         else:
@@ -116,9 +116,9 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         if f.width and f.height:
             info_items.append(f'<span class="resolution">{f.resolution}</span>')
 
-        view_url = f'/view?file={urllib.parse.quote(f.filename)}'
+        view_url = f'/view?file={urllib.parse.quote(f.unique_id)}'
         if f.file_type == 'storyboard':
-            view_url = f'/storyboard?file={urllib.parse.quote(f.filename)}'
+            view_url = f'/storyboard?file={urllib.parse.quote(f.unique_id)}'
 
         return f'''
             <div class="file-card" data-type="{html.escape(f.file_type)}">
@@ -193,12 +193,12 @@ class PreviewHandler(SimpleHTTPRequestHandler):
 
     def _serve_viewer(self, query: dict):
         """Serve the file viewer page."""
-        filename = query.get('file', [None])[0]
-        if not filename:
+        file_id = query.get('file', [None])[0]
+        if not file_id:
             self.send_error(400, "Missing file parameter")
             return
 
-        media_file = self.gallery.get_by_filename(filename)
+        media_file = self.gallery.get_by_id(file_id)
         if not media_file:
             self.send_error(404, "File not found")
             return
@@ -207,14 +207,14 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         if media_file.file_type == 'video':
             media_html = f'''
                 <video controls autoplay loop class="media-content">
-                    <source src="/media/{urllib.parse.quote(filename)}" type="video/mp4">
+                    <source src="/media/{urllib.parse.quote(media_file.unique_id)}" type="video/mp4">
                     Your browser does not support video playback.
                 </video>
             '''
         elif media_file.file_type == 'image':
             media_html = f'''
-                <img src="/media/{urllib.parse.quote(filename)}"
-                     alt="{html.escape(filename)}" class="media-content">
+                <img src="/media/{urllib.parse.quote(media_file.unique_id)}"
+                     alt="{html.escape(media_file.filename)}" class="media-content">
             '''
         else:
             # JSON files - show formatted content
@@ -252,12 +252,12 @@ class PreviewHandler(SimpleHTTPRequestHandler):
 
     def _serve_storyboard(self, query: dict):
         """Serve the storyboard timeline viewer."""
-        filename = query.get('file', [None])[0]
-        if not filename:
+        file_id = query.get('file', [None])[0]
+        if not file_id:
             self.send_error(400, "Missing file parameter")
             return
 
-        media_file = self.gallery.get_by_filename(filename)
+        media_file = self.gallery.get_by_id(file_id)
         if not media_file:
             self.send_error(404, "File not found")
             return
@@ -355,10 +355,10 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         output += '</div>'
         return output
 
-    def _serve_media_file(self, filename: str):
+    def _serve_media_file(self, file_id: str):
         """Serve a media file directly with chunked streaming for large files."""
-        filename = urllib.parse.unquote(filename)
-        media_file = self.gallery.get_by_filename(filename)
+        file_id = urllib.parse.unquote(file_id)
+        media_file = self.gallery.get_by_id(file_id)
 
         if not media_file:
             self.send_error(404, "File not found")
