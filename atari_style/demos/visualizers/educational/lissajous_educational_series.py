@@ -192,7 +192,7 @@ def generate_frequency_comparison_frames(canvas: TerminalCanvas, fps: int
     """
     time_per_ratio = 3.0
 
-    for ratio_name, a, b, description in FREQUENCY_RATIOS:
+    for idx, (ratio_name, a, b, description) in enumerate(FREQUENCY_RATIOS):
         # Hold on this ratio
         hold_frames = int(time_per_ratio * fps)
 
@@ -221,9 +221,8 @@ def generate_frequency_comparison_frames(canvas: TerminalCanvas, fps: int
             yield canvas.render()
 
         # Transition to next ratio (fast morph)
-        if ratio_name != FREQUENCY_RATIOS[-1][0]:
-            next_idx = FREQUENCY_RATIOS.index((ratio_name, a, b, description)) + 1
-            _, next_a, next_b, _ = FREQUENCY_RATIOS[next_idx]
+        if idx < len(FREQUENCY_RATIOS) - 1:
+            _, next_a, next_b, _ = FREQUENCY_RATIOS[idx + 1]
 
             trans_frames = int(0.5 * fps)
             for frame in range(trans_frames):
@@ -780,8 +779,7 @@ def generate_series_credits_frames(canvas: TerminalCanvas, fps: int
             "Created with",
             "atari-style",
             "",
-            "github.com/jcaldwell-labs",
-            "/atari-style",
+            "github.com/jcaldwell-labs/atari-style",
         ]
 
         start_y = (canvas.rows - len(credits)) // 2
