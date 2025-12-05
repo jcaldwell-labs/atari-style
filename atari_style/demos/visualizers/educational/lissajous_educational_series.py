@@ -123,7 +123,7 @@ def draw_equation(canvas: TerminalCanvas, y: int):
 # =============================================================================
 
 def generate_part1_intro_frames(canvas: TerminalCanvas, fps: int
-                                ) -> Generator[Image, None, None]:
+                                ) -> Generator[Image.Image, None, None]:
     """Generate title frames for Part I."""
     duration = 3.0
     total_frames = int(duration * fps)
@@ -139,7 +139,7 @@ def generate_part1_intro_frames(canvas: TerminalCanvas, fps: int
 
 
 def generate_what_is_lissajous_frames(canvas: TerminalCanvas, fps: int
-                                      ) -> Generator[Image, None, None]:
+                                      ) -> Generator[Image.Image, None, None]:
     """Generate frames explaining what Lissajous curves are."""
     duration = 6.0
     total_frames = int(duration * fps)
@@ -189,7 +189,7 @@ def generate_what_is_lissajous_frames(canvas: TerminalCanvas, fps: int
 
 
 def generate_equation_explanation_frames(canvas: TerminalCanvas, fps: int
-                                         ) -> Generator[Image, None, None]:
+                                         ) -> Generator[Image.Image, None, None]:
     """Generate frames explaining the parametric equations."""
     duration = 8.0
     total_frames = int(duration * fps)
@@ -252,7 +252,7 @@ def generate_equation_explanation_frames(canvas: TerminalCanvas, fps: int
 
 
 def generate_xy_visualization_frames(canvas: TerminalCanvas, fps: int
-                                     ) -> Generator[Image, None, None]:
+                                     ) -> Generator[Image.Image, None, None]:
     """Generate L-shaped visualization showing X and Y components."""
     duration = 10.0
     total_frames = int(duration * fps)
@@ -349,7 +349,7 @@ def generate_xy_visualization_frames(canvas: TerminalCanvas, fps: int
 
 
 def generate_part1_frames(canvas: TerminalCanvas, fps: int
-                          ) -> Generator[Image, None, None]:
+                          ) -> Generator[Image.Image, None, None]:
     """Generate all Part I frames."""
     yield from generate_part1_intro_frames(canvas, fps)
     yield from generate_what_is_lissajous_frames(canvas, fps)
@@ -373,7 +373,7 @@ GALLERY_PATTERNS = [
 
 
 def generate_part2_intro_frames(canvas: TerminalCanvas, fps: int
-                                ) -> Generator[Image, None, None]:
+                                ) -> Generator[Image.Image, None, None]:
     """Generate title frames for Part II."""
     duration = 3.0
     total_frames = int(duration * fps)
@@ -389,7 +389,7 @@ def generate_part2_intro_frames(canvas: TerminalCanvas, fps: int
 
 
 def generate_pattern_showcase_frames(canvas: TerminalCanvas, fps: int
-                                     ) -> Generator[Image, None, None]:
+                                     ) -> Generator[Image.Image, None, None]:
     """Generate frames showcasing each classic pattern."""
     time_per_pattern = 4.0
 
@@ -438,7 +438,7 @@ def generate_pattern_showcase_frames(canvas: TerminalCanvas, fps: int
 
 
 def generate_ratio_comparison_frames(canvas: TerminalCanvas, fps: int
-                                     ) -> Generator[Image, None, None]:
+                                     ) -> Generator[Image.Image, None, None]:
     """Generate frames comparing multiple patterns side by side."""
     duration = 8.0
     total_frames = int(duration * fps)
@@ -486,7 +486,7 @@ def generate_ratio_comparison_frames(canvas: TerminalCanvas, fps: int
 
 
 def generate_part2_frames(canvas: TerminalCanvas, fps: int
-                          ) -> Generator[Image, None, None]:
+                          ) -> Generator[Image.Image, None, None]:
     """Generate all Part II frames."""
     yield from generate_part2_intro_frames(canvas, fps)
     yield from generate_pattern_showcase_frames(canvas, fps)
