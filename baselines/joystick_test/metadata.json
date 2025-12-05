@@ -1,0 +1,12 @@
+{
+  "demo_name": "joystick_test",
+  "script_path": "scripts/demos/joystick-demo.json",
+  "frames": [
+    0,
+    5,
+    10
+  ],
+  "width": 120,
+  "height": 40,
+  "version": "1.0"
+}
