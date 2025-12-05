@@ -7,7 +7,37 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from atari_style.preview.gallery import Gallery, MediaFile
+from atari_style.preview.gallery import Gallery, MediaFile, format_bytes
+
+
+class TestFormatBytes(unittest.TestCase):
+    """Test format_bytes helper function."""
+
+    def test_bytes(self):
+        """Test formatting bytes."""
+        self.assertEqual(format_bytes(0), '0.0 B')
+        self.assertEqual(format_bytes(512), '512.0 B')
+        self.assertEqual(format_bytes(1023), '1023.0 B')
+
+    def test_kilobytes(self):
+        """Test formatting kilobytes."""
+        self.assertEqual(format_bytes(1024), '1.0 KB')
+        self.assertEqual(format_bytes(2048), '2.0 KB')
+        self.assertEqual(format_bytes(1536), '1.5 KB')
+
+    def test_megabytes(self):
+        """Test formatting megabytes."""
+        self.assertEqual(format_bytes(1024 * 1024), '1.0 MB')
+        self.assertEqual(format_bytes(5 * 1024 * 1024), '5.0 MB')
+
+    def test_gigabytes(self):
+        """Test formatting gigabytes."""
+        self.assertEqual(format_bytes(1024 * 1024 * 1024), '1.0 GB')
+        self.assertEqual(format_bytes(2 * 1024 * 1024 * 1024), '2.0 GB')
+
+    def test_terabytes(self):
+        """Test formatting terabytes."""
+        self.assertEqual(format_bytes(1024 * 1024 * 1024 * 1024), '1.0 TB')
 
 
 class TestMediaFile(unittest.TestCase):
@@ -127,6 +157,31 @@ class TestMediaFile(unittest.TestCase):
         )
         self.assertEqual(mf.resolution, '-')
 
+    def test_unique_id_with_relative_path(self):
+        """Test unique_id uses relative_path when available."""
+        mf = MediaFile(
+            path=Path('/test/subdir/video.mp4'),
+            filename='video.mp4',
+            file_type='video',
+            extension='.mp4',
+            size_bytes=1024,
+            modified_time=datetime.now(),
+            relative_path='subdir/video.mp4',
+        )
+        self.assertEqual(mf.unique_id, 'subdir/video.mp4')
+
+    def test_unique_id_fallback_to_filename(self):
+        """Test unique_id falls back to filename when no relative_path."""
+        mf = MediaFile(
+            path=Path('/test/video.mp4'),
+            filename='video.mp4',
+            file_type='video',
+            extension='.mp4',
+            size_bytes=1024,
+            modified_time=datetime.now(),
+        )
+        self.assertEqual(mf.unique_id, 'video.mp4')
+
     def test_to_dict(self):
         """Test dictionary conversion."""
         now = datetime.now()
@@ -146,6 +201,21 @@ class TestMediaFile(unittest.TestCase):
         self.assertEqual(d['file_type'], 'video')
         self.assertEqual(d['duration'], 60.0)
         self.assertEqual(d['resolution'], '1280x720')
+
+    def test_to_dict_includes_unique_id(self):
+        """Test dictionary includes unique_id and relative_path."""
+        mf = MediaFile(
+            path=Path('/test/subdir/video.mp4'),
+            filename='video.mp4',
+            file_type='video',
+            extension='.mp4',
+            size_bytes=1024,
+            modified_time=datetime.now(),
+            relative_path='subdir/video.mp4',
+        )
+        d = mf.to_dict()
+        self.assertEqual(d['relative_path'], 'subdir/video.mp4')
+        self.assertEqual(d['unique_id'], 'subdir/video.mp4')
 
 
 class TestGallery(unittest.TestCase):
@@ -290,6 +360,78 @@ class TestGallery(unittest.TestCase):
         result = self.gallery.get_by_filename('missing.mp4')
 
         self.assertIsNone(result)
+
+    def test_get_by_id(self):
+        """Test getting file by unique_id."""
+        (Path(self.temp_dir) / 'target.mp4').write_bytes(b'video')
+
+        self.gallery.scan()
+
+        result = self.gallery.get_by_id('target.mp4')
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.filename, 'target.mp4')
+
+    def test_get_by_id_with_subdirectory(self):
+        """Test getting file by unique_id in subdirectory."""
+        import os
+        subdir = Path(self.temp_dir) / 'subdir'
+        subdir.mkdir()
+        (subdir / 'video.mp4').write_bytes(b'video')
+
+        self.gallery.scan()
+
+        # Path separators are OS-specific
+        expected_path = os.path.join('subdir', 'video.mp4')
+        result = self.gallery.get_by_id(expected_path)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.filename, 'video.mp4')
+        self.assertEqual(result.relative_path, expected_path)
+
+    def test_get_by_id_not_found(self):
+        """Test getting non-existent file by id."""
+        self.gallery.scan()
+
+        result = self.gallery.get_by_id('missing/file.mp4')
+
+        self.assertIsNone(result)
+
+    def test_duplicate_filenames_in_subdirectories(self):
+        """Test handling duplicate filenames in different subdirectories."""
+        import os
+        # Create same filename in two different subdirectories
+        subdir1 = Path(self.temp_dir) / 'project1'
+        subdir2 = Path(self.temp_dir) / 'project2'
+        subdir1.mkdir()
+        subdir2.mkdir()
+
+        (subdir1 / 'output.mp4').write_bytes(b'video1')
+        (subdir2 / 'output.mp4').write_bytes(b'video2')
+
+        files = self.gallery.scan()
+
+        # Should find both files
+        self.assertEqual(len(files), 2)
+
+        # Each should have unique relative_path (OS-specific separators)
+        paths = {f.relative_path for f in files}
+        expected_path1 = os.path.join('project1', 'output.mp4')
+        expected_path2 = os.path.join('project2', 'output.mp4')
+        self.assertIn(expected_path1, paths)
+        self.assertIn(expected_path2, paths)
+
+        # Both have same filename
+        filenames = {f.filename for f in files}
+        self.assertEqual(filenames, {'output.mp4'})
+
+        # Can retrieve each by unique_id
+        file1 = self.gallery.get_by_id(expected_path1)
+        file2 = self.gallery.get_by_id(expected_path2)
+
+        self.assertIsNotNone(file1)
+        self.assertIsNotNone(file2)
+        self.assertNotEqual(file1.path, file2.path)
 
     def test_get_summary(self):
         """Test summary statistics."""
