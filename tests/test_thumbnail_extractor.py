@@ -375,6 +375,21 @@ class TestMain:
         assert result == 0
         assert len(list(output_dir.glob("*.png"))) == 2  # Two title segments
 
+    def test_verbose_quiet_mutual_exclusion(self, tmp_path, monkeypatch, capsys):
+        """Test that verbose and quiet flags are mutually exclusive."""
+        script_path = create_test_script(tmp_path)
+        output_dir = tmp_path / "output"
+        monkeypatch.setattr(sys, 'argv', [
+            'thumbnail-extractor', str(script_path),
+            '-o', str(output_dir),
+            '-v', '-q'  # Both verbose and quiet
+        ])
+
+        import pytest
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+        assert exc_info.value.code == 2  # argparse error
+
 
 class TestCLIIntegration:
     """Integration tests running CLI as subprocess."""

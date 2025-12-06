@@ -257,12 +257,34 @@ def generate_placeholder_frame(
     img = Image.new('RGB', (THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT), color=(20, 20, 30))
     draw = ImageDraw.Draw(img)
 
-    # Try to use a reasonable font
-    try:
-        font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48)
-        font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
-        font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
-    except (OSError, IOError):
+    # Try to use a reasonable font with cross-platform fallbacks
+    font_paths = [
+        # Linux
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        # macOS
+        "/System/Library/Fonts/Helvetica.ttc",
+        "/System/Library/Fonts/SFNSText.ttf",
+        # Windows
+        "C:/Windows/Fonts/arial.ttf",
+        "C:/Windows/Fonts/segoeui.ttf",
+    ]
+
+    font_large = None
+    font_medium = None
+    font_small = None
+
+    for font_path in font_paths:
+        try:
+            font_large = ImageFont.truetype(font_path, 48)
+            font_medium = ImageFont.truetype(font_path, 24)
+            font_small = ImageFont.truetype(font_path, 18)
+            break
+        except (OSError, IOError):
+            continue
+
+    # Fall back to default font if no system fonts found
+    if font_large is None:
         font_large = ImageFont.load_default()
         font_medium = ImageFont.load_default()
         font_small = ImageFont.load_default()
@@ -413,16 +435,20 @@ Frame Selection Strategies:
         default='evenly_spaced',
         help='Frame selection strategy (default: evenly_spaced)'
     )
-    parser.add_argument(
+
+    # Mutually exclusive verbose/quiet options
+    verbosity_group = parser.add_mutually_exclusive_group()
+    verbosity_group.add_argument(
         '-v', '--verbose',
         action='store_true',
         help='Verbose output'
     )
-    parser.add_argument(
+    verbosity_group.add_argument(
         '-q', '--quiet',
         action='store_true',
         help='Suppress non-essential output'
     )
+
     parser.add_argument(
         '--json',
         action='store_true',
@@ -472,8 +498,13 @@ Frame Selection Strategies:
             print("Warning: No thumbnails were generated", file=sys.stderr)
             return 0
 
-        # Write metadata JSON
-        metadata_file = output_dir / f"{script.name or 'script'}_metadata.json"
+        # Write metadata JSON - sanitize script name for filename
+        script_name_safe = script.name or "script"
+        script_name_safe = "".join(
+            c if c.isalnum() or c in '-_' else '_'
+            for c in script_name_safe
+        )
+        metadata_file = output_dir / f"{script_name_safe}_metadata.json"
         full_metadata = {
             'script_name': script.name,
             'total_duration': script.total_duration,
