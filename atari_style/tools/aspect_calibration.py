@@ -206,11 +206,6 @@ def show_current_value(json_output: bool = False, quiet: bool = False) -> int:
     config = Config.load()
 
     if json_output:
-        result = {
-            'char_aspect': config.char_aspect,
-            'default': DEFAULT_CHAR_ASPECT,
-            'config_file': str(Config.__dataclass_fields__)
-        }
         print(json.dumps({'char_aspect': config.char_aspect,
                          'default': DEFAULT_CHAR_ASPECT}, indent=2))
     else:
