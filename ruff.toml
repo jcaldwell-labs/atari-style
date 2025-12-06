@@ -1,8 +1,8 @@
 # Ruff configuration for atari-style
 # https://docs.astral.sh/ruff/
 
-# Target Python 3.8+ (as defined in setup.py)
-target-version = "py38"
+# Target Python 3.11+ (as defined in CI workflow)
+target-version = "py311"
 
 # Line length matching existing code style
 line-length = 127
