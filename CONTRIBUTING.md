@@ -167,8 +167,8 @@ Examples:
             with open(args.input, 'r') as f:
                 data = f.read()
 
-        # Process data
-        result = process(data)
+        # Process data (replace with your logic)
+        result = data  # TODO: implement your processing here
 
         # Write output
         if args.output:

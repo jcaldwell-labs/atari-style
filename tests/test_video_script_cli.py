@@ -253,7 +253,7 @@ class TestCLIIntegration:
         assert result.returncode == 0
         assert 'video-script' in result.stdout or 'Video Script CLI' in result.stdout
 
-    def test_cli_stdin_validate(self, tmp_path):
+    def test_cli_stdin_validate(self):
         """Test reading script from stdin."""
         script = {
             "name": "stdin-test",
