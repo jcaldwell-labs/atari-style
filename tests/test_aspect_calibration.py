@@ -20,6 +20,8 @@ from atari_style.tools.aspect_calibration import (
     reset_to_default,
     main,
     ASPECT_INCREMENT,
+    MIN_ASPECT_RATIO,
+    MAX_ASPECT_RATIO,
 )
 
 
@@ -330,8 +332,8 @@ class TestCLIIntegration:
         data = json.loads(result.stdout)
         assert 'char_aspect' in data
         assert 'default' in data
-        # Aspect ratio should be between 0.1 and 1.0
-        assert 0.1 <= data['char_aspect'] <= 1.0
+        # Aspect ratio should be between MIN and MAX
+        assert MIN_ASPECT_RATIO <= data['char_aspect'] <= MAX_ASPECT_RATIO
 
 
 class TestDrawingFunctions:
@@ -586,7 +588,7 @@ class TestRunInteractiveCalibration:
     @patch('atari_style.tools.aspect_calibration.Renderer')
     @patch('atari_style.tools.aspect_calibration.Config')
     def test_aspect_upper_bound(self, mock_config_class, mock_renderer_class):
-        """Test aspect ratio is capped at 1.0."""
+        """Test aspect ratio is capped at MAX_ASPECT_RATIO."""
         mock_config = MagicMock()
         mock_config.char_aspect = 0.99  # Start near max
         mock_config_class.load.return_value = mock_config
@@ -596,7 +598,7 @@ class TestRunInteractiveCalibration:
         mock_renderer.height = 24
         mock_renderer_class.return_value = mock_renderer
 
-        # Two UP keys should not exceed 1.0
+        # Two UP keys should not exceed MAX_ASPECT_RATIO
         mock_key_up = MagicMock()
         mock_key_up.name = 'KEY_UP'
         mock_key_up.__eq__ = lambda self, other: False
@@ -612,13 +614,13 @@ class TestRunInteractiveCalibration:
 
         saved, final_value = run_interactive_calibration()
 
-        assert final_value <= 1.0
+        assert final_value <= MAX_ASPECT_RATIO
         assert not saved
 
     @patch('atari_style.tools.aspect_calibration.Renderer')
     @patch('atari_style.tools.aspect_calibration.Config')
     def test_aspect_lower_bound(self, mock_config_class, mock_renderer_class):
-        """Test aspect ratio is floored at 0.1."""
+        """Test aspect ratio is floored at MIN_ASPECT_RATIO."""
         mock_config = MagicMock()
         mock_config.char_aspect = 0.11  # Start near min
         mock_config_class.load.return_value = mock_config
@@ -628,7 +630,7 @@ class TestRunInteractiveCalibration:
         mock_renderer.height = 24
         mock_renderer_class.return_value = mock_renderer
 
-        # Two DOWN keys should not go below 0.1
+        # Two DOWN keys should not go below MIN_ASPECT_RATIO
         mock_key_down = MagicMock()
         mock_key_down.name = 'KEY_DOWN'
         mock_key_down.__eq__ = lambda self, other: False
@@ -644,7 +646,7 @@ class TestRunInteractiveCalibration:
 
         saved, final_value = run_interactive_calibration()
 
-        assert final_value >= 0.1
+        assert final_value >= MIN_ASPECT_RATIO
         assert not saved
 
     @patch('atari_style.tools.aspect_calibration.Renderer')
@@ -717,4 +719,4 @@ class TestConstants:
         """Test ASPECT_INCREMENT is a small reasonable value."""
         assert ASPECT_INCREMENT == 0.01
         assert ASPECT_INCREMENT > 0
-        assert ASPECT_INCREMENT < 0.1
+        assert ASPECT_INCREMENT < MIN_ASPECT_RATIO

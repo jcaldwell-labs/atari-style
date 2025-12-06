@@ -34,7 +34,9 @@ from ..core.config import Config, DEFAULT_CHAR_ASPECT
 from ..core.renderer import Renderer, Color
 
 
-# Adjustment increment for aspect ratio
+# Aspect ratio bounds and increment
+MIN_ASPECT_RATIO = 0.1
+MAX_ASPECT_RATIO = 1.0
 ASPECT_INCREMENT = 0.01
 
 
@@ -171,9 +173,9 @@ def run_interactive_calibration(
 
                 if key:
                     if key.name == 'KEY_UP' or key == '+' or key == '=':
-                        char_aspect = min(1.0, char_aspect + ASPECT_INCREMENT)
+                        char_aspect = min(MAX_ASPECT_RATIO, char_aspect + ASPECT_INCREMENT)
                     elif key.name == 'KEY_DOWN' or key == '-' or key == '_':
-                        char_aspect = max(0.1, char_aspect - ASPECT_INCREMENT)
+                        char_aspect = max(MIN_ASPECT_RATIO, char_aspect - ASPECT_INCREMENT)
                     elif key.name == 'KEY_ENTER':
                         # Save configuration
                         config.char_aspect = char_aspect
@@ -315,7 +317,7 @@ Examples:
                 else:
                     print("Calibration cancelled", file=sys.stderr)
 
-            return 0 if saved else 1
+            return 0  # User cancel is not an error
 
     except KeyboardInterrupt:
         print("\nInterrupted", file=sys.stderr)
