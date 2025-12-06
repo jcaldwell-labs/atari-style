@@ -17,6 +17,9 @@ Examples:
     # Show script information
     python -m atari_style.core.video_script_cli info scripts/videos/lissajous-intro.json
 
+    # Read from stdin
+    cat script.json | python -m atari_style.core.video_script_cli validate -
+
     # Render to video
     python -m atari_style.core.video_script_cli render scripts/videos/lissajous-intro.json -o intro.mp4
 
@@ -25,8 +28,10 @@ Examples:
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
+from typing import Tuple
 
 from .video_script import (
     VideoScript, FORMAT_PRESETS,
@@ -35,20 +40,40 @@ from .video_script import (
 )
 
 
+def load_script(script_arg: str) -> Tuple[VideoScript, str]:
+    """Load a video script from file or stdin.
+
+    Args:
+        script_arg: Path to script file, or '-' for stdin
+
+    Returns:
+        Tuple of (VideoScript, source_name)
+
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        json.JSONDecodeError: If JSON is invalid
+        Exception: Other loading errors
+    """
+    if script_arg == '-':
+        # Read from stdin
+        data = json.load(sys.stdin)
+        return VideoScript.from_dict(data), '<stdin>'
+    else:
+        # Read from file
+        script_path = Path(script_arg)
+        if not script_path.exists():
+            raise FileNotFoundError(script_path)
+        return VideoScript.from_file(script_path), str(script_path)
+
+
 def cmd_validate(args: argparse.Namespace) -> int:
     """Validate a video script file.
 
     Returns:
         0 if valid, 1 if invalid
     """
-    script_path = Path(args.script)
-
-    if not script_path.exists():
-        print(f"Error: Script file not found: {script_path}", file=sys.stderr)
-        return 1
-
     try:
-        script = VideoScript.from_file(script_path)
+        script, source = load_script(args.script)
         errors = script.validate()
 
         if errors:
@@ -63,6 +88,12 @@ def cmd_validate(args: argparse.Namespace) -> int:
             print(f"  Format: {script.format.name} ({script.format.width}x{script.format.height})")
             return 0
 
+    except FileNotFoundError as e:
+        print(f"Error: Script file not found: {e}", file=sys.stderr)
+        return 1
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON: {e}", file=sys.stderr)
+        return 1
     except Exception as e:
         print(f"Error loading script: {e}", file=sys.stderr)
         return 1
@@ -70,14 +101,8 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 def cmd_info(args: argparse.Namespace) -> int:
     """Display detailed information about a video script."""
-    script_path = Path(args.script)
-
-    if not script_path.exists():
-        print(f"Error: Script file not found: {script_path}", file=sys.stderr)
-        return 1
-
     try:
-        script = VideoScript.from_file(script_path)
+        script, source = load_script(args.script)
 
         # Header
         print(f"\n{'═' * 60}")
@@ -155,6 +180,12 @@ def cmd_info(args: argparse.Namespace) -> int:
         print()
         return 0
 
+    except FileNotFoundError as e:
+        print(f"Error: Script file not found: {e}", file=sys.stderr)
+        return 1
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON: {e}", file=sys.stderr)
+        return 1
     except Exception as e:
         print(f"Error loading script: {e}", file=sys.stderr)
         return 1
@@ -162,14 +193,8 @@ def cmd_info(args: argparse.Namespace) -> int:
 
 def cmd_render(args: argparse.Namespace) -> int:
     """Render a video script to video file."""
-    script_path = Path(args.script)
-
-    if not script_path.exists():
-        print(f"Error: Script file not found: {script_path}", file=sys.stderr)
-        return 1
-
     try:
-        script = VideoScript.from_file(script_path)
+        script, source = load_script(args.script)
 
         # Validate first
         errors = script.validate()
@@ -188,7 +213,7 @@ def cmd_render(args: argparse.Namespace) -> int:
         print(f"\n{'═' * 60}")
         print(f"  RENDERING: {script.name}")
         print(f"{'═' * 60}\n")
-        print(f"Script:     {script_path}")
+        print(f"Script:     {source}")
         print(f"Output:     {output_path}")
         print(f"Format:     {script.format.name} ({script.format.width}x{script.format.height} @ {script.format.fps}fps)")
         print(f"Duration:   {script.total_duration:.1f}s")
@@ -218,6 +243,12 @@ def cmd_render(args: argparse.Namespace) -> int:
 
         return 0
 
+    except FileNotFoundError as e:
+        print(f"Error: Script file not found: {e}", file=sys.stderr)
+        return 1
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON: {e}", file=sys.stderr)
+        return 1
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
@@ -287,6 +318,10 @@ Examples:
   video-script render scripts/videos/lissajous-intro.json -o intro.mp4
   video-script list-formats
 
+  # Read from stdin (Unix pipeline support)
+  cat script.json | video-script validate -
+  echo '{"name":"test",...}' | video-script info -
+
 For more information, see:
   https://github.com/jcaldwell-labs/atari-style
 """
@@ -299,21 +334,21 @@ For more information, see:
         'validate',
         help='Validate a video script file'
     )
-    validate_parser.add_argument('script', help='Path to script JSON file')
+    validate_parser.add_argument('script', help='Path to script JSON file (use - for stdin)')
 
     # info command
     info_parser = subparsers.add_parser(
         'info',
         help='Display detailed information about a video script'
     )
-    info_parser.add_argument('script', help='Path to script JSON file')
+    info_parser.add_argument('script', help='Path to script JSON file (use - for stdin)')
 
     # render command
     render_parser = subparsers.add_parser(
         'render',
         help='Render a video script to video file'
     )
-    render_parser.add_argument('script', help='Path to script JSON file')
+    render_parser.add_argument('script', help='Path to script JSON file (use - for stdin)')
     render_parser.add_argument('-o', '--output', help='Output video file path')
     render_parser.add_argument(
         '--dry-run',
