@@ -39,6 +39,13 @@ MIN_ASPECT_RATIO = 0.1
 MAX_ASPECT_RATIO = 1.0
 ASPECT_INCREMENT = 0.01
 
+# Display layout constants
+MAX_CIRCLE_RADIUS = 15  # Maximum radius for calibration circle
+CROSSHAIR_MARGIN = 5  # Margin between circle and crosshairs
+INSTRUCTION_HEIGHT = 12  # Vertical space required for instructions
+INSTRUCTION_LEFT_MARGIN = 2  # Left padding for instruction text
+INPUT_TIMEOUT = 0.1  # Keyboard input polling interval in seconds
+
 
 def draw_circle(
     renderer: Renderer,
@@ -122,7 +129,7 @@ def draw_instructions(
     ]
 
     for i, line in enumerate(instructions):
-        renderer.draw_text(2, y_offset + i, line, Color.WHITE)
+        renderer.draw_text(INSTRUCTION_LEFT_MARGIN, y_offset + i, line, Color.WHITE)
 
 
 def run_interactive_calibration(
@@ -154,22 +161,22 @@ def run_interactive_calibration(
         # Calculate display parameters
         center_x = renderer.width // 2
         center_y = renderer.height // 3
-        radius = min(renderer.height // 4, 15)  # Reasonable circle size
+        radius = min(renderer.height // 4, MAX_CIRCLE_RADIUS)
 
         running = True
         while running:
             renderer.clear_buffer()
 
             # Draw calibration display
-            draw_crosshairs(renderer, center_x, center_y, radius + 5)
+            draw_crosshairs(renderer, center_x, center_y, radius + CROSSHAIR_MARGIN)
             draw_circle(renderer, center_x, center_y, radius, char_aspect)
-            draw_instructions(renderer, char_aspect, renderer.height - 12)
+            draw_instructions(renderer, char_aspect, renderer.height - INSTRUCTION_HEIGHT)
 
             renderer.render()
 
             # Get input using blessed's keyboard handling
             with renderer.term.cbreak():
-                key = renderer.term.inkey(timeout=0.1)
+                key = renderer.term.inkey(timeout=INPUT_TIMEOUT)
 
                 if key:
                     if key.name == 'KEY_UP' or key == '+' or key == '=':
