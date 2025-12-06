@@ -50,6 +50,10 @@ class Config:
                 # Only use known fields to prevent errors from stale config
                 known_fields = {f.name for f in cls.__dataclass_fields__.values()}
                 filtered_data = {k: v for k, v in data.items() if k in known_fields}
+                # Validate types - char_aspect must be a number
+                if 'char_aspect' in filtered_data:
+                    if not isinstance(filtered_data['char_aspect'], (int, float)):
+                        return cls()  # Return defaults for invalid type
                 return cls(**filtered_data)
             except (json.JSONDecodeError, TypeError):
                 pass
