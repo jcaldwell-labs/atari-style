@@ -272,10 +272,34 @@ See `.github/copilot-instructions.md` for security requirements:
 - No magic numbers (use named constants)
 - Remove unused imports
 
+## Before Merge
+
+All PRs must pass CI checks. The following automated checks run on every PR:
+
+### Lint (ruff)
+```bash
+# Run locally before pushing
+ruff check atari_style/ tests/
+```
+
+### Tests (pytest)
+```bash
+# Run all tests
+pytest tests/ -v
+```
+
+### Coverage
+```bash
+# Run tests with coverage (60% minimum for CLI tools)
+pytest tests/ --cov=atari_style --cov-report=term
+```
+
+See `.github/workflows/ci.yml` for the full CI configuration.
+
 ## Pull Request Checklist
 
 - [ ] CLI follows conventions (stdin/stdout, exit codes)
 - [ ] Tests cover help, file input, stdin, errors
 - [ ] Security guidelines followed
-- [ ] All tests pass
+- [ ] All CI checks pass (lint, test, coverage)
 - [ ] No unused imports

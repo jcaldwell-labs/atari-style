@@ -1,0 +1,43 @@
+# Ruff configuration for atari-style
+# https://docs.astral.sh/ruff/
+
+# Target Python 3.11+ (as defined in CI workflow)
+target-version = "py311"
+
+# Line length matching existing code style
+line-length = 127
+
+# Exclude common non-code directories
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+    "output",
+]
+
+[lint]
+# Start with critical errors only for CI stability
+# Can be expanded to include more rules as codebase improves
+select = [
+    "E9",   # Runtime errors
+    "F63",  # Invalid print syntax
+    "F7",   # Syntax errors
+    "F82",  # Undefined names
+]
+
+# Ignore specific rules that conflict with project style
+ignore = []
+
+# Allow autofix for all enabled rules when running `ruff --fix`
+fixable = ["ALL"]
+unfixable = []
+
+[format]
+# Use double quotes for strings (consistent with existing code)
+quote-style = "double"
+# Indent with 4 spaces
+indent-style = "space"
