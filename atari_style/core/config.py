@@ -22,7 +22,7 @@ from typing import Any, Dict
 
 CONFIG_DIR = Path.home() / '.atari-style'
 CONFIG_FILE = CONFIG_DIR / 'config.json'
-DEFAULT_CHAR_ASPECT = 0.5  # Width/height ratio (chars are ~2x taller than wide)
+DEFAULT_CHAR_ASPECT = 0.5  # Width/height ratio (char height is ~2x char width)
 
 
 @dataclass

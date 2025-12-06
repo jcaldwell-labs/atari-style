@@ -187,7 +187,7 @@ def run_interactive_calibration(
                         running = False
 
     except KeyboardInterrupt:
-        pass  # Clean exit on Ctrl+C
+        raise  # Propagate Ctrl+C to outer handler for correct exit code
     finally:
         renderer.exit_fullscreen()
 

@@ -110,6 +110,22 @@ class TestConfig:
         config = Config()
         assert config.char_aspect == 0.5
 
+    def test_load_invalid_data_type_returns_defaults(self, tmp_path, monkeypatch):
+        """Test Config.load() returns defaults for invalid data types (TypeError)."""
+        fake_dir = tmp_path / '.atari-style'
+        fake_file = fake_dir / 'config.json'
+        fake_dir.mkdir(parents=True)
+        # Write a string value where float is expected - causes TypeError
+        fake_file.write_text('{"char_aspect": "not_a_number"}')
+
+        monkeypatch.setattr('atari_style.core.config.CONFIG_DIR', fake_dir)
+        monkeypatch.setattr('atari_style.core.config.CONFIG_FILE', fake_file)
+
+        config = Config.load()
+
+        # Should return defaults when TypeError occurs
+        assert config.char_aspect == DEFAULT_CHAR_ASPECT
+
 
 class TestShowCurrentValue:
     """Tests for show_current_value function."""
@@ -285,6 +301,18 @@ class TestMain:
             main()
 
         assert exc_info.value.code == 2
+
+    @patch('atari_style.tools.aspect_calibration.run_interactive_calibration')
+    def test_keyboard_interrupt_returns_130(self, mock_run, monkeypatch, capsys):
+        """Test KeyboardInterrupt returns exit code 130."""
+        mock_run.side_effect = KeyboardInterrupt()
+        monkeypatch.setattr(sys, 'argv', ['aspect-calibration'])
+
+        result = main()
+
+        assert result == 130
+        captured = capsys.readouterr()
+        assert 'Interrupted' in captured.err
 
 
 class TestCLIIntegration:
