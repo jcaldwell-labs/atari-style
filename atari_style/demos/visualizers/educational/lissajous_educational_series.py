@@ -35,6 +35,65 @@ from .lissajous_terminal_gif import (
 
 
 # =============================================================================
+# COLOR SCHEMES
+# =============================================================================
+
+COLOR_SCHEMES = {
+    'rainbow': {
+        'title': 'bright_cyan',
+        'subtitle': 'cyan',
+        'info': 'yellow',
+        'curve_colors': ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta'],
+        'accent': 'bright_white',
+        'highlight': 'bright_cyan',
+        'secondary': 'cyan',
+        'equation': 'bright_green',
+        'label': 'white',
+    },
+    'forest_desert': {
+        'title': 'sand',
+        'subtitle': 'sage',
+        'info': 'amber',
+        'curve_colors': ['sage', 'moss', 'olive', 'sand', 'terracotta', 'amber'],
+        'accent': 'sand',
+        'highlight': 'sage',
+        'secondary': 'moss',
+        'equation': 'sage',
+        'label': 'clay',
+    },
+    'monochrome': {
+        'title': 'bright_white',
+        'subtitle': 'white',
+        'info': 'white',
+        'curve_colors': ['white', 'bright_white', 'white', 'bright_white'],
+        'accent': 'bright_white',
+        'highlight': 'bright_white',
+        'secondary': 'white',
+        'equation': 'bright_white',
+        'label': 'white',
+    },
+}
+
+# Default scheme
+DEFAULT_SCHEME = 'rainbow'
+
+# Current active scheme (set by main before rendering)
+_current_scheme = None
+
+def get_scheme():
+    """Get the current color scheme."""
+    global _current_scheme
+    if _current_scheme is None:
+        _current_scheme = COLOR_SCHEMES[DEFAULT_SCHEME]
+    return _current_scheme
+
+def set_scheme(scheme_name: str):
+    """Set the current color scheme."""
+    global _current_scheme
+    _current_scheme = COLOR_SCHEMES[scheme_name]
+
+
+# =============================================================================
 # EDUCATIONAL CONSTANTS
 # =============================================================================
 
@@ -221,7 +280,7 @@ def generate_equation_explanation_frames(canvas: TerminalCanvas, fps: int
 
             if 0 <= screen_x < canvas.cols and 0 <= screen_y < canvas.rows:
                 # Color by angle
-                colors = ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta']
+                colors = get_scheme()['curve_colors']
                 color = colors[int((i / 300) * len(colors)) % len(colors)]
                 canvas.set_pixel(screen_x, screen_y, '●', color)
 
@@ -353,8 +412,8 @@ def generate_xy_visualization_frames(canvas: TerminalCanvas, fps: int
         yield canvas.render()
 
 
-def generate_part1_frames(canvas: TerminalCanvas, fps: int
-                          ) -> Generator[Image.Image, None, None]:
+def generate_part1_frames(canvas: TerminalCanvas, fps: int,
+                          scheme: dict = None) -> Generator[Image.Image, None, None]:
     """Generate all Part I frames."""
     yield from generate_part1_intro_frames(canvas, fps)
     yield from generate_what_is_lissajous_frames(canvas, fps)
@@ -421,8 +480,8 @@ def generate_pattern_showcase_frames(canvas: TerminalCanvas, fps: int
                 screen_y = int(cy + py * scale_y * 0.7)
 
                 if 0 <= screen_x < canvas.cols and 0 <= screen_y < canvas.rows:
-                    # Rainbow coloring
-                    colors = ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta']
+                    # Use scheme colors
+                    colors = get_scheme()['curve_colors']
                     color = colors[int((i / 500) * len(colors)) % len(colors)]
                     canvas.set_pixel(screen_x, screen_y, '●', color)
 
@@ -477,8 +536,8 @@ def generate_ratio_comparison_frames(canvas: TerminalCanvas, fps: int
                 screen_y = int(cy + py * scale * 0.6)
 
                 if 0 <= screen_x < canvas.cols and 0 <= screen_y < canvas.rows:
-                    colors = ['cyan', 'yellow', 'magenta']
-                    canvas.set_pixel(screen_x, screen_y, '●', colors[idx])
+                    colors = get_scheme()['curve_colors'][:3]
+                    canvas.set_pixel(screen_x, screen_y, '●', colors[idx % len(colors)])
 
             # Label
             ratio = f"{int(a)}:{int(b)}"
@@ -490,8 +549,8 @@ def generate_ratio_comparison_frames(canvas: TerminalCanvas, fps: int
         yield canvas.render()
 
 
-def generate_part2_frames(canvas: TerminalCanvas, fps: int
-                          ) -> Generator[Image.Image, None, None]:
+def generate_part2_frames(canvas: TerminalCanvas, fps: int,
+                          scheme: dict = None) -> Generator[Image.Image, None, None]:
     """Generate all Part II frames."""
     yield from generate_part2_intro_frames(canvas, fps)
     yield from generate_pattern_showcase_frames(canvas, fps)
@@ -672,8 +731,8 @@ def generate_musical_intervals_frames(canvas: TerminalCanvas, fps: int
             yield canvas.render()
 
 
-def generate_part3_frames(canvas: TerminalCanvas, fps: int
-                          ) -> Generator[Image.Image, None, None]:
+def generate_part3_frames(canvas: TerminalCanvas, fps: int,
+                          scheme: dict = None) -> Generator[Image.Image, None, None]:
     """Generate all Part III frames."""
     # Intro
     yield from generate_part3_intro_frames(canvas, fps)
@@ -909,8 +968,8 @@ def generate_harmonograph_frames(canvas: TerminalCanvas, fps: int
         yield canvas.render()
 
 
-def generate_part4_frames(canvas: TerminalCanvas, fps: int
-                          ) -> Generator[Image.Image, None, None]:
+def generate_part4_frames(canvas: TerminalCanvas, fps: int,
+                          scheme: dict = None) -> Generator[Image.Image, None, None]:
     """Generate all Part IV frames."""
     yield from generate_part4_intro_frames(canvas, fps)
     yield from generate_oscilloscope_demo_frames(canvas, fps)
@@ -1103,8 +1162,8 @@ def generate_gameplay_demo_frames(canvas: TerminalCanvas, fps: int
         yield canvas.render()
 
 
-def generate_part5_frames(canvas: TerminalCanvas, fps: int
-                          ) -> Generator[Image.Image, None, None]:
+def generate_part5_frames(canvas: TerminalCanvas, fps: int,
+                          scheme: dict = None) -> Generator[Image.Image, None, None]:
     """Generate all Part V frames."""
     yield from generate_part5_intro_frames(canvas, fps)
     yield from generate_enemy_showcase_frames(canvas, fps)
@@ -1176,8 +1235,8 @@ def generate_series_credits_frames(canvas: TerminalCanvas, fps: int
         yield canvas.render()
 
 
-def generate_full_series_frames(canvas: TerminalCanvas, fps: int
-                                ) -> Generator[Image.Image, None, None]:
+def generate_full_series_frames(canvas: TerminalCanvas, fps: int,
+                                scheme: dict = None) -> Generator[Image.Image, None, None]:
     """Generate the complete 5-part educational series."""
     yield from generate_series_title_frames(canvas, fps)
     yield from generate_part1_frames(canvas, fps)
@@ -1392,6 +1451,9 @@ Preview mode examples:
                         help='Terminal rows (default: 37)')
     parser.add_argument('--fps', type=int, default=15,
                         help='Frames per second (default: 15)')
+    parser.add_argument('--color-scheme', choices=list(COLOR_SCHEMES.keys()),
+                        default=DEFAULT_SCHEME,
+                        help=f'Color scheme (default: {DEFAULT_SCHEME})')
 
     part_group = parser.add_mutually_exclusive_group(required=True)
     part_group.add_argument('--part', type=int, choices=[1, 2, 3, 4, 5],
@@ -1446,24 +1508,28 @@ Preview mode examples:
               f"start={preview.start_time}s, "
               f"end={preview.end_time or f'start+{preview.max_duration}s'}")
 
+    # Set color scheme globally
+    set_scheme(args.color_scheme)
+    scheme = get_scheme()
+
     if args.part == 1:
         print("Rendering Part I: Introduction to Lissajous Curves")
-        frames = generate_part1_frames(canvas, args.fps)
+        frames = generate_part1_frames(canvas, args.fps, scheme)
     elif args.part == 2:
         print("Rendering Part II: The Pattern Gallery")
-        frames = generate_part2_frames(canvas, args.fps)
+        frames = generate_part2_frames(canvas, args.fps, scheme)
     elif args.part == 3:
         print("Rendering Part III: Phase & Frequency Exploration")
-        frames = generate_part3_frames(canvas, args.fps)
+        frames = generate_part3_frames(canvas, args.fps, scheme)
     elif args.part == 4:
         print("Rendering Part IV: Real-World Applications")
-        frames = generate_part4_frames(canvas, args.fps)
+        frames = generate_part4_frames(canvas, args.fps, scheme)
     elif args.part == 5:
         print("Rendering Part V: The Game")
-        frames = generate_part5_frames(canvas, args.fps)
+        frames = generate_part5_frames(canvas, args.fps, scheme)
     else:  # args.full_series (required=True ensures one option is set)
         print("Rendering Full Series (Parts I-V)")
-        frames = generate_full_series_frames(canvas, args.fps)
+        frames = generate_full_series_frames(canvas, args.fps, scheme)
 
     # Apply preview filtering if enabled
     if preview.enabled:

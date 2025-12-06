@@ -142,6 +142,15 @@ class Renderer:
             'bright_magenta': (214, 112, 214),
             'bright_cyan': (41, 184, 219),
             'bright_white': (255, 255, 255),
+            # Forest-desert palette (earthy, subtle tones)
+            'sage': (143, 168, 128),
+            'moss': (104, 130, 90),
+            'olive': (128, 128, 80),
+            'sand': (210, 190, 150),
+            'terracotta': (180, 120, 90),
+            'dusk': (140, 120, 130),
+            'amber': (190, 150, 80),
+            'clay': (160, 130, 110),
         }
 
         # Render buffer to image
