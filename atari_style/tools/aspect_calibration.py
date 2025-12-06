@@ -28,7 +28,6 @@ import argparse
 import json
 import math
 import sys
-import time
 from typing import Tuple
 
 from ..core.config import Config, DEFAULT_CHAR_ASPECT
