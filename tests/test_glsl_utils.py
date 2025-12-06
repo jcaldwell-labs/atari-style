@@ -175,6 +175,24 @@ class TestSign(unittest.TestCase):
         self.assertEqual(sign(0.0), 0.0)
 
 
+class TestAbs(unittest.TestCase):
+    """Test abs_() - absolute value function."""
+
+    def test_positive(self):
+        """abs_ of positive number returns same value."""
+        self.assertEqual(abs_(5.0), 5.0)
+        self.assertEqual(abs_(0.001), 0.001)
+
+    def test_negative(self):
+        """abs_ of negative number returns positive."""
+        self.assertEqual(abs_(-5.0), 5.0)
+        self.assertEqual(abs_(-0.001), 0.001)
+
+    def test_zero(self):
+        """abs_ of zero is 0."""
+        self.assertEqual(abs_(0.0), 0.0)
+
+
 class TestVectorFunctions(unittest.TestCase):
     """Test vector/coordinate functions."""
 
@@ -254,6 +272,27 @@ class TestPatternFunctions(unittest.TestCase):
         # 3.7 * 2 = 7.4, fract = 0.4
         self.assertAlmostEqual(x, 0.0, places=10)
         self.assertAlmostEqual(y, 0.4, places=10)
+
+    def test_repeat_polar_4fold(self):
+        """repeat_polar creates 4-fold radial symmetry."""
+        from atari_style.core.glsl_utils import repeat_polar, TAU
+        # Test at quarter points around circle
+        segment = TAU / 4
+        # At 0 radians, should fold to segment center
+        result = repeat_polar(0.0, 4)
+        self.assertAlmostEqual(result, -segment / 2.0, places=10)
+
+    def test_repeat_polar_range(self):
+        """repeat_polar result is within one segment."""
+        from atari_style.core.glsl_utils import repeat_polar, TAU
+        count = 6
+        segment = TAU / count
+        # Test various angles
+        for angle in [0, math.pi/4, math.pi, TAU - 0.1]:
+            result = repeat_polar(angle, count)
+            # Result should be in [-segment/2, segment/2]
+            self.assertGreaterEqual(result, -segment / 2.0 - 1e-10)
+            self.assertLessEqual(result, segment / 2.0 + 1e-10)
 
     def test_rotate_2d_90_degrees(self):
         """rotate_2d by 90 degrees swaps and negates."""
