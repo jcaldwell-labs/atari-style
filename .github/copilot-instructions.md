@@ -4,20 +4,38 @@ This file provides guidance to GitHub Copilot when working with code in this rep
 
 ## Project Overview
 
-Atari-style is a comprehensive collection of terminal-based interactive games, creative tools, and visual demos inspired by classic Atari aesthetics. Features playable arcade experiences using ASCII/ANSI terminal graphics with full joystick and keyboard support.
+**atari-style** is a creative pipeline for terminal-native parametric visualization, built through human-AI collaboration, following Unix philosophy principles.
+
+> The terminal is a canvas, not a cage. Parameters are territory to explore, not just settings to configure. Small tools, composed freely.
 
 **Status**: Active development
 **Language**: Python 3.8+
-**Dependencies**: pygame (joystick), blessed (terminal rendering), moderngl (GPU shaders)
+**Dependencies**: pygame (joystick), blessed (terminal), moderngl (GPU), Pillow (images), imageio-ffmpeg (video)
 
-Key features:
-- Classic arcade games: Pac-Man, Galaga, Grand Prix, Breakout
-- ASCII art painting tool with 6 drawing tools
-- Visual demos: Starfield, Screen Saver, Platonic Solids, Flux Control
-- GPU-accelerated shaders with CRT post-processing
-- Educational video export system for YouTube content
-- Full joystick support with keyboard fallback
-- Double-buffered rendering for smooth 30-60 FPS animation
+### Two Rendering Paths
+
+| Path | Tech | Use Case |
+|------|------|----------|
+| **Terminal** | blessed + ASCII/ANSI | Interactive games, real-time demos |
+| **GPU** | moderngl + GLSL shaders | Video export, high-resolution effects |
+
+### Key Features
+
+- **Classic arcade games**: Pac-Man, Galaga, Grand Prix, Breakout
+- **GPU shaders**: Plasma, Mandelbrot, Tunnel, Flux with CRT post-processing
+- **Storyboard system**: Keyframe-based video scripting for YouTube export
+- **Composite animations**: Effects that modulate each other (Plasma→Lissajous)
+- **Full joystick support**: Analog control with keyboard fallback
+- **Double-buffered rendering**: 30-60 FPS terminal animation
+
+### Philosophy (see PHILOSOPHY.md)
+
+1. **The Terminal is a Canvas, Not a Cage** - Embrace constraints creatively
+2. **Parameters are Territory, Not Settings** - Explore the space of possibilities
+3. **Small Tools, Composed Freely** - Unix philosophy via text streams
+4. **Show, Don't Document** - Interactive examples over verbose docs
+5. **AI-Native Development** - Human-AI collaboration patterns
+6. **Play is Serious Work** - Learning through interactive exploration
 
 ## Build System
 
@@ -227,6 +245,245 @@ Always include tests for:
 
 ---
 
+## Unix Composability Philosophy
+
+Every CLI tool in atari-style follows Unix philosophy: small tools that do one thing well and compose freely via text streams.
+
+### Core Principles
+
+- **Text in, text out**: Accept stdin, produce stdout where possible
+- **Single responsibility**: Each tool does one thing well
+- **Pipeline-friendly**: Tools work standalone AND integrate with pipes
+- **Standard formats**: JSON for structured data, plain text for simple output
+
+### CLI Conventions
+
+**Standard Argument Patterns**:
+```bash
+tool input.json -o output.mp4    # Input from file
+tool input.json                  # Output to stdout (text formats)
+tool -                          # Read from stdin
+cat input.json | tool - | next-tool - > output.txt  # Pipeline
+```
+
+**Required Arguments**:
+- `-o, --output FILE`: Output file path (stdout for text, required for binary)
+- `-h, --help`: Show help message
+- `--version`: Show version
+- `-v, --verbose`: Increase verbosity
+- `-q, --quiet`: Suppress non-essential output
+
+**Exit Codes**:
+- `0`: Success
+- `1`: General error
+- `2`: Invalid arguments
+- `130`: Interrupted (Ctrl+C)
+
+**Stderr vs Stdout**:
+- **stdout**: Primary output (data, results, pipeline content)
+- **stderr**: Progress messages, warnings, errors, status updates
+
+```python
+# ✅ CORRECT - Data to stdout, status to stderr
+print(json.dumps(result))  # stdout - can be piped
+print(f"Processing: {filename}", file=sys.stderr)  # stderr - human readable
+
+# ❌ WRONG - Mixing output streams
+print(f"Processing: {filename}")  # stdout - breaks pipelines
+```
+
+### Rendering Guidelines
+
+**Aspect Ratio Correction**:
+Terminal characters are not square (typically 1:2 ratio, width:height). When drawing shapes:
+
+```python
+# ✅ CORRECT - Multiply Y coordinates by ~0.5 for circles
+y_corrected = int(y * 0.5)
+renderer.set_pixel(x, y_corrected, char, color)
+
+# ❌ WRONG - Direct Y mapping produces ovals
+renderer.set_pixel(x, y, char, color)  # Circle looks stretched
+```
+
+**Double Buffering**:
+Always use buffer-based rendering to avoid flicker:
+
+```python
+# ✅ CORRECT - Clear buffer, draw, then render
+renderer.clear_buffer()
+# ... draw operations ...
+renderer.render()
+
+# ❌ WRONG - Direct terminal writes cause flicker
+print(f"\033[{y};{x}H{char}")  # Flickers during complex draws
+```
+
+**Frame Rate Targeting**:
+- **30 FPS**: `time.sleep(0.033)` for most animations
+- **60 FPS**: `time.sleep(0.016)` for fast-paced games
+- Always clean up in `finally` blocks:
+
+```python
+try:
+    renderer.enter_fullscreen()
+    while running:
+        # ... game loop ...
+        time.sleep(0.033)
+finally:
+    renderer.exit_fullscreen()
+    input_handler.cleanup()
+```
+
+---
+
+## GPU Rendering Pipeline (GLSL Shaders)
+
+atari-style has TWO rendering paths: terminal (ASCII) and GPU (GLSL shaders via moderngl).
+
+### Shadertoy-Compatible Uniforms
+
+All effect shaders use Shadertoy-compatible uniform names:
+
+```glsl
+// ✅ CORRECT - Standard Shadertoy uniforms
+uniform float iTime;           // Shader playback time (seconds)
+uniform vec2 iResolution;      // Viewport resolution (pixels)
+uniform vec4 iMouse;           // Mouse coordinates (if applicable)
+uniform float iFrame;          // Frame number
+
+// Custom uniforms for parametric control
+uniform float param1;          // Joystick-controlled parameter
+uniform float param2;
+uniform float param3;
+uniform float param4;
+```
+
+### Shader File Organization
+
+```
+shaders/
+├── effects/                   # Main effect shaders
+│   ├── plasma.frag           # Plasma wave interference
+│   ├── mandelbrot.frag       # Fractal zoomer
+│   ├── tunnel.frag           # Infinite tunnel effect
+│   └── fluid.frag            # Fluid dynamics simulation
+├── post/                      # Post-processing chain
+│   ├── crt.frag              # CRT monitor emulation
+│   ├── scanlines.frag        # Scanline overlay
+│   └── barrel.frag           # Barrel distortion
+└── util/                      # Shared utilities
+    └── common.glsl           # Color conversion, noise functions
+```
+
+### Writing Effect Shaders
+
+```glsl
+// ✅ CORRECT - Proper effect shader structure
+#version 330 core
+
+uniform float iTime;
+uniform vec2 iResolution;
+uniform float param1;  // frequency
+uniform float param2;  // amplitude
+
+out vec4 fragColor;
+
+void main() {
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+
+    // Effect logic here using uv, iTime, and params
+    float value = sin(uv.x * param1 + iTime) * param2;
+
+    fragColor = vec4(vec3(value), 1.0);
+}
+```
+
+### CRT Post-Processing
+
+Apply CRT effects as a post-process pass:
+
+```python
+# ✅ CORRECT - Apply CRT after main effect
+from atari_style.core.gl import GLRenderer, PostProcessor
+
+renderer = GLRenderer(width=1920, height=1080)
+crt = PostProcessor('shaders/post/crt.frag')
+
+frame = renderer.render_effect('plasma', time=t, params=params)
+final = crt.apply(frame)  # Add scanlines, curvature, bloom
+```
+
+### Composite Animations
+
+Composites modulate one effect with another:
+
+```python
+# ✅ CORRECT - Plasma driving Lissajous frequencies
+composite = CompositeManager()
+composite.set_driver('plasma', output='color_intensity')
+composite.set_driven('lissajous', input='frequency', scale=2.0)
+```
+
+---
+
+## Storyboard System (Video Scripting)
+
+Storyboards define keyframed animations for video export:
+
+```json
+{
+  "name": "plasma-intro",
+  "duration": 10.0,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "scenes": [
+    {
+      "effect": "plasma",
+      "start": 0.0,
+      "end": 5.0,
+      "keyframes": [
+        {"time": 0.0, "param1": 1.0, "param2": 0.5},
+        {"time": 5.0, "param1": 3.0, "param2": 1.0}
+      ],
+      "transition": "crossfade"
+    }
+  ],
+  "post_processing": ["crt", "scanlines"]
+}
+```
+
+### Storyboard CLI
+
+```bash
+# Render storyboard to video
+python -m atari_style.core.gl.storyboard render storyboard.json -o output.mp4
+
+# Generate contact sheet (frame thumbnails)
+python -m atari_style.core.gl.storyboard contact storyboard.json -o sheet.png
+
+# Validate storyboard schema
+python -m atari_style.core.gl.storyboard validate storyboard.json
+```
+
+---
+
+## Domain Terminology
+
+| Term | Definition |
+|------|------------|
+| **Flux** | Fluid dynamics-based wave patterns |
+| **CRT** | Cathode Ray Tube - retro monitor emulation effect |
+| **Composite** | Animation where one effect modulates another |
+| **Storyboard** | JSON script defining keyframed video sequences |
+| **Parameter space** | The multi-dimensional space of all possible parameter combinations |
+| **Screensaver** | Interactive parametric animation with joystick control |
+| **Platonic solid** | One of 5 regular polyhedra (tetrahedron, cube, octahedron, dodecahedron, icosahedron) |
+| **Lissajous** | Curve formed by parametric equations x=sin(at), y=sin(bt+phase) |
+| **Aspect ratio correction** | Compensating for terminal characters being ~2x taller than wide |
+
+---
+
 ## Architecture
 
 ### Directory Structure
@@ -314,6 +571,69 @@ def run_my_demo():
 3. Include `--help` documentation
 4. Add unit tests for argument parsing
 5. Add integration tests for actual functionality
+
+---
+
+## Performance Guidelines
+
+### Hot Path Optimization
+
+For render loops and shaders, avoid per-frame allocations:
+
+```python
+# ✅ CORRECT - Pre-allocate outside loop
+buffer = bytearray(width * height * 4)
+params = {'param1': 0.0, 'param2': 0.0}
+
+while running:
+    params['param1'] = joystick.get_axis(0)
+    params['param2'] = joystick.get_axis(1)
+    render_to_buffer(buffer, params)
+
+# ❌ WRONG - Allocating every frame
+while running:
+    params = {'param1': joystick.get_axis(0)}  # New dict each frame
+    buffer = bytearray(width * height * 4)      # New buffer each frame
+```
+
+### Resource Loading
+
+Load resources once at startup, not per-frame:
+
+```python
+# ✅ CORRECT - Load shaders once
+class EffectRenderer:
+    def __init__(self):
+        self.shader = self._compile_shader('effects/plasma.frag')
+        self.texture = self._load_texture('palette.png')
+
+    def render(self, time):
+        # Use pre-loaded resources
+        pass
+
+# ❌ WRONG - Loading inside render loop
+def render(time):
+    shader = compile_shader('effects/plasma.frag')  # Recompiles every frame!
+```
+
+### Frame Rate Management
+
+Use proper frame timing, not just sleep:
+
+```python
+# ✅ CORRECT - Account for frame processing time
+TARGET_FRAME_TIME = 1.0 / 60.0
+
+while running:
+    frame_start = time.perf_counter()
+
+    update()
+    render()
+
+    elapsed = time.perf_counter() - frame_start
+    sleep_time = max(0, TARGET_FRAME_TIME - elapsed)
+    time.sleep(sleep_time)
+```
 
 ---
 
