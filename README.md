@@ -1,5 +1,8 @@
 # Atari-Style Terminal Games & Demos
 
+[![CI](https://github.com/jcaldwell-labs/atari-style/actions/workflows/ci.yml/badge.svg)](https://github.com/jcaldwell-labs/atari-style/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/jcaldwell-labs/atari-style/branch/master/graph/badge.svg)](https://codecov.io/gh/jcaldwell-labs/atari-style)
+
 A creative pipeline for terminal-native parametric visualization, built through human-AI collaboration, following Unix philosophy principles.
 
 > **atari-style** celebrates terminal aesthetics as a medium, not a limitation. We create tools that treat parameter spaces as territories to explore, compose freely with other tools via text streams, and teach through interactive play.

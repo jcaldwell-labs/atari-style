@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+
+    - name: Lint with ruff
+      run: |
+        # Check for Python syntax errors, undefined names, and code quality issues
+        # Auto-fix is NOT enabled in CI - fail on issues
+        ruff check atari_style/ tests/
+
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install system dependencies for OpenGL
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb mesa-utils libgl1 libegl1 libgl1-mesa-dev
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install -e .
+
+    - name: Start virtual display
+      run: |
+        Xvfb :99 -screen 0 1920x1080x24 &
+        echo "DISPLAY=:99" >> $GITHUB_ENV
+
+    - name: Run tests with pytest
+      env:
+        DISPLAY: ':99'
+        LIBGL_ALWAYS_SOFTWARE: '1'
+      run: |
+        pytest tests/ -v
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies for OpenGL
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb mesa-utils libgl1 libegl1 libgl1-mesa-dev
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install -e .
+
+    - name: Start virtual display
+      run: |
+        Xvfb :99 -screen 0 1920x1080x24 &
+        echo "DISPLAY=:99" >> $GITHUB_ENV
+
+    - name: Run tests with coverage
+      env:
+        DISPLAY: ':99'
+        LIBGL_ALWAYS_SOFTWARE: '1'
+      run: |
+        # Run tests with coverage report
+        # Note: --cov-fail-under is disabled as visual/game code is hard to test in CI
+        # Target 60% for CLI tools; full visual coverage requires display
+        pytest tests/ --cov=atari_style --cov-report=xml --cov-report=term || true
+        # Always generate report even if tests fail due to display issues
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.xml
+        fail_ci_if_error: false
+        verbose: true
