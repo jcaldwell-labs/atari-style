@@ -227,6 +227,98 @@ Always include tests for:
 
 ---
 
+## Unix Composability Philosophy
+
+Every CLI tool in atari-style follows Unix philosophy: small tools that do one thing well and compose freely via text streams.
+
+### Core Principles
+
+- **Text in, text out**: Accept stdin, produce stdout where possible
+- **Single responsibility**: Each tool does one thing well
+- **Pipeline-friendly**: Tools work standalone AND integrate with pipes
+- **Standard formats**: JSON for structured data, plain text for simple output
+
+### CLI Conventions
+
+**Standard Argument Patterns**:
+```bash
+tool input.json -o output.mp4    # Input from file
+tool input.json                  # Output to stdout (text formats)
+tool -                          # Read from stdin
+cat input.json | tool - | next-tool - > output.txt  # Pipeline
+```
+
+**Required Arguments**:
+- `-o, --output FILE`: Output file path (stdout for text, required for binary)
+- `-h, --help`: Show help message
+- `--version`: Show version
+- `-v, --verbose`: Increase verbosity
+- `-q, --quiet`: Suppress non-essential output
+
+**Exit Codes**:
+- `0`: Success
+- `1`: General error
+- `2`: Invalid arguments
+- `130`: Interrupted (Ctrl+C)
+
+**Stderr vs Stdout**:
+- **stdout**: Primary output (data, results, pipeline content)
+- **stderr**: Progress messages, warnings, errors, status updates
+
+```python
+# ✅ CORRECT - Data to stdout, status to stderr
+print(json.dumps(result))  # stdout - can be piped
+print(f"Processing: {filename}", file=sys.stderr)  # stderr - human readable
+
+# ❌ WRONG - Mixing output streams
+print(f"Processing: {filename}")  # stdout - breaks pipelines
+```
+
+### Rendering Guidelines
+
+**Aspect Ratio Correction**:
+Terminal characters are not square (typically 1:2 ratio, width:height). When drawing shapes:
+
+```python
+# ✅ CORRECT - Multiply Y coordinates by ~0.5 for circles
+y_corrected = int(y * 0.5)
+renderer.set_pixel(x, y_corrected, char, color)
+
+# ❌ WRONG - Direct Y mapping produces ovals
+renderer.set_pixel(x, y, char, color)  # Circle looks stretched
+```
+
+**Double Buffering**:
+Always use buffer-based rendering to avoid flicker:
+
+```python
+# ✅ CORRECT - Clear buffer, draw, then render
+renderer.clear_buffer()
+# ... draw operations ...
+renderer.render()
+
+# ❌ WRONG - Direct terminal writes cause flicker
+print(f"\033[{y};{x}H{char}")  # Flickers during complex draws
+```
+
+**Frame Rate Targeting**:
+- **30 FPS**: `time.sleep(0.033)` for most animations
+- **60 FPS**: `time.sleep(0.016)` for fast-paced games
+- Always clean up in `finally` blocks:
+
+```python
+try:
+    renderer.enter_fullscreen()
+    while running:
+        # ... game loop ...
+        time.sleep(0.033)
+finally:
+    renderer.exit_fullscreen()
+    input_handler.cleanup()
+```
+
+---
+
 ## Architecture
 
 ### Directory Structure
