@@ -36,6 +36,7 @@ from typing import List
 
 from ..core.video_script import (
     VideoScript,
+    Segment,
     TitleSegment,
     SegmentType,
     VisualizationSegment,
@@ -99,7 +100,7 @@ def format_timestamp(seconds: float, use_hours: bool = False) -> str:
         return f"{minutes}:{secs:02d}"
 
 
-def get_segment_label(segment: TitleSegment | VisualizationSegment | SweepSegment | TransitionSegment | PauseSegment) -> str:
+def get_segment_label(segment: Segment) -> str:
     """Generate a label for a segment.
 
     Args:
