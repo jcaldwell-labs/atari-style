@@ -5,12 +5,34 @@ for display in the preview server.
 """
 
 import json
+import os
 import subprocess
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
+
+
+# Constants
+BYTES_PER_KB = 1024
+
+
+def format_bytes(size_bytes: int) -> str:
+    """Convert bytes to human-readable format.
+
+    Args:
+        size_bytes: Size in bytes
+
+    Returns:
+        Human-readable string (e.g., "1.5 MB")
+    """
+    size = float(size_bytes)
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size < BYTES_PER_KB:
+            return f"{size:.1f} {unit}"
+        size /= BYTES_PER_KB
+    return f"{size:.1f} TB"
 
 
 @dataclass
@@ -24,6 +46,9 @@ class MediaFile:
     size_bytes: int
     modified_time: datetime
 
+    # Relative path from scan root for unique identification
+    relative_path: str = ""
+
     # Optional metadata (populated by probing)
     duration: Optional[float] = None
     width: Optional[int] = None
@@ -36,12 +61,7 @@ class MediaFile:
     @property
     def size_human(self) -> str:
         """Return human-readable file size."""
-        size = self.size_bytes
-        for unit in ['B', 'KB', 'MB', 'GB']:
-            if size < 1024:
-                return f"{size:.1f} {unit}"
-            size /= 1024
-        return f"{size:.1f} TB"
+        return format_bytes(self.size_bytes)
 
     @property
     def modified_human(self) -> str:
@@ -66,11 +86,22 @@ class MediaFile:
             return f"{self.width}x{self.height}"
         return "-"
 
+    @property
+    def unique_id(self) -> str:
+        """Return unique identifier for this file.
+
+        Uses relative_path if available, otherwise filename.
+        This handles duplicate filenames in subdirectories.
+        """
+        return self.relative_path if self.relative_path else self.filename
+
     def to_dict(self) -> Dict:
         """Convert to dictionary for JSON serialization."""
         return {
             'path': str(self.path),
             'filename': self.filename,
+            'relative_path': self.relative_path,
+            'unique_id': self.unique_id,
             'file_type': self.file_type,
             'extension': self.extension,
             'size_bytes': self.size_bytes,
@@ -113,6 +144,8 @@ class Gallery:
         self._ffprobe_available: Optional[bool] = None
         self._cache_ttl = cache_ttl
         self._last_scan_time: float = 0
+        # Track files by unique_id for lookup
+        self._file_index: Dict[str, MediaFile] = {}
 
     def _check_ffprobe(self) -> bool:
         """Check if ffprobe is available."""
@@ -291,6 +324,7 @@ class Gallery:
                 return self.files
 
         self.files = []
+        self._file_index = {}
 
         for directory in self.directories:
             if not directory.exists():
@@ -313,9 +347,21 @@ class Gallery:
                 # Get basic file info
                 stat = path.stat()
 
+                # Calculate relative path from directory root
+                try:
+                    relative_path = str(path.relative_to(directory))
+                except ValueError:
+                    relative_path = path.name
+
+                # For multi-directory scans, prefix with directory name to avoid collisions
+                if len(self.directories) > 1:
+                    dir_prefix = directory.name
+                    relative_path = os.path.join(dir_prefix, relative_path)
+
                 media_file = MediaFile(
                     path=path,
                     filename=path.name,
+                    relative_path=relative_path,
                     file_type=file_type,
                     extension=path.suffix.lower(),
                     size_bytes=stat.st_size,
@@ -338,6 +384,7 @@ class Gallery:
                         setattr(media_file, key, value)
 
                 self.files.append(media_file)
+                self._file_index[media_file.unique_id] = media_file
 
         # Sort by modification time (newest first)
         self.files.sort(key=lambda f: f.modified_time, reverse=True)
@@ -361,6 +408,9 @@ class Gallery:
     def get_by_filename(self, filename: str) -> Optional[MediaFile]:
         """Get a file by its filename.
 
+        Note: For files with duplicate names in subdirectories,
+        use get_by_id() with the relative_path instead.
+
         Args:
             filename: Name of the file
 
@@ -372,33 +422,41 @@ class Gallery:
                 return f
         return None
 
+    def get_by_id(self, unique_id: str) -> Optional[MediaFile]:
+        """Get a file by its unique identifier.
+
+        This handles duplicate filenames by using relative paths.
+
+        Args:
+            unique_id: The unique_id (relative_path or filename) of the file
+
+        Returns:
+            MediaFile if found, None otherwise
+        """
+        return self._file_index.get(unique_id)
+
     def get_summary(self) -> Dict:
         """Get summary statistics about the gallery.
 
         Returns:
             Dictionary with counts and totals
         """
+        total_size = sum(f.size_bytes for f in self.files)
+
         summary = {
             'total_files': len(self.files),
-            'total_size': sum(f.size_bytes for f in self.files),
+            'total_size': total_size,
+            'total_size_human': format_bytes(total_size),
             'by_type': {},
         }
 
         for file_type in ['video', 'image', 'storyboard', 'input_script']:
             files = self.filter_by_type(file_type)
+            type_size = sum(f.size_bytes for f in files)
             summary['by_type'][file_type] = {
                 'count': len(files),
-                'size': sum(f.size_bytes for f in files),
+                'size': type_size,
+                'size_human': format_bytes(type_size),
             }
-
-        # Human-readable total size
-        size = summary['total_size']
-        for unit in ['B', 'KB', 'MB', 'GB']:
-            if size < 1024:
-                summary['total_size_human'] = f"{size:.1f} {unit}"
-                break
-            size /= 1024
-        else:
-            summary['total_size_human'] = f"{size:.1f} TB"
 
         return summary
