@@ -3,21 +3,19 @@
 import json
 import subprocess
 import sys
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from atari_style.core.config import (
     Config,
-    CONFIG_DIR,
-    CONFIG_FILE,
     DEFAULT_CHAR_ASPECT,
 )
 from atari_style.tools.aspect_calibration import (
     draw_circle,
     draw_crosshairs,
     draw_instructions,
+    run_interactive_calibration,
     show_current_value,
     reset_to_default,
     main,
@@ -370,6 +368,346 @@ class TestDrawingFunctions:
         assert mock_renderer.draw_text.called
         # Multiple instruction lines
         assert mock_renderer.draw_text.call_count >= 5
+
+
+class TestRunInteractiveCalibration:
+    """Tests for run_interactive_calibration function."""
+
+    @patch('atari_style.tools.aspect_calibration.Renderer')
+    @patch('atari_style.tools.aspect_calibration.Config')
+    def test_up_key_increases_aspect(self, mock_config_class, mock_renderer_class):
+        """Test KEY_UP increases aspect ratio."""
+        # Setup mock config
+        mock_config = MagicMock()
+        mock_config.char_aspect = 0.5
+        mock_config_class.load.return_value = mock_config
+
+        # Setup mock renderer
+        mock_renderer = MagicMock()
+        mock_renderer.width = 80
+        mock_renderer.height = 24
+        mock_renderer_class.return_value = mock_renderer
+
+        # Mock keyboard input: UP key then ESC
+        mock_key_up = MagicMock()
+        mock_key_up.name = 'KEY_UP'
+        mock_key_up.__eq__ = lambda self, other: False
+
+        mock_key_esc = MagicMock()
+        mock_key_esc.name = 'KEY_ESCAPE'
+        mock_key_esc.lower.return_value = ''
+        mock_key_esc.__eq__ = lambda self, other: False
+
+        mock_renderer.term.cbreak.return_value.__enter__ = MagicMock()
+        mock_renderer.term.cbreak.return_value.__exit__ = MagicMock()
+        mock_renderer.term.inkey.side_effect = [mock_key_up, mock_key_esc]
+
+        saved, final_value = run_interactive_calibration()
+
+        # Aspect should have increased by ASPECT_INCREMENT
+        assert final_value == 0.5 + ASPECT_INCREMENT
+        assert not saved  # ESC cancels
+
+    @patch('atari_style.tools.aspect_calibration.Renderer')
+    @patch('atari_style.tools.aspect_calibration.Config')
+    def test_down_key_decreases_aspect(self, mock_config_class, mock_renderer_class):
+        """Test KEY_DOWN decreases aspect ratio."""
+        mock_config = MagicMock()
+        mock_config.char_aspect = 0.5
+        mock_config_class.load.return_value = mock_config
+
+        mock_renderer = MagicMock()
+        mock_renderer.width = 80
+        mock_renderer.height = 24
+        mock_renderer_class.return_value = mock_renderer
+
+        mock_key_down = MagicMock()
+        mock_key_down.name = 'KEY_DOWN'
+        mock_key_down.__eq__ = lambda self, other: False
+
+        mock_key_esc = MagicMock()
+        mock_key_esc.name = 'KEY_ESCAPE'
+        mock_key_esc.lower.return_value = ''
+        mock_key_esc.__eq__ = lambda self, other: False
+
+        mock_renderer.term.cbreak.return_value.__enter__ = MagicMock()
+        mock_renderer.term.cbreak.return_value.__exit__ = MagicMock()
+        mock_renderer.term.inkey.side_effect = [mock_key_down, mock_key_esc]
+
+        saved, final_value = run_interactive_calibration()
+
+        assert final_value == 0.5 - ASPECT_INCREMENT
+        assert not saved
+
+    @patch('atari_style.tools.aspect_calibration.Renderer')
+    @patch('atari_style.tools.aspect_calibration.Config')
+    def test_plus_key_increases_aspect(self, mock_config_class, mock_renderer_class):
+        """Test + key increases aspect ratio."""
+        mock_config = MagicMock()
+        mock_config.char_aspect = 0.5
+        mock_config_class.load.return_value = mock_config
+
+        mock_renderer = MagicMock()
+        mock_renderer.width = 80
+        mock_renderer.height = 24
+        mock_renderer_class.return_value = mock_renderer
+
+        # + key (character comparison)
+        mock_key_plus = MagicMock()
+        mock_key_plus.name = None
+        mock_key_plus.__eq__ = lambda self, other: other == '+'
+
+        mock_key_q = MagicMock()
+        mock_key_q.name = None
+        mock_key_q.__eq__ = lambda self, other: False
+        mock_key_q.lower.return_value = 'q'
+
+        mock_renderer.term.cbreak.return_value.__enter__ = MagicMock()
+        mock_renderer.term.cbreak.return_value.__exit__ = MagicMock()
+        mock_renderer.term.inkey.side_effect = [mock_key_plus, mock_key_q]
+
+        saved, final_value = run_interactive_calibration()
+
+        assert final_value == 0.5 + ASPECT_INCREMENT
+        assert not saved
+
+    @patch('atari_style.tools.aspect_calibration.Renderer')
+    @patch('atari_style.tools.aspect_calibration.Config')
+    def test_minus_key_decreases_aspect(self, mock_config_class, mock_renderer_class):
+        """Test - key decreases aspect ratio."""
+        mock_config = MagicMock()
+        mock_config.char_aspect = 0.5
+        mock_config_class.load.return_value = mock_config
+
+        mock_renderer = MagicMock()
+        mock_renderer.width = 80
+        mock_renderer.height = 24
+        mock_renderer_class.return_value = mock_renderer
+
+        mock_key_minus = MagicMock()
+        mock_key_minus.name = None
+        mock_key_minus.__eq__ = lambda self, other: other == '-'
+
+        mock_key_q = MagicMock()
+        mock_key_q.name = None
+        mock_key_q.__eq__ = lambda self, other: False
+        mock_key_q.lower.return_value = 'q'
+
+        mock_renderer.term.cbreak.return_value.__enter__ = MagicMock()
+        mock_renderer.term.cbreak.return_value.__exit__ = MagicMock()
+        mock_renderer.term.inkey.side_effect = [mock_key_minus, mock_key_q]
+
+        saved, final_value = run_interactive_calibration()
+
+        assert final_value == 0.5 - ASPECT_INCREMENT
+        assert not saved
+
+    @patch('atari_style.tools.aspect_calibration.Renderer')
+    @patch('atari_style.tools.aspect_calibration.Config')
+    def test_enter_key_saves_config(self, mock_config_class, mock_renderer_class):
+        """Test ENTER key saves configuration."""
+        mock_config = MagicMock()
+        mock_config.char_aspect = 0.5
+        mock_config_class.load.return_value = mock_config
+
+        mock_renderer = MagicMock()
+        mock_renderer.width = 80
+        mock_renderer.height = 24
+        mock_renderer_class.return_value = mock_renderer
+
+        mock_key_enter = MagicMock()
+        mock_key_enter.name = 'KEY_ENTER'
+        mock_key_enter.__eq__ = lambda self, other: False
+
+        mock_renderer.term.cbreak.return_value.__enter__ = MagicMock()
+        mock_renderer.term.cbreak.return_value.__exit__ = MagicMock()
+        mock_renderer.term.inkey.side_effect = [mock_key_enter]
+
+        saved, final_value = run_interactive_calibration()
+
+        assert saved
+        assert final_value == 0.5
+        mock_config.save.assert_called_once()
+
+    @patch('atari_style.tools.aspect_calibration.Renderer')
+    @patch('atari_style.tools.aspect_calibration.Config')
+    def test_escape_key_cancels(self, mock_config_class, mock_renderer_class):
+        """Test ESC key cancels without saving."""
+        mock_config = MagicMock()
+        mock_config.char_aspect = 0.5
+        mock_config_class.load.return_value = mock_config
+
+        mock_renderer = MagicMock()
+        mock_renderer.width = 80
+        mock_renderer.height = 24
+        mock_renderer_class.return_value = mock_renderer
+
+        mock_key_esc = MagicMock()
+        mock_key_esc.name = 'KEY_ESCAPE'
+        mock_key_esc.__eq__ = lambda self, other: False
+        mock_key_esc.lower.return_value = ''
+
+        mock_renderer.term.cbreak.return_value.__enter__ = MagicMock()
+        mock_renderer.term.cbreak.return_value.__exit__ = MagicMock()
+        mock_renderer.term.inkey.side_effect = [mock_key_esc]
+
+        saved, final_value = run_interactive_calibration()
+
+        assert not saved
+        mock_config.save.assert_not_called()
+
+    @patch('atari_style.tools.aspect_calibration.Renderer')
+    @patch('atari_style.tools.aspect_calibration.Config')
+    def test_q_key_cancels(self, mock_config_class, mock_renderer_class):
+        """Test Q key cancels without saving."""
+        mock_config = MagicMock()
+        mock_config.char_aspect = 0.5
+        mock_config_class.load.return_value = mock_config
+
+        mock_renderer = MagicMock()
+        mock_renderer.width = 80
+        mock_renderer.height = 24
+        mock_renderer_class.return_value = mock_renderer
+
+        mock_key_q = MagicMock()
+        mock_key_q.name = None
+        mock_key_q.__eq__ = lambda self, other: False
+        mock_key_q.lower.return_value = 'q'
+
+        mock_renderer.term.cbreak.return_value.__enter__ = MagicMock()
+        mock_renderer.term.cbreak.return_value.__exit__ = MagicMock()
+        mock_renderer.term.inkey.side_effect = [mock_key_q]
+
+        saved, final_value = run_interactive_calibration()
+
+        assert not saved
+        mock_config.save.assert_not_called()
+
+    @patch('atari_style.tools.aspect_calibration.Renderer')
+    @patch('atari_style.tools.aspect_calibration.Config')
+    def test_aspect_upper_bound(self, mock_config_class, mock_renderer_class):
+        """Test aspect ratio is capped at 1.0."""
+        mock_config = MagicMock()
+        mock_config.char_aspect = 0.99  # Start near max
+        mock_config_class.load.return_value = mock_config
+
+        mock_renderer = MagicMock()
+        mock_renderer.width = 80
+        mock_renderer.height = 24
+        mock_renderer_class.return_value = mock_renderer
+
+        # Two UP keys should not exceed 1.0
+        mock_key_up = MagicMock()
+        mock_key_up.name = 'KEY_UP'
+        mock_key_up.__eq__ = lambda self, other: False
+
+        mock_key_esc = MagicMock()
+        mock_key_esc.name = 'KEY_ESCAPE'
+        mock_key_esc.lower.return_value = ''
+        mock_key_esc.__eq__ = lambda self, other: False
+
+        mock_renderer.term.cbreak.return_value.__enter__ = MagicMock()
+        mock_renderer.term.cbreak.return_value.__exit__ = MagicMock()
+        mock_renderer.term.inkey.side_effect = [mock_key_up, mock_key_up, mock_key_esc]
+
+        saved, final_value = run_interactive_calibration()
+
+        assert final_value <= 1.0
+        assert not saved
+
+    @patch('atari_style.tools.aspect_calibration.Renderer')
+    @patch('atari_style.tools.aspect_calibration.Config')
+    def test_aspect_lower_bound(self, mock_config_class, mock_renderer_class):
+        """Test aspect ratio is floored at 0.1."""
+        mock_config = MagicMock()
+        mock_config.char_aspect = 0.11  # Start near min
+        mock_config_class.load.return_value = mock_config
+
+        mock_renderer = MagicMock()
+        mock_renderer.width = 80
+        mock_renderer.height = 24
+        mock_renderer_class.return_value = mock_renderer
+
+        # Two DOWN keys should not go below 0.1
+        mock_key_down = MagicMock()
+        mock_key_down.name = 'KEY_DOWN'
+        mock_key_down.__eq__ = lambda self, other: False
+
+        mock_key_esc = MagicMock()
+        mock_key_esc.name = 'KEY_ESCAPE'
+        mock_key_esc.lower.return_value = ''
+        mock_key_esc.__eq__ = lambda self, other: False
+
+        mock_renderer.term.cbreak.return_value.__enter__ = MagicMock()
+        mock_renderer.term.cbreak.return_value.__exit__ = MagicMock()
+        mock_renderer.term.inkey.side_effect = [mock_key_down, mock_key_down, mock_key_esc]
+
+        saved, final_value = run_interactive_calibration()
+
+        assert final_value >= 0.1
+        assert not saved
+
+    @patch('atari_style.tools.aspect_calibration.Renderer')
+    @patch('atari_style.tools.aspect_calibration.Config')
+    def test_enter_after_adjustment_saves_new_value(
+        self, mock_config_class, mock_renderer_class
+    ):
+        """Test ENTER saves the adjusted value."""
+        mock_config = MagicMock()
+        mock_config.char_aspect = 0.5
+        mock_config_class.load.return_value = mock_config
+
+        mock_renderer = MagicMock()
+        mock_renderer.width = 80
+        mock_renderer.height = 24
+        mock_renderer_class.return_value = mock_renderer
+
+        mock_key_up = MagicMock()
+        mock_key_up.name = 'KEY_UP'
+        mock_key_up.__eq__ = lambda self, other: False
+
+        mock_key_enter = MagicMock()
+        mock_key_enter.name = 'KEY_ENTER'
+        mock_key_enter.__eq__ = lambda self, other: False
+
+        mock_renderer.term.cbreak.return_value.__enter__ = MagicMock()
+        mock_renderer.term.cbreak.return_value.__exit__ = MagicMock()
+        mock_renderer.term.inkey.side_effect = [mock_key_up, mock_key_enter]
+
+        saved, final_value = run_interactive_calibration()
+
+        assert saved
+        assert final_value == 0.5 + ASPECT_INCREMENT
+        # Verify the saved value matches the adjusted value
+        assert mock_config.char_aspect == 0.5 + ASPECT_INCREMENT
+        mock_config.save.assert_called_once()
+
+    @patch('atari_style.tools.aspect_calibration.Renderer')
+    @patch('atari_style.tools.aspect_calibration.Config')
+    def test_fullscreen_mode_lifecycle(self, mock_config_class, mock_renderer_class):
+        """Test fullscreen mode is entered and exited properly."""
+        mock_config = MagicMock()
+        mock_config.char_aspect = 0.5
+        mock_config_class.load.return_value = mock_config
+
+        mock_renderer = MagicMock()
+        mock_renderer.width = 80
+        mock_renderer.height = 24
+        mock_renderer_class.return_value = mock_renderer
+
+        mock_key_esc = MagicMock()
+        mock_key_esc.name = 'KEY_ESCAPE'
+        mock_key_esc.lower.return_value = ''
+        mock_key_esc.__eq__ = lambda self, other: False
+
+        mock_renderer.term.cbreak.return_value.__enter__ = MagicMock()
+        mock_renderer.term.cbreak.return_value.__exit__ = MagicMock()
+        mock_renderer.term.inkey.side_effect = [mock_key_esc]
+
+        run_interactive_calibration()
+
+        mock_renderer.enter_fullscreen.assert_called_once()
+        mock_renderer.exit_fullscreen.assert_called_once()
 
 
 class TestConstants:
