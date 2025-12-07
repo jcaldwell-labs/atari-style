@@ -20,10 +20,13 @@ from .pipeline import (
     PostProcessPipeline,
     CRTPreset,
     PalettePreset,
+    ASCIIPreset,
     CRT_PRESETS,
     PALETTE_PRESETS,
+    ASCII_PRESETS,
     get_crt_preset_names,
     get_palette_preset_names,
+    get_ascii_preset_names,
 )
 from .composites import (
     CompositeManager,
@@ -54,10 +57,13 @@ __all__ = [
     'PostProcessPipeline',
     'CRTPreset',
     'PalettePreset',
+    'ASCIIPreset',
     'CRT_PRESETS',
     'PALETTE_PRESETS',
+    'ASCII_PRESETS',
     'get_crt_preset_names',
     'get_palette_preset_names',
+    'get_ascii_preset_names',
     # Phase 5 additions
     'CompositeManager',
     'CompositeConfig',

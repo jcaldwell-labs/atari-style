@@ -33,6 +33,7 @@ except ImportError:
 
 from .renderer import GLRenderer
 from .uniforms import ShaderUniforms
+from .pipeline import PostProcessPipeline, ASCII_PRESETS
 
 
 @dataclass
@@ -119,7 +120,8 @@ class CompositeManager:
                      params: Optional[Tuple[float, float, float, float]] = None,
                      color_mode: Optional[int] = None,
                      width: Optional[int] = None,
-                     height: Optional[int] = None) -> 'Image.Image':
+                     height: Optional[int] = None,
+                     ascii_preset: Optional[str] = None) -> 'Image.Image':
         """Render a single frame of a composite animation.
 
         Args:
@@ -129,6 +131,7 @@ class CompositeManager:
             color_mode: Color palette (0-3, uses default if None)
             width: Render width (uses default if None)
             height: Render height (uses default if None)
+            ascii_preset: ASCII post-processing preset (terminal, hires, lores, neon, colored)
 
         Returns:
             PIL Image of the rendered frame
@@ -137,15 +140,27 @@ class CompositeManager:
             ValueError: If composite_name is not recognized
             ImportError: If Pillow is not available
         """
+        import numpy as np
+
         if Image is None:
             raise ImportError("Pillow required: pip install Pillow")
 
         if composite_name not in COMPOSITES:
             raise ValueError(f"Unknown composite: {composite_name}. Available: {list(COMPOSITES.keys())}")
 
+        if ascii_preset is not None and ascii_preset not in ASCII_PRESETS:
+            raise ValueError(f"Unknown ASCII preset: {ascii_preset}. Available: {list(ASCII_PRESETS.keys())}")
+
         config = COMPOSITES[composite_name]
         w = width or self.width
         h = height or self.height
+
+        # Set up uniforms
+        uniforms = ShaderUniforms()
+        uniforms.set_resolution(w, h)
+        uniforms.iTime = time_val
+        uniforms.iParams = params or config.default_params
+        uniforms.iColorMode = color_mode if color_mode is not None else config.default_color_mode
 
         # Use specific size renderer if different from default
         if w != self.width or h != self.height:
@@ -153,32 +168,40 @@ class CompositeManager:
             try:
                 program = renderer.load_shader(config.shader_path)
 
-                # Set up uniforms
-                uniforms = ShaderUniforms()
-                uniforms.set_resolution(w, h)
-                uniforms.iTime = time_val
-                uniforms.iParams = params or config.default_params
-                uniforms.iColorMode = color_mode if color_mode is not None else config.default_color_mode
-
-                # Render
-                arr = renderer.render_to_array(program, uniforms.to_dict())
-                return Image.fromarray(arr, 'RGBA')
+                if ascii_preset:
+                    # Use pipeline with ASCII post-processing
+                    pipeline = PostProcessPipeline(renderer)
+                    pipeline.add_ascii_pass(ascii_preset)
+                    pixels = pipeline.render(program, uniforms.to_dict(), time_val)
+                    arr = np.frombuffer(pixels, dtype=np.uint8)
+                    arr = arr.reshape((h, w, 4))
+                    arr = np.flip(arr, axis=0)
+                    pipeline.release()
+                    return Image.fromarray(arr, 'RGBA')
+                else:
+                    # Render without post-processing
+                    arr = renderer.render_to_array(program, uniforms.to_dict())
+                    return Image.fromarray(arr, 'RGBA')
             finally:
                 renderer.release()
         else:
             renderer = self._get_renderer()
             program = self._get_program(composite_name)
 
-            # Set up uniforms
-            uniforms = ShaderUniforms()
-            uniforms.set_resolution(w, h)
-            uniforms.iTime = time_val
-            uniforms.iParams = params or config.default_params
-            uniforms.iColorMode = color_mode if color_mode is not None else config.default_color_mode
-
-            # Render
-            arr = renderer.render_to_array(program, uniforms.to_dict())
-            return Image.fromarray(arr, 'RGBA')
+            if ascii_preset:
+                # Use pipeline with ASCII post-processing
+                pipeline = PostProcessPipeline(renderer)
+                pipeline.add_ascii_pass(ascii_preset)
+                pixels = pipeline.render(program, uniforms.to_dict(), time_val)
+                arr = np.frombuffer(pixels, dtype=np.uint8)
+                arr = arr.reshape((h, w, 4))
+                arr = np.flip(arr, axis=0)
+                pipeline.release()
+                return Image.fromarray(arr, 'RGBA')
+            else:
+                # Render without post-processing
+                arr = renderer.render_to_array(program, uniforms.to_dict())
+                return Image.fromarray(arr, 'RGBA')
 
     def render_animation(self, composite_name: str, duration: float = 5.0,
                          fps: int = 30, params: Optional[Tuple[float, float, float, float]] = None,
