@@ -38,6 +38,7 @@ except ImportError:
     Image = None
 
 from .composites import CompositeManager, COMPOSITES
+from .pipeline import ASCII_PRESETS, get_ascii_preset_names
 from ..video_base import VideoFormat, PresetManager, FFmpegEncoder
 
 # Backward compatibility: alias VIDEO_FORMATS to PresetManager.PRESETS
@@ -76,7 +77,8 @@ class VideoExporter:
                          params: Optional[Tuple[float, float, float, float]] = None,
                          color_mode: Optional[int] = None,
                          progress_callback: Optional[Callable[[int, int], None]] = None,
-                         crf: int = 18) -> bool:
+                         crf: int = 18,
+                         ascii_preset: Optional[str] = None) -> bool:
         """Export a composite animation to video.
 
         Args:
@@ -90,6 +92,7 @@ class VideoExporter:
             color_mode: Color palette (uses default if None)
             progress_callback: Optional callback(current_frame, total_frames)
             crf: FFmpeg CRF quality (lower = better, 18-28 recommended)
+            ascii_preset: ASCII post-processing preset (terminal, hires, lores, neon, colored)
 
         Returns:
             True if export succeeded, False otherwise
@@ -121,6 +124,8 @@ class VideoExporter:
 
             print(f"Rendering {composite_name}: {total_frames} frames at {frame_rate} FPS")
             print(f"Resolution: {w}x{h}")
+            if ascii_preset:
+                print(f"ASCII preset: {ascii_preset}")
             print(f"Output: {output_path}")
             print()
 
@@ -129,7 +134,8 @@ class VideoExporter:
                 time_val = frame_num / frame_rate
 
                 # Render frame
-                img = manager.render_frame(composite_name, time_val, params, color_mode, w, h)
+                img = manager.render_frame(composite_name, time_val, params, color_mode, w, h,
+                                           ascii_preset=ascii_preset)
 
                 # Save frame
                 frame_path = os.path.join(temp_dir, f"frame_{frame_num:06d}.png")
@@ -516,7 +522,8 @@ class VideoExporter:
                    duration: float = 3.0, fps: int = 15,
                    width: int = 480, height: int = 270,
                    params: Optional[Tuple[float, float, float, float]] = None,
-                   color_mode: Optional[int] = None) -> bool:
+                   color_mode: Optional[int] = None,
+                   ascii_preset: Optional[str] = None) -> bool:
         """Create an animated GIF of a composite.
 
         Args:
@@ -528,6 +535,7 @@ class VideoExporter:
             height: GIF height
             params: Custom parameters
             color_mode: Color palette
+            ascii_preset: ASCII post-processing preset (terminal, hires, lores, neon, colored)
 
         Returns:
             True if GIF created successfully
@@ -544,7 +552,8 @@ class VideoExporter:
         frames = []
         for frame_num in range(total_frames):
             time_val = frame_num / fps
-            img = manager.render_frame(composite_name, time_val, params, color_mode)
+            img = manager.render_frame(composite_name, time_val, params, color_mode,
+                                        ascii_preset=ascii_preset)
             # Convert to RGB for GIF (remove alpha)
             frames.append(img.convert('RGB'))
 
@@ -605,6 +614,11 @@ Quick preview (GIF):
   %(prog)s plasma_lissajous --preview
   %(prog)s flux_spiral --preview --params 0.4,1.5,0.8,0.6 --color 2
 
+ASCII post-processing (terminal aesthetic):
+  %(prog)s plasma_lissajous --ascii                    # default terminal preset
+  %(prog)s flux_spiral --ascii neon                    # neon ASCII preset
+  %(prog)s plasma_lissajous --preview --ascii colored  # preview with colored ASCII
+
 Thumbnails (PNG):
   %(prog)s plasma_lissajous --thumbnail 5.0 -o thumb.png
   %(prog)s flux_spiral --thumbnails 0,2.5,5,7.5 -o ./thumbs/
@@ -634,6 +648,9 @@ Thumbnails (PNG):
                         help='Custom params as comma-separated floats (e.g., 0.2,0.5,0.7,0.3)')
     parser.add_argument('--color', '-c', type=int, choices=[0, 1, 2, 3],
                         help='Color mode (0=aurora, 1=fire, 2=electric, 3=grayscale)')
+    parser.add_argument('--ascii', '-a', type=str, nargs='?', const='terminal',
+                        choices=get_ascii_preset_names(),
+                        help='Apply ASCII post-processing (default: terminal). Options: off, terminal, hires, lores, neon, colored')
     parser.add_argument('--all', action='store_true', help='Export all composites')
     parser.add_argument('--list-formats', action='store_true',
                         help='List available format presets')
@@ -736,9 +753,12 @@ Thumbnails (PNG):
                 print(f"  Params: {custom_params}")
             if args.color is not None:
                 print(f"  Color mode: {args.color}")
+            if args.ascii:
+                print(f"  ASCII preset: {args.ascii}")
             exporter.create_gif(args.composite, output_path, preview_duration,
                                fps=15, width=480, height=270,
-                               params=custom_params, color_mode=args.color)
+                               params=custom_params, color_mode=args.color,
+                               ascii_preset=args.ascii)
         elif args.gif:
             output_path = args.output or f"/tmp/{args.composite}.gif"
             exporter.create_gif(args.composite, output_path, duration,
@@ -752,7 +772,8 @@ Thumbnails (PNG):
             output_path = args.output or f"/tmp/{args.composite}.mp4"
             exporter.export_composite(args.composite, output_path, duration,
                                       fps, width, height,
-                                      params=custom_params, color_mode=args.color)
+                                      params=custom_params, color_mode=args.color,
+                                      ascii_preset=args.ascii)
     else:
         parser.print_help()
 
