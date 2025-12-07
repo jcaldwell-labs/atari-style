@@ -145,6 +145,38 @@ PALETTE_PRESETS = {
 }
 
 
+@dataclass
+class ASCIIPreset:
+    """Preset configuration for ASCII art post-processing.
+
+    Converts GL output to terminal-style ASCII art aesthetic.
+    """
+    name: str
+    charWidth: float = 8.0       # Character cell width in pixels
+    charHeight: float = 16.0     # Character cell height in pixels
+    colorMode: int = 0           # 0=monochrome green, 1=colored, 2=neon
+    bgBrightness: float = 0.02   # Background darkness
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'charWidth': self.charWidth,
+            'charHeight': self.charHeight,
+            'colorMode': self.colorMode,
+            'bgBrightness': self.bgBrightness,
+        }
+
+
+# Predefined ASCII presets
+ASCII_PRESETS = {
+    'off': ASCIIPreset(name='Off', charWidth=1.0, charHeight=1.0, colorMode=1, bgBrightness=0.0),
+    'terminal': ASCIIPreset(name='Terminal', charWidth=8.0, charHeight=16.0, colorMode=0, bgBrightness=0.02),
+    'hires': ASCIIPreset(name='High-Res', charWidth=4.0, charHeight=8.0, colorMode=1, bgBrightness=0.01),
+    'lores': ASCIIPreset(name='Low-Res', charWidth=16.0, charHeight=32.0, colorMode=0, bgBrightness=0.03),
+    'neon': ASCIIPreset(name='Neon', charWidth=6.0, charHeight=12.0, colorMode=2, bgBrightness=0.0),
+    'colored': ASCIIPreset(name='Colored', charWidth=8.0, charHeight=16.0, colorMode=1, bgBrightness=0.02),
+}
+
+
 class RenderPass:
     """A single render pass in the pipeline."""
 
@@ -213,9 +245,10 @@ class PostProcessPipeline:
         ], dtype='f4')
         self.quad_vbo = self.ctx.buffer(vertices)
 
-        # Track current CRT and palette settings
+        # Track current CRT, palette, and ASCII settings
         self.crt_preset: Optional[str] = None
         self.palette_preset: Optional[str] = None
+        self.ascii_preset: Optional[str] = None
 
     def _load_shader(self, shader_path: str) -> moderngl.Program:
         """Load a post-processing shader."""
@@ -295,6 +328,25 @@ void main() {
         uniforms = PALETTE_PRESETS[preset].to_dict()
         return self.add_pass('atari_style/shaders/post/palette.frag', uniforms)
 
+    def add_ascii_pass(self, preset: str = 'terminal') -> int:
+        """Add ASCII art post-processing pass.
+
+        Converts GL output to terminal-style ASCII aesthetic.
+        Great for bridging GL quality with authentic terminal look.
+
+        Args:
+            preset: Preset name ('off', 'terminal', 'hires', 'lores', 'neon', 'colored')
+
+        Returns:
+            Index of the ASCII pass
+        """
+        if preset not in ASCII_PRESETS:
+            raise ValueError(f"Unknown ASCII preset: {preset}. Available: {list(ASCII_PRESETS.keys())}")
+
+        self.ascii_preset = preset
+        uniforms = ASCII_PRESETS[preset].to_dict()
+        return self.add_pass('atari_style/shaders/post/ascii.frag', uniforms)
+
     def set_crt_preset(self, preset: str):
         """Change CRT preset on existing pass."""
         if self.crt_preset is None:
@@ -323,6 +375,21 @@ void main() {
         for p in self.passes:
             if 'colorLevels' in p.uniforms:
                 p.set_uniforms(PALETTE_PRESETS[preset].to_dict())
+                break
+
+    def set_ascii_preset(self, preset: str):
+        """Change ASCII preset on existing pass."""
+        if self.ascii_preset is None:
+            raise RuntimeError("No ASCII pass added. Call add_ascii_pass() first.")
+
+        if preset not in ASCII_PRESETS:
+            raise ValueError(f"Unknown ASCII preset: {preset}")
+
+        self.ascii_preset = preset
+        # Find and update ASCII pass
+        for p in self.passes:
+            if 'charWidth' in p.uniforms:
+                p.set_uniforms(ASCII_PRESETS[preset].to_dict())
                 break
 
     def update_pass_uniforms(self, pass_index: int, uniforms: Dict[str, Any]):
@@ -470,3 +537,8 @@ def get_crt_preset_names() -> List[str]:
 def get_palette_preset_names() -> List[str]:
     """Get list of available palette preset names."""
     return list(PALETTE_PRESETS.keys())
+
+
+def get_ascii_preset_names() -> List[str]:
+    """Get list of available ASCII preset names."""
+    return list(ASCII_PRESETS.keys())
