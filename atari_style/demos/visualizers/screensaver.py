@@ -65,6 +65,22 @@ class LissajousCurve(ParametricAnimation):
         self.delta = math.pi / 2  # Phase offset (param 3)
         self.points = 500  # Resolution (param 4)
 
+    def set_param(self, param: str, value: float):
+        """Set parameter by name for live control.
+
+        Args:
+            param: Parameter name ('freq_x', 'freq_y', 'phase', 'points')
+            value: New value
+        """
+        if param == 'freq_x' or param == 'a':
+            self.a = max(1.0, min(10.0, float(value)))
+        elif param == 'freq_y' or param == 'b':
+            self.b = max(1.0, min(10.0, float(value)))
+        elif param == 'phase' or param == 'delta':
+            self.delta = float(value) % (2 * math.pi)
+        elif param == 'points':
+            self.points = int(max(100, min(1000, int(value))))
+
     def adjust_params(self, param: int, delta: float):
         """Adjust parameters. param 1-4, delta is +/- change."""
         if param == 1:
@@ -267,6 +283,22 @@ class PlasmaAnimation(ParametricAnimation):
         self.freq_y = 0.1  # Y frequency (param 2)
         self.freq_diag = 0.08  # Diagonal frequency (param 3)
         self.freq_radial = 0.1  # Radial frequency (param 4)
+
+    def set_param(self, param: str, value: float):
+        """Set parameter by name for live control.
+
+        Args:
+            param: Parameter name ('freq_x', 'freq_y', 'freq_diag', 'freq_radial')
+            value: New value
+        """
+        if param == 'freq_x':
+            self.freq_x = max(0.01, min(0.3, float(value)))
+        elif param == 'freq_y':
+            self.freq_y = max(0.01, min(0.3, float(value)))
+        elif param == 'freq_diag':
+            self.freq_diag = max(0.01, min(0.3, float(value)))
+        elif param == 'freq_radial':
+            self.freq_radial = max(0.01, min(0.3, float(value)))
 
     def adjust_params(self, param: int, delta: float):
         """Adjust parameters."""

@@ -3,14 +3,22 @@
 This module provides a headless mode for running parametric animations
 that outputs ANSI frames to stdout for capture by parent processes.
 
+Supports live parameter control via JSON commands on stdin.
+
 Usage:
     python -m atari_style.zone_mode plasma --width 80 --height 24
     python -m atari_style.zone_mode lissajous --width 60 --height 20 --fps 10
+
+Parameter Control:
+    Send JSON to stdin: {"command": "set_param", "param": "speed", "value": 2.5}
 """
 
 import argparse
 import time
 import sys
+import json
+import threading
+import select
 from .core.zone_renderer import ZoneRenderer
 from .demos.visualizers.screensaver import (
     LissajousCurve,
@@ -29,8 +37,50 @@ ANIMATIONS = {
 }
 
 
+def handle_stdin_commands(animation, stop_event):
+    """Background thread that reads JSON commands from stdin and updates animation parameters.
+
+    Args:
+        animation: Animation object to control
+        stop_event: Threading event to signal shutdown
+    """
+    while not stop_event.is_set():
+        try:
+            # Check if stdin has data (non-blocking)
+            if select.select([sys.stdin], [], [], 0.1)[0]:
+                line = sys.stdin.readline()
+                if not line:
+                    # EOF - stdin closed
+                    break
+
+                try:
+                    cmd = json.loads(line.strip())
+
+                    if cmd.get('command') == 'set_param':
+                        param = cmd.get('param')
+                        value = cmd.get('value')
+
+                        if param and value is not None:
+                            # Try to set parameter using adjust_params if available
+                            if hasattr(animation, 'set_param'):
+                                animation.set_param(param, value)
+                            elif hasattr(animation, param):
+                                setattr(animation, param, value)
+
+                except json.JSONDecodeError:
+                    # Invalid JSON - ignore
+                    pass
+                except Exception:
+                    # Other errors - ignore
+                    pass
+
+        except Exception:
+            # Any other error - continue
+            pass
+
+
 def run_zone_animation(animation_name: str, width: int = 80, height: int = 24, fps: int = 20):
-    """Run an animation in zone mode.
+    """Run an animation in zone mode with live parameter control.
 
     Args:
         animation_name: Name of the animation to run
@@ -47,6 +97,15 @@ def run_zone_animation(animation_name: str, width: int = 80, height: int = 24, f
     renderer = ZoneRenderer(width=width, height=height)
     animation_class = ANIMATIONS[animation_name]
     animation = animation_class(renderer)
+
+    # Start stdin command handler thread
+    stop_event = threading.Event()
+    command_thread = threading.Thread(
+        target=handle_stdin_commands,
+        args=(animation, stop_event),
+        daemon=True
+    )
+    command_thread.start()
 
     # Animation loop
     frame_time = 1.0 / fps
@@ -75,6 +134,9 @@ def run_zone_animation(animation_name: str, width: int = 80, height: int = 24, f
     except BrokenPipeError:
         # Parent process closed pipe - normal exit
         pass
+    finally:
+        stop_event.set()
+        command_thread.join(timeout=1.0)
 
 
 def main():
