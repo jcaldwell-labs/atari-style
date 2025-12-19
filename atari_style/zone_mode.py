@@ -18,7 +18,7 @@ import time
 import sys
 import json
 import threading
-import select
+import socket
 from .core.zone_renderer import ZoneRenderer
 from .demos.visualizers.screensaver import (
     LissajousCurve,
@@ -37,41 +37,37 @@ ANIMATIONS = {
 }
 
 
-def handle_stdin_commands(animation, stop_event):
-    """Background thread that reads JSON commands from stdin and updates animation parameters.
+def handle_control_socket(animation, stop_event, control_port):
+    """Background thread that listens on a TCP socket for parameter control commands.
 
     Args:
         animation: Animation object to control
         stop_event: Threading event to signal shutdown
+        control_port: TCP port to listen on
     """
-    import os
-    import fcntl
-
-    # Make stdin non-blocking
     try:
-        flags = fcntl.fcntl(sys.stdin.fileno(), fcntl.F_GETFL)
-        fcntl.fcntl(sys.stdin.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
-    except:
-        pass  # If non-blocking fails, continue anyway
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind(('localhost', control_port))
+        server.listen(5)
+        server.settimeout(0.5)  # Allow periodic checking of stop_event
 
-    buffer = ""
-
-    while not stop_event.is_set():
-        try:
-            # Try to read available data (non-blocking)
+        while not stop_event.is_set():
             try:
-                chunk = sys.stdin.read(1024)
-                if chunk:
-                    buffer += chunk
+                client, addr = server.accept()
+                client.settimeout(2.0)
 
-                    # Process complete lines
-                    while '\n' in buffer:
-                        line, buffer = buffer.split('\n', 1)
-                        line = line.strip()
+                try:
+                    # Read command from client (single line)
+                    data = b""
+                    while b'\n' not in data and len(data) < 4096:
+                        chunk = client.recv(1024)
+                        if not chunk:
+                            break
+                        data += chunk
 
-                        if not line:
-                            continue
-
+                    if data:
+                        line = data.decode('utf-8', errors='replace').strip()
                         try:
                             cmd = json.loads(line)
 
@@ -80,27 +76,39 @@ def handle_stdin_commands(animation, stop_event):
                                 value = cmd.get('value')
 
                                 if param and value is not None:
-                                    # Try to set parameter
+                                    # Set parameter
                                     if hasattr(animation, 'set_param'):
                                         animation.set_param(param, value)
+                                        response = json.dumps({"status": "ok", "param": param, "value": value})
                                     elif hasattr(animation, param):
                                         setattr(animation, param, value)
+                                        response = json.dumps({"status": "ok", "param": param, "value": value})
+                                    else:
+                                        response = json.dumps({"status": "error", "message": f"Unknown param: {param}"})
+
+                                    client.sendall(response.encode('utf-8') + b'\n')
 
                         except json.JSONDecodeError:
-                            pass  # Invalid JSON - ignore
-                        except Exception:
-                            pass  # Other errors - ignore
+                            client.sendall(b'{"status":"error","message":"Invalid JSON"}\n')
+                        except Exception as e:
+                            client.sendall(f'{{"status":"error","message":"{e}"}}\n'.encode('utf-8'))
 
-            except (BlockingIOError, IOError):
-                # No data available - sleep briefly
-                time.sleep(0.05)
+                finally:
+                    client.close()
 
-        except Exception:
-            # Any other error - sleep and continue
-            time.sleep(0.05)
+            except socket.timeout:
+                continue  # No connection - check stop_event and retry
+            except Exception:
+                continue  # Other errors - continue running
+
+    finally:
+        try:
+            server.close()
+        except:
+            pass
 
 
-def run_zone_animation(animation_name: str, width: int = 80, height: int = 24, fps: int = 20):
+def run_zone_animation(animation_name: str, width: int = 80, height: int = 24, fps: int = 20, control_port: int = None):
     """Run an animation in zone mode with live parameter control.
 
     Args:
@@ -108,6 +116,7 @@ def run_zone_animation(animation_name: str, width: int = 80, height: int = 24, f
         width: Zone width in characters
         height: Zone height in characters
         fps: Frames per second
+        control_port: TCP port for parameter control (optional)
     """
     if animation_name not in ANIMATIONS:
         print(f"Error: Unknown animation '{animation_name}'", file=sys.stderr)
@@ -119,14 +128,18 @@ def run_zone_animation(animation_name: str, width: int = 80, height: int = 24, f
     animation_class = ANIMATIONS[animation_name]
     animation = animation_class(renderer)
 
-    # Start stdin command handler thread
+    # Start control socket handler thread if port specified
     stop_event = threading.Event()
-    command_thread = threading.Thread(
-        target=handle_stdin_commands,
-        args=(animation, stop_event),
-        daemon=True
-    )
-    command_thread.start()
+    command_thread = None
+
+    if control_port:
+        command_thread = threading.Thread(
+            target=handle_control_socket,
+            args=(animation, stop_event, control_port),
+            daemon=True
+        )
+        command_thread.start()
+        print(f"[CONTROL] Listening on port {control_port}", file=sys.stderr)
 
     # Animation loop
     frame_time = 1.0 / fps
@@ -157,7 +170,8 @@ def run_zone_animation(animation_name: str, width: int = 80, height: int = 24, f
         pass
     finally:
         stop_event.set()
-        command_thread.join(timeout=1.0)
+        if command_thread:
+            command_thread.join(timeout=1.0)
 
 
 def main():
@@ -193,6 +207,12 @@ def main():
         default=20,
         help='Frames per second (default: 20)'
     )
+    parser.add_argument(
+        '--control-port',
+        type=int,
+        default=None,
+        help='TCP port for parameter control (optional)'
+    )
 
     args = parser.parse_args()
 
@@ -200,7 +220,8 @@ def main():
         args.animation,
         width=args.width,
         height=args.height,
-        fps=args.fps
+        fps=args.fps,
+        control_port=args.control_port
     )
 
 
