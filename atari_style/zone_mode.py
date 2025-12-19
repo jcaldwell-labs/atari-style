@@ -44,39 +44,60 @@ def handle_stdin_commands(animation, stop_event):
         animation: Animation object to control
         stop_event: Threading event to signal shutdown
     """
+    import os
+    import fcntl
+
+    # Make stdin non-blocking
+    try:
+        flags = fcntl.fcntl(sys.stdin.fileno(), fcntl.F_GETFL)
+        fcntl.fcntl(sys.stdin.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
+    except:
+        pass  # If non-blocking fails, continue anyway
+
+    buffer = ""
+
     while not stop_event.is_set():
         try:
-            # Check if stdin has data (non-blocking)
-            if select.select([sys.stdin], [], [], 0.1)[0]:
-                line = sys.stdin.readline()
-                if not line:
-                    # EOF - stdin closed
-                    break
+            # Try to read available data (non-blocking)
+            try:
+                chunk = sys.stdin.read(1024)
+                if chunk:
+                    buffer += chunk
 
-                try:
-                    cmd = json.loads(line.strip())
+                    # Process complete lines
+                    while '\n' in buffer:
+                        line, buffer = buffer.split('\n', 1)
+                        line = line.strip()
 
-                    if cmd.get('command') == 'set_param':
-                        param = cmd.get('param')
-                        value = cmd.get('value')
+                        if not line:
+                            continue
 
-                        if param and value is not None:
-                            # Try to set parameter using adjust_params if available
-                            if hasattr(animation, 'set_param'):
-                                animation.set_param(param, value)
-                            elif hasattr(animation, param):
-                                setattr(animation, param, value)
+                        try:
+                            cmd = json.loads(line)
 
-                except json.JSONDecodeError:
-                    # Invalid JSON - ignore
-                    pass
-                except Exception:
-                    # Other errors - ignore
-                    pass
+                            if cmd.get('command') == 'set_param':
+                                param = cmd.get('param')
+                                value = cmd.get('value')
+
+                                if param and value is not None:
+                                    # Try to set parameter
+                                    if hasattr(animation, 'set_param'):
+                                        animation.set_param(param, value)
+                                    elif hasattr(animation, param):
+                                        setattr(animation, param, value)
+
+                        except json.JSONDecodeError:
+                            pass  # Invalid JSON - ignore
+                        except Exception:
+                            pass  # Other errors - ignore
+
+            except (BlockingIOError, IOError):
+                # No data available - sleep briefly
+                time.sleep(0.05)
 
         except Exception:
-            # Any other error - continue
-            pass
+            # Any other error - sleep and continue
+            time.sleep(0.05)
 
 
 def run_zone_animation(animation_name: str, width: int = 80, height: int = 24, fps: int = 20):
