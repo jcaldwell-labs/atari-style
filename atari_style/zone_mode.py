@@ -79,6 +79,11 @@ def run_zone_animation(animation_name: str, width: int = 80, height: int = 24, f
 
 def main():
     """Main entry point for zone mode."""
+    # Fix Windows encoding for Unicode characters (block chars, box drawing, etc.)
+    if sys.platform == 'win32':
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
     parser = argparse.ArgumentParser(
         description='Run atari-style animations in zone mode for embedding'
     )
