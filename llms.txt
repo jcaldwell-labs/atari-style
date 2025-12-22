@@ -1,0 +1,168 @@
+# atari-style
+
+## Project Description
+
+atari-style is a comprehensive collection of terminal-based interactive games, creative tools, and visual demos inspired by classic Atari aesthetics. The project provides playable arcade experiences using ASCII/ANSI terminal graphics with full joystick and keyboard support, built through human-AI collaboration following Unix philosophy principles.
+
+Repository: https://github.com/jcaldwell-labs/atari-style
+
+## Core Capabilities
+
+### Classic Arcade Games
+- **Pac-Man**: Maze chase game with 4 ghost AIs (Blinky, Pinky, Inky, Clyde), BFS pathfinding, power-ups, and level progression
+- **Galaga**: Space shooter with wave-based formations, dive attacks, UFO bonus ships, and progressive difficulty
+- **Grand Prix**: First-person 3D racing with perspective projection, 8 AI opponents, lap timing, and realistic physics
+- **Breakout**: Paddle physics game with 5 power-up types, combo scoring, and multiple brick types
+
+### Creative Tools
+- **ASCII Painter**: Full-featured drawing program with 6 tools (freehand, line, rectangle, circle, flood fill, erase), 4 character palettes (95+ chars), 14 colors, 3 brush sizes, 20-level undo/redo, and save/load in .txt and .ansi formats
+
+### Visual Demos
+- **Starfield**: 3D space flight with 3-layer parallax, colored nebulae, warp tunnel, asteroid field mode, hyperspace jumps, and lateral drift control
+- **Screen Saver**: 11 parametric animations (8 base + 3 composites) with real-time joystick control and 32+ adjustable parameters
+- **Platonic Solids**: Interactive 3D viewer for all 5 Platonic solids with rotation, zoom, and wireframe rendering
+
+### GPU-Accelerated Pipeline
+- **Interactive Shader Controller**: Real-time GLSL parameter tweaking with joystick
+- **Video Export**: MP4 export with format presets (YouTube Shorts, TikTok, Instagram)
+- **GIF Preview**: Animated GIF generation for sharing
+- **Storyboard System**: Keyframe-based animation planning with contact sheets
+
+## Quick Start
+
+```bash
+# Install dependencies
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Run the interactive menu
+python run.py
+
+# Or run specific demos
+python -c "from atari_style.demos.games.pacman import run_pacman; run_pacman()"
+python -c "from atari_style.demos.tools.ascii_painter import run_ascii_painter; run_ascii_painter()"
+python -c "from atari_style.demos.visualizers.starfield import run_starfield; run_starfield()"
+```
+
+## Commands & CLI
+
+### Main Entry Point
+- `python run.py` - Launch interactive menu system
+- `python -m atari_style.main` - Alternative module syntax
+
+### Individual Demos
+Games:
+- `python -c "from atari_style.demos.games.pacman import run_pacman; run_pacman()"`
+- `python -c "from atari_style.demos.games.galaga import run_galaga; run_galaga()"`
+- `python -c "from atari_style.demos.games.grandprix import run_grandprix; run_grandprix()"`
+- `python -c "from atari_style.demos.games.breakout import run_breakout; run_breakout()"`
+
+Tools:
+- `python -c "from atari_style.demos.tools.ascii_painter import run_ascii_painter; run_ascii_painter()"`
+
+Visualizers:
+- `python -c "from atari_style.demos.visualizers.starfield import run_starfield; run_starfield()"`
+- `python -c "from atari_style.demos.visualizers.screensaver import run_screensaver; run_screensaver()"`
+- `python -c "from atari_style.demos.visualizers.platonic_solids import run_platonic_solids; run_platonic_solids()"`
+
+### GPU Visualizer CLI
+See docs/guides/gpu-visualizer-guide.md for complete documentation.
+
+### Visual Regression Testing
+```bash
+# Generate baseline images
+python -m atari_style.core.visual_test generate <demo_name> --frames 0,5,10
+
+# Compare against baselines
+python -m atari_style.core.visual_test compare <demo_name>
+```
+
+## Use Cases
+
+1. **Creative Coding**: Build parametric visualizations that export to video/GIF for social media sharing
+2. **Retro Gaming**: Experience classic arcade games reimagined for terminal environments with modern features
+3. **Learning Tool**: Understand game AI (BFS pathfinding), 3D graphics (perspective projection), and physics through playable examples
+4. **Demo Scene**: Create terminal-based demos with GPU acceleration for art and performance
+5. **Streaming Overlays**: Generate dynamic ASCII animations for terminal-based content and overlays
+6. **Educational Content**: Teach programming concepts through interactive examples (see roadmap for video series)
+
+## Architecture
+
+### Core Modules (`atari_style/core/`)
+- **renderer.py**: Terminal rendering engine with double buffering, color support, and drawing primitives
+- **input_handler.py**: Unified keyboard and joystick input with deadzone handling
+- **menu.py**: Interactive menu system with navigation and visual feedback
+- **gl/**: GPU rendering pipeline (OpenGL 3.3+ via moderngl)
+  - gl_renderer.py: OpenGL context management
+  - shader_controller.py: Interactive shader parameter control
+  - video_export.py: MP4/video format export
+  - gif_preview.py: Animated GIF generation
+  - storyboard.py: Keyframe animation system
+  - composite_manager.py: Multi-effect composites
+
+### Game Modules (`atari_style/demos/`)
+- **games/**: Arcade games (pacman, galaga, grandprix, breakout)
+- **visualizers/**: Visual demos (starfield, screensaver, platonic_solids)
+- **tools/**: Utilities (ascii_painter, joystick_test)
+
+### Shaders (`atari_style/shaders/`)
+- **effects/**: GLSL effect shaders (plasma, mandelbrot, tunnel)
+- **post/**: Post-processing shaders (CRT, scanlines, ASCII)
+
+## Technology Stack
+
+- **Python 3.8+**
+- **pygame**: Joystick input and window management
+- **blessed**: Terminal rendering and control
+- **moderngl**: OpenGL 3.3+ GPU rendering
+- **Pillow**: Image processing and GIF export
+- **imageio / imageio-ffmpeg**: Video encoding
+
+## Key Technical Features
+
+- **Double-buffered rendering**: Flicker-free 30-60 FPS animations
+- **3D projection**: Perspective projection for starfield, racing, and Platonic solids
+- **Pathfinding AI**: BFS algorithm for ghost navigation in Pac-Man
+- **Physics simulation**: Ball reflection, lateral drift, collision detection
+- **Joystick integration**: Full analog control with deadzone handling and button debouncing
+- **Undo/redo system**: Stack-based command pattern for ASCII Painter
+- **File I/O**: Save/load for ASCII art in .txt and .ansi formats with ANSI color codes
+
+## Development Philosophy
+
+The project follows six core principles (see PHILOSOPHY.md):
+1. **The Terminal is a Canvas, Not a Cage**: ASCII is a creative medium with unique strengths
+2. **Parameters are Territory, Not Settings**: Expose parameters for exploration, not configuration
+3. **Small Tools, Composed Freely**: Unix philosophy - tools that do one thing well and compose
+4. **Show, Don't Document**: Interactive play teaches better than documentation
+5. **AI-Native Development**: Designed for both human developers and AI assistants
+6. **Play is Serious Work**: Creative exploration through interactive experience
+
+## Testing
+
+- **Unit Tests**: `pytest --cov=atari_style --cov-report=term`
+- **Visual Regression Tests**: Automated baseline comparison for catching visual changes
+- **Coverage Target**: 80%+ for core modules
+
+## Documentation
+
+- CLAUDE.md: Comprehensive development guide for AI assistants
+- PHILOSOPHY.md: Core principles guiding development decisions
+- docs/guides/: How-to guides (GPU visualizer, visual regression testing)
+- docs/getting-started/: New user onboarding
+- docs/reference/: Quick reference documentation
+- docs/architecture/: System design documentation
+
+## Related Projects
+
+Part of the jcaldwell-labs ecosystem:
+- **boxes-live**: Terminal canvas with joystick support (bidirectional integration via storyboard2canvas)
+
+## License
+
+MIT
+
+## Contributing
+
+PRs welcome! Follow Unix philosophy principles, maintain 80%+ test coverage, use type hints, and see CLAUDE.md for development guidelines.
