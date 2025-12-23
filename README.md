@@ -2,12 +2,45 @@
 
 [![CI](https://github.com/jcaldwell-labs/atari-style/actions/workflows/ci.yml/badge.svg)](https://github.com/jcaldwell-labs/atari-style/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/jcaldwell-labs/atari-style/branch/master/graph/badge.svg)](https://codecov.io/gh/jcaldwell-labs/atari-style)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
 A creative pipeline for terminal-native parametric visualization, built through human-AI collaboration, following Unix philosophy principles.
 
 > **atari-style** celebrates terminal aesthetics as a medium, not a limitation. We create tools that treat parameter spaces as territories to explore, compose freely with other tools via text streams, and teach through interactive play.
 
 Features classic arcade games, creative tools, and GPU-accelerated visual demos with full joystick and keyboard support.
+
+## Why atari-style?
+
+**atari-style** stands out as a unique approach to terminal-based development:
+
+- **Terminal-Native GPU Pipeline**: Combine ASCII aesthetics with OpenGL shaders for hybrid CPU/GPU rendering
+- **Unix Philosophy Applied**: Every tool accepts parameters, outputs data streams, and composes with standard tools
+- **Joystick-First Design**: Full analog control for creative exploration, not just keyboard navigation
+- **AI-Native Development**: Designed through human-AI collaboration with comprehensive documentation for both audiences
+- **Parameter Space Exploration**: Tools expose parameters as explorable territories, not hidden configuration
+- **Educational by Design**: Interactive play teaches concepts (3D projection, pathfinding, physics) through experience
+
+**Use Cases**:
+- **Creative Coding**: Build parametric visualizations that export to video/GIF for social media
+- **Retro Gaming**: Experience classic arcade games reimagined for terminal environments
+- **Learning Tool**: Understand game AI, 3D graphics, and physics through playable examples
+- **Demo Scene**: Create terminal-based demos with GPU acceleration for art and performance
+- **Streaming Overlays**: Generate dynamic ASCII animations for terminal-based content
+
+## Demo
+
+<img src="https://user-images.githubusercontent.com/placeholder/atari-style-demo.gif" alt="atari-style demo" width="600">
+
+*Interactive demo coming soon - asciinema recording planned*
+
+Try it yourself:
+```bash
+pip install -r requirements.txt
+python run.py  # Launch the interactive menu
+```
 
 ## Features
 
@@ -278,13 +311,45 @@ This project is part of the [jcaldwell-labs](https://github.com/jcaldwell-labs) 
 
 - **[boxes-live](https://github.com/jcaldwell-labs/boxes-live)** - Terminal canvas with joystick support (bidirectional integration via storyboard2canvas)
 
+## Community
+
+**Get Help & Connect**:
+- **Issues**: [Report bugs or request features](https://github.com/jcaldwell-labs/atari-style/issues)
+- **Discussions**: Share your creations and ask questions (coming soon)
+- **Related Projects**: Explore the [jcaldwell-labs](https://github.com/jcaldwell-labs) ecosystem
+
+**Show Your Work**:
+We'd love to see what you create! Share your ASCII art, custom animations, or gameplay recordings by opening a discussion or tagging the project.
+
 ## License
 
 MIT
 
 ## Contributing
 
-Contributions welcome! Feel free to open issues or submit pull requests.
+We welcome contributions from the community! Here's how you can help:
+
+**Ways to Contribute**:
+- **Report bugs** - Open an issue with reproduction steps
+- **Suggest features** - Describe your use case and proposed solution
+- **Improve docs** - Fix typos, add examples, or clarify instructions
+- **Submit PRs** - Add new demos, fix bugs, or enhance existing features
+- **Share creations** - Show off your ASCII art or custom animations
+
+**Getting Started**:
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Follow the [Pre-Commit Checklist](CLAUDE.md#pre-commit-checklist) in CLAUDE.md
+4. Run tests: `pytest --cov=atari_style`
+5. Submit a pull request
+
+**Development Guidelines**:
+- Follow Unix philosophy principles (see [PHILOSOPHY.md](PHILOSOPHY.md))
+- Maintain test coverage above 80% for core modules
+- Use type hints for all public functions
+- Document new features in both README and CLAUDE.md
+
+See [CLAUDE.md](CLAUDE.md) for detailed development documentation.
 
 ---
 
