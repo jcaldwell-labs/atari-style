@@ -177,6 +177,83 @@ ASCII_PRESETS = {
 }
 
 
+@dataclass
+class PhosphorPreset:
+    """Preset configuration for phosphor persistence effects.
+
+    Simulates the phosphor decay of CRT monitors where bright pixels
+    leave a fading trail. This creates the characteristic "ghosting"
+    effect visible on fast-moving content.
+    """
+    name: str
+    persistence: float = 0.7     # How long glow persists (0.0 - 0.95)
+    glowIntensity: float = 1.0   # Brightness of the trail (0.5 - 2.0)
+    colorBleed: float = 0.2      # RGB decay difference (0.0 - 0.5)
+    burnIn: float = 0.0          # Static element burn-in (0.0 - 0.3)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'persistence': self.persistence,
+            'glowIntensity': self.glowIntensity,
+            'colorBleed': self.colorBleed,
+            'burnIn': self.burnIn,
+        }
+
+
+# Predefined phosphor presets
+PHOSPHOR_PRESETS = {
+    'off': PhosphorPreset(
+        name='Off',
+        persistence=0.0,
+        glowIntensity=0.0,
+        colorBleed=0.0,
+        burnIn=0.0,
+    ),
+    'subtle': PhosphorPreset(
+        name='Subtle',
+        persistence=0.5,
+        glowIntensity=0.8,
+        colorBleed=0.1,
+        burnIn=0.0,
+    ),
+    'classic': PhosphorPreset(
+        name='Classic',
+        persistence=0.7,
+        glowIntensity=1.0,
+        colorBleed=0.2,
+        burnIn=0.0,
+    ),
+    'heavy': PhosphorPreset(
+        name='Heavy',
+        persistence=0.85,
+        glowIntensity=1.3,
+        colorBleed=0.3,
+        burnIn=0.05,
+    ),
+    'arcade': PhosphorPreset(
+        name='Arcade',
+        persistence=0.75,
+        glowIntensity=1.2,
+        colorBleed=0.25,
+        burnIn=0.0,
+    ),
+    'green_terminal': PhosphorPreset(
+        name='Green Terminal',
+        persistence=0.8,
+        glowIntensity=1.1,
+        colorBleed=0.0,  # Monochrome, no color bleed
+        burnIn=0.1,      # Terminals often had burn-in
+    ),
+    'motion_blur': PhosphorPreset(
+        name='Motion Blur',
+        persistence=0.9,
+        glowIntensity=1.5,
+        colorBleed=0.15,
+        burnIn=0.0,
+    ),
+}
+
+
 class RenderPass:
     """A single render pass in the pipeline."""
 
@@ -245,10 +322,16 @@ class PostProcessPipeline:
         ], dtype='f4')
         self.quad_vbo = self.ctx.buffer(vertices)
 
-        # Track current CRT, palette, and ASCII settings
+        # Track current CRT, palette, ASCII, and phosphor settings
         self.crt_preset: Optional[str] = None
         self.palette_preset: Optional[str] = None
         self.ascii_preset: Optional[str] = None
+        self.phosphor_preset: Optional[str] = None
+
+        # Phosphor persistence requires ping-pong buffers for temporal feedback
+        self._phosphor_textures: Optional[tuple] = None
+        self._phosphor_fbos: Optional[tuple] = None
+        self._phosphor_frame: int = 0
 
     def _load_shader(self, shader_path: str) -> moderngl.Program:
         """Load a post-processing shader."""
@@ -392,6 +475,66 @@ void main() {
                 p.set_uniforms(ASCII_PRESETS[preset].to_dict())
                 break
 
+    def add_phosphor_pass(self, preset: str = 'classic') -> int:
+        """Add phosphor persistence post-processing pass.
+
+        Simulates CRT phosphor decay where bright pixels leave a fading
+        trail. This effect requires temporal feedback (previous frame data)
+        and uses ping-pong framebuffers internally.
+
+        Best applied early in the post-processing chain (before CRT/palette)
+        for authentic results.
+
+        Args:
+            preset: Preset name ('off', 'subtle', 'classic', 'heavy',
+                   'arcade', 'green_terminal', 'motion_blur')
+
+        Returns:
+            Index of the phosphor pass
+        """
+        if preset not in PHOSPHOR_PRESETS:
+            raise ValueError(
+                f"Unknown phosphor preset: {preset}. "
+                f"Available: {list(PHOSPHOR_PRESETS.keys())}"
+            )
+
+        self.phosphor_preset = preset
+        uniforms = PHOSPHOR_PRESETS[preset].to_dict()
+
+        # Create ping-pong textures for temporal feedback
+        if self._phosphor_textures is None:
+            self._phosphor_textures = (
+                self.ctx.texture((self.width, self.height), 4, dtype='f1'),
+                self.ctx.texture((self.width, self.height), 4, dtype='f1'),
+            )
+            for tex in self._phosphor_textures:
+                tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+            self._phosphor_fbos = (
+                self.ctx.framebuffer(color_attachments=[self._phosphor_textures[0]]),
+                self.ctx.framebuffer(color_attachments=[self._phosphor_textures[1]]),
+            )
+            # Clear both buffers initially
+            for fbo in self._phosphor_fbos:
+                fbo.use()
+                self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+
+        return self.add_pass('atari_style/shaders/post/phosphor.frag', uniforms)
+
+    def set_phosphor_preset(self, preset: str):
+        """Change phosphor preset on existing pass."""
+        if self.phosphor_preset is None:
+            raise RuntimeError("No phosphor pass added. Call add_phosphor_pass() first.")
+
+        if preset not in PHOSPHOR_PRESETS:
+            raise ValueError(f"Unknown phosphor preset: {preset}")
+
+        self.phosphor_preset = preset
+        # Find and update phosphor pass
+        for p in self.passes:
+            if 'persistence' in p.uniforms:
+                p.set_uniforms(PHOSPHOR_PRESETS[preset].to_dict())
+                break
+
     def update_pass_uniforms(self, pass_index: int, uniforms: Dict[str, Any]):
         """Update uniforms for a specific pass.
 
@@ -441,35 +584,89 @@ void main() {
         input_texture = self.renderer.texture
 
         for i, render_pass in enumerate(self.passes):
-            render_pass.fbo.use()
-            self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+            # Check if this is a phosphor pass (needs temporal feedback)
+            is_phosphor = 'persistence' in render_pass.uniforms
 
-            # Bind input texture
-            input_texture.use(location=0)
+            if is_phosphor and self._phosphor_textures is not None:
+                # Phosphor pass uses ping-pong buffers
+                current_idx = self._phosphor_frame % 2
+                prev_idx = (self._phosphor_frame + 1) % 2
 
-            # Set uniforms
-            program = render_pass.program
-            if 'iChannel0' in program:
-                program['iChannel0'].value = 0
-            if 'iResolution' in program:
-                program['iResolution'].value = (float(self.width), float(self.height))
-            if 'iTime' in program:
-                program['iTime'].value = time
+                # Render to current phosphor buffer
+                self._phosphor_fbos[current_idx].use()
+                self.ctx.clear(0.0, 0.0, 0.0, 1.0)
 
-            for name, value in render_pass.uniforms.items():
-                if name in program:
-                    program[name].value = value
+                # Bind current frame to iChannel0
+                input_texture.use(location=0)
+                # Bind previous frame to iChannel1 for persistence
+                self._phosphor_textures[prev_idx].use(location=1)
 
-            # Render quad
-            pass_vao = self.ctx.vertex_array(
-                program,
-                [(self.quad_vbo, '2f', 'in_position')]
-            )
-            pass_vao.render(moderngl.TRIANGLE_STRIP)
-            pass_vao.release()
+                program = render_pass.program
+                if 'iChannel0' in program:
+                    program['iChannel0'].value = 0
+                if 'iChannel1' in program:
+                    program['iChannel1'].value = 1
+                if 'iResolution' in program:
+                    program['iResolution'].value = (float(self.width), float(self.height))
+                if 'iTime' in program:
+                    program['iTime'].value = time
 
-            # Output becomes input for next pass
-            input_texture = render_pass.texture
+                for name, value in render_pass.uniforms.items():
+                    if name in program:
+                        program[name].value = value
+
+                # Render quad
+                pass_vao = self.ctx.vertex_array(
+                    program,
+                    [(self.quad_vbo, '2f', 'in_position')]
+                )
+                pass_vao.render(moderngl.TRIANGLE_STRIP)
+                pass_vao.release()
+
+                # Swap buffers for next frame
+                self._phosphor_frame += 1
+
+                # Output for next pass is current phosphor texture
+                input_texture = self._phosphor_textures[current_idx]
+
+                # Also copy result to the regular pass texture for consistency
+                render_pass.fbo.use()
+                self._phosphor_textures[current_idx].use(location=0)
+                # Simple blit by re-rendering (could optimize with direct copy)
+                self.ctx.copy_framebuffer(
+                    render_pass.fbo, self._phosphor_fbos[current_idx]
+                )
+            else:
+                # Standard pass without temporal feedback
+                render_pass.fbo.use()
+                self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+
+                # Bind input texture
+                input_texture.use(location=0)
+
+                # Set uniforms
+                program = render_pass.program
+                if 'iChannel0' in program:
+                    program['iChannel0'].value = 0
+                if 'iResolution' in program:
+                    program['iResolution'].value = (float(self.width), float(self.height))
+                if 'iTime' in program:
+                    program['iTime'].value = time
+
+                for name, value in render_pass.uniforms.items():
+                    if name in program:
+                        program[name].value = value
+
+                # Render quad
+                pass_vao = self.ctx.vertex_array(
+                    program,
+                    [(self.quad_vbo, '2f', 'in_position')]
+                )
+                pass_vao.render(moderngl.TRIANGLE_STRIP)
+                pass_vao.release()
+
+                # Output becomes input for next pass
+                input_texture = render_pass.texture
 
         # Read final output
         return self.passes[-1].fbo.read(components=4)
@@ -514,12 +711,42 @@ void main() {
             render_pass.texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
             render_pass.fbo = self.ctx.framebuffer(color_attachments=[render_pass.texture])
 
+        # Recreate phosphor ping-pong buffers if active
+        if self._phosphor_textures is not None:
+            for tex in self._phosphor_textures:
+                tex.release()
+            for fbo in self._phosphor_fbos:
+                fbo.release()
+            self._phosphor_textures = (
+                self.ctx.texture((width, height), 4, dtype='f1'),
+                self.ctx.texture((width, height), 4, dtype='f1'),
+            )
+            for tex in self._phosphor_textures:
+                tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+            self._phosphor_fbos = (
+                self.ctx.framebuffer(color_attachments=[self._phosphor_textures[0]]),
+                self.ctx.framebuffer(color_attachments=[self._phosphor_textures[1]]),
+            )
+            # Clear both buffers
+            for fbo in self._phosphor_fbos:
+                fbo.use()
+                self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+
     def release(self):
         """Release all GPU resources."""
         for render_pass in self.passes:
             render_pass.release()
         self.passes.clear()
         self.quad_vbo.release()
+
+        # Release phosphor buffers if active
+        if self._phosphor_textures is not None:
+            for tex in self._phosphor_textures:
+                tex.release()
+            for fbo in self._phosphor_fbos:
+                fbo.release()
+            self._phosphor_textures = None
+            self._phosphor_fbos = None
 
     def __enter__(self):
         return self
@@ -542,3 +769,8 @@ def get_palette_preset_names() -> List[str]:
 def get_ascii_preset_names() -> List[str]:
     """Get list of available ASCII preset names."""
     return list(ASCII_PRESETS.keys())
+
+
+def get_phosphor_preset_names() -> List[str]:
+    """Get list of available phosphor preset names."""
+    return list(PHOSPHOR_PRESETS.keys())
