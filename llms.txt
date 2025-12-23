@@ -154,10 +154,34 @@ The project follows six core principles (see PHILOSOPHY.md):
 - docs/reference/: Quick reference documentation
 - docs/architecture/: System design documentation
 
-## Related Projects
+## Related jcaldwell-labs Projects
 
-Part of the jcaldwell-labs ecosystem:
-- **boxes-live**: Terminal canvas with joystick support (bidirectional integration via storyboard2canvas)
+This project is part of the jcaldwell-labs ecosystem of terminal-native tools and creative applications.
+
+### Terminal/TUI Projects
+- **my-grid**: ASCII canvas editor with vim-style navigation, zones, and PTY support
+- **boxes-live**: Real-time ASCII box drawing with joystick support
+- **terminal-stars**: Starfield animation for terminals
+- **smartterm-prototype**: Smart terminal with readline-like features
+
+### CLI Tools
+- **my-context**: Context tracking for development sessions (Go CLI)
+- **fintrack**: Personal finance tracking CLI (Go)
+- **tario**: Terminal-based platformer game (Go)
+
+### Game Engines
+- **adventure-engine-v2**: Multiplayer text adventure engine (C)
+
+### Meta/Organization
+- **capability-catalog**: Skill/capability definitions for AI agents
+
+### Cross-Project Synergies
+
+1. **atari-style + boxes-live**: Storyboard2canvas exports atari-style animations as boxes-live canvas files; shared joystick input handling patterns
+2. **atari-style + terminal-stars**: Atari-style post-processing shaders (CRT, scanlines, ASCII) can enhance terminal-stars output for retro visual effects
+3. **atari-style + my-grid**: ASCII Painter shares canvas concepts with my-grid; potential for unified ASCII canvas format across projects
+4. **atari-style + tario**: Shared terminal rendering techniques and frame-rate management; atari-style visual effects could enhance tario gameplay visuals
+5. **atari-style + adventure-engine-v2**: Visual effects library could provide atmospheric rendering for text adventure scenes (weather, lighting, transitions)
 
 ## License
 

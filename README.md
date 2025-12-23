@@ -307,9 +307,36 @@ pytest --cov=. --cov-report=term
 
 ## Related Projects
 
-This project is part of the [jcaldwell-labs](https://github.com/jcaldwell-labs) ecosystem:
+This project is part of the [jcaldwell-labs](https://github.com/jcaldwell-labs) ecosystem of terminal-native tools and creative applications.
 
-- **[boxes-live](https://github.com/jcaldwell-labs/boxes-live)** - Terminal canvas with joystick support (bidirectional integration via storyboard2canvas)
+### Sister Projects
+
+**Terminal/TUI Projects:**
+- **[my-grid](https://github.com/jcaldwell-labs/my-grid)** - ASCII canvas editor with vim-style navigation, zones, and PTY support
+- **[boxes-live](https://github.com/jcaldwell-labs/boxes-live)** - Real-time ASCII box drawing with joystick support
+- **[terminal-stars](https://github.com/jcaldwell-labs/terminal-stars)** - Starfield animation for terminals
+- **[smartterm-prototype](https://github.com/jcaldwell-labs/smartterm-prototype)** - Smart terminal with readline-like features
+
+**CLI Tools:**
+- **[my-context](https://github.com/jcaldwell-labs/my-context)** - Context tracking for development sessions (Go CLI)
+- **[fintrack](https://github.com/jcaldwell-labs/fintrack)** - Personal finance tracking CLI (Go)
+- **[tario](https://github.com/jcaldwell-labs/tario)** - Terminal-based platformer game (Go)
+
+**Game Engines:**
+- **[adventure-engine-v2](https://github.com/jcaldwell-labs/adventure-engine-v2)** - Multiplayer text adventure engine (C)
+
+**Meta/Organization:**
+- **[capability-catalog](https://github.com/jcaldwell-labs/capability-catalog)** - Skill/capability definitions for AI agents
+
+### Cross-Project Synergies
+
+| Integration | Description |
+|-------------|-------------|
+| **atari-style + boxes-live** | Storyboard2canvas exports atari-style animations as boxes-live canvas files; shared joystick input patterns |
+| **atari-style + terminal-stars** | Atari-style shaders (CRT, scanlines) can post-process terminal-stars output for enhanced retro effects |
+| **atari-style + my-grid** | ASCII Painter tool shares concepts with my-grid; potential for unified canvas format |
+| **atari-style + tario** | Shared terminal rendering techniques; atari-style effects could enhance tario visuals |
+| **atari-style + adventure-engine-v2** | Visual effects library for text adventure atmospheric rendering |
 
 ## Community
 
