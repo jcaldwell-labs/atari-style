@@ -6,47 +6,48 @@ Welcome to the atari-style documentation. This directory contains guides, refere
 
 New to atari-style? Start here:
 
-| Document | Description |
-|----------|-------------|
-| [Quick Start](getting-started/QUICK_START.md) | Installation and first run |
-| [Controls](getting-started/CONTROLS.md) | Keyboard and controller basics |
-| [Joystick Mapping](getting-started/JOYSTICK-MAPPING.md) | Controller button assignments |
-| [Button Remapping](getting-started/BUTTON-REMAPPING.md) | Customizing controls |
+| Document                                                              | Description                    |
+| --------------------------------------------------------------------- | ------------------------------ |
+| [Quick Start](getting-started/QUICK_START.md)                         | Installation and first run     |
+| [Controls](getting-started/CONTROLS.md)                               | Keyboard and controller basics |
+| [Joystick Mapping](getting-started/JOYSTICK-MAPPING.md)               | Controller button assignments  |
+| [Button Remapping](getting-started/BUTTON-REMAPPING.md)               | Customizing controls           |
 | [Control Scheme Standard](getting-started/CONTROL_SCHEME_STANDARD.md) | Cross-project control patterns |
 
 ## Guides
 
 Step-by-step guides for specific tasks:
 
-| Guide | Description |
-|-------|-------------|
-| [GPU Visualizer CLI](guides/gpu-visualizer-guide.md) | Interactive shaders, GIF/video export, storyboards |
-| [Visual Regression Testing](guides/visual-regression-guide.md) | Automated visual regression testing framework |
-| [Joystick Controls](joystick-controls.md) | Detailed controller documentation |
+| Guide                                                          | Description                                        |
+| -------------------------------------------------------------- | -------------------------------------------------- |
+| [GPU Visualizer CLI](guides/gpu-visualizer-guide.md)           | Interactive shaders, GIF/video export, storyboards |
+| [Visual Regression Testing](guides/visual-regression-guide.md) | Automated visual regression testing framework      |
+| [Joystick Controls](joystick-controls.md)                      | Detailed controller documentation                  |
 
 ## Reference
 
 Quick references for features and animations:
 
-| Document | Description |
-|----------|-------------|
-| [Features at a Glance](reference/FEATURES-AT-A-GLANCE.md) | Overview of all features |
-| [Animation Summary](reference/ANIMATION-SUMMARY.md) | List of available animations |
-| [Animations Visual Guide](reference/ANIMATIONS-VISUAL-GUIDE.md) | Visual preview of animations |
-| [New Animations](reference/NEW-ANIMATIONS.md) | Recently added animations |
-| [Composite Animations](reference/COMPOSITE_ANIMATIONS.md) | Multi-effect composites |
-| [Composite Animation Analysis](reference/COMPOSITE_ANIMATION_ANALYSIS.md) | Technical analysis |
-| [Visual Guide Composites](reference/VISUAL_GUIDE_COMPOSITES.md) | Visual composite reference |
-| [Mandelbrot Quick Reference](reference/MANDELBROT_QUICK_REFERENCE.md) | Mandelbrot controls and params |
+| Document                                                                  | Description                    |
+| ------------------------------------------------------------------------- | ------------------------------ |
+| [Features at a Glance](reference/FEATURES-AT-A-GLANCE.md)                 | Overview of all features       |
+| [Animation Summary](reference/ANIMATION-SUMMARY.md)                       | List of available animations   |
+| [Animations Visual Guide](reference/ANIMATIONS-VISUAL-GUIDE.md)           | Visual preview of animations   |
+| [New Animations](reference/NEW-ANIMATIONS.md)                             | Recently added animations      |
+| [Composite Animations](reference/COMPOSITE_ANIMATIONS.md)                 | Multi-effect composites        |
+| [Composite Animation Analysis](reference/COMPOSITE_ANIMATION_ANALYSIS.md) | Technical analysis             |
+| [Visual Guide Composites](reference/VISUAL_GUIDE_COMPOSITES.md)           | Visual composite reference     |
+| [Mandelbrot Quick Reference](reference/MANDELBROT_QUICK_REFERENCE.md)     | Mandelbrot controls and params |
 
 ## Architecture
 
 Technical design and implementation details:
 
-| Document | Description |
-|----------|-------------|
-| [Architecture](architecture.md) | System design overview |
-| [Shader Roadmap](shader-roadmap.md) | GPU shader implementation plan |
+| Document                              | Description                        |
+| ------------------------------------- | ---------------------------------- |
+| [Architecture](architecture.md)       | System design overview             |
+| [Shader Roadmap](shader-roadmap.md)   | GPU shader implementation plan     |
+| [Ecosystem Integration](ECOSYSTEM.md) | Cross-project integration strategy |
 
 ## Archive
 
@@ -61,6 +62,7 @@ Historical documentation from development:
 ```
 docs/
 ├── README.md                 # This file
+├── ECOSYSTEM.md              # Cross-project integration
 ├── architecture.md           # System architecture
 ├── joystick-controls.md      # Controller documentation
 ├── shader-roadmap.md         # GPU implementation plan
