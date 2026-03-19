@@ -27,6 +27,8 @@ except ImportError:
     ImageDraw = None
     ImageFont = None
 
+from atari_style.utils.fonts import load_monospace_font
+
 
 # ANSI color names to RGB values
 # Based on typical terminal color schemes (close to Ubuntu/VSCode defaults)
@@ -127,35 +129,8 @@ class HeadlessRenderer:
     def _load_font(self, font_path: Optional[str]) -> 'ImageFont.FreeTypeFont':
         """Load monospace font for rendering."""
         font_size = self.char_height - 4  # Leave some padding
-
-        if font_path and Path(font_path).exists():
-            try:
-                return ImageFont.truetype(font_path, font_size)
-            except Exception:
-                pass  # Fall through to defaults
-
-        # Try common monospace fonts
-        font_candidates = [
-            '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf',
-            '/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf',
-            '/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf',
-            '/usr/share/fonts/TTF/DejaVuSansMono.ttf',
-            '/System/Library/Fonts/Menlo.ttc',  # macOS
-            'C:/Windows/Fonts/consola.ttf',  # Windows
-        ]
-
-        for candidate in font_candidates:
-            if Path(candidate).exists():
-                try:
-                    return ImageFont.truetype(candidate, font_size)
-                except Exception:
-                    continue
-
-        # Fall back to default (may not be monospace)
-        try:
-            return ImageFont.load_default()
-        except Exception:
-            return None
+        preferred = [font_path] if font_path else None
+        return load_monospace_font(font_size, preferred_paths=preferred)
 
     def _color_to_rgb(self, color: Optional[str]) -> Tuple[int, int, int]:
         """Convert color name to RGB tuple."""

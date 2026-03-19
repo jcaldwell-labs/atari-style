@@ -11,7 +11,8 @@ import os
 import time
 import math
 import subprocess
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
+from atari_style.utils.fonts import load_monospace_font
 from ...core.renderer import Color
 
 
@@ -85,10 +86,7 @@ class GimbalRenderer:
         self.mock_renderer = MockRenderer(width, height)
         self.bg_color = (15, 20, 35)  # Deep space blue
 
-        try:
-            self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 22)
-        except (IOError, OSError):
-            self.font = ImageFont.load_default()
+        self.font = load_monospace_font(22)
 
     def render_frame(self) -> Image.Image:
         img = Image.new('RGB', (self.img_width, self.img_height), self.bg_color)

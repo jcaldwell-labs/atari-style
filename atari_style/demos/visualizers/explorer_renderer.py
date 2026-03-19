@@ -8,7 +8,8 @@ import os
 import time
 import math
 import subprocess
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
+from atari_style.utils.fonts import load_monospace_font
 
 from .interestingness_tracker import InterestingnessTracker, InterestingnessBounds
 
@@ -74,12 +75,8 @@ class ExplorerRenderer:
         self.img_width = width * self.cell_width
         self.img_height = height * self.cell_height
 
-        try:
-            self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 20)
-            self.font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 16)
-        except (IOError, OSError):
-            self.font = ImageFont.load_default()
-            self.font_small = self.font
+        self.font = load_monospace_font(20)
+        self.font_small = load_monospace_font(16)
 
         self.bg_color = (40, 42, 54)
 
