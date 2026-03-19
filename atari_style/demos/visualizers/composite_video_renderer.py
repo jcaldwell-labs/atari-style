@@ -88,10 +88,10 @@ class CompositeVideoRenderer:
         # Load monospace font
         try:
             self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 22)
-        except:
+        except (IOError, OSError):
             try:
                 self.font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf", 22)
-            except:
+            except (IOError, OSError):
                 self.font = ImageFont.load_default()
 
         # Background color (Dracula)
