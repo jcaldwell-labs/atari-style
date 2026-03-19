@@ -1098,9 +1098,14 @@ class Claugger:
             self.renderer.draw_text(cx, cy, msg, Color.BRIGHT_YELLOW)
             self.renderer.render()
 
-            # Re-query dimensions on each check (blessed updates term.width/height)
-            self.renderer.width = self.renderer.term.width
-            self.renderer.height = self.renderer.term.height
+            # Re-query dimensions and rebuild buffer to match
+            new_w = self.renderer.term.width
+            new_h = self.renderer.term.height
+            if new_w != self.renderer.width or new_h != self.renderer.height:
+                self.renderer.width = new_w
+                self.renderer.height = new_h
+                self.renderer.buffer = [[' ' for _ in range(new_w)] for _ in range(new_h)]
+                self.renderer.color_buffer = [[None for _ in range(new_w)] for _ in range(new_h)]
 
             if self._check_terminal_size():
                 return True
@@ -1116,6 +1121,14 @@ class Claugger:
     def run(self) -> None:
         """Enter fullscreen and run the game loop until the user quits."""
         self.renderer.enter_fullscreen()
+        # Re-sync buffer to actual terminal size after entering fullscreen
+        new_w = self.renderer.term.width
+        new_h = self.renderer.term.height
+        if new_w != self.renderer.width or new_h != self.renderer.height:
+            self.renderer.width = new_w
+            self.renderer.height = new_h
+            self.renderer.buffer = [[' ' for _ in range(new_w)] for _ in range(new_h)]
+            self.renderer.color_buffer = [[None for _ in range(new_w)] for _ in range(new_h)]
         try:
             # Check terminal dimensions before starting
             if not self._check_terminal_size():
