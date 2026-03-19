@@ -1,0 +1,45 @@
+name: Publish Docs to Site
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'docs/blog/**'
+      - 'docs/site/**'
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Determine changed content
+        id: changes
+        run: |
+          blog_changed=false
+          docs_changed=false
+          if git diff --name-only HEAD~1 HEAD | grep -q '^docs/blog/'; then
+            blog_changed=true
+          fi
+          if git diff --name-only HEAD~1 HEAD | grep -q '^docs/site/'; then
+            docs_changed=true
+          fi
+          echo "blog=$blog_changed" >> "$GITHUB_OUTPUT"
+          echo "docs=$docs_changed" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch to site repo
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DOCS_PUBLISH_TOKEN }}
+          repository: jcaldwell-labs/jcaldwell-labs.github.io
+          event-type: publish-atari-style-docs
+          client-payload: |
+            {
+              "source_repo": "${{ github.repository }}",
+              "source_ref": "${{ github.sha }}",
+              "blog_changed": "${{ steps.changes.outputs.blog }}",
+              "docs_changed": "${{ steps.changes.outputs.docs }}"
+            }
