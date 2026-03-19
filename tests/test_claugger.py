@@ -370,5 +370,22 @@ class TestEasterEggs(unittest.TestCase):
         self.assertEqual(game.score - score_before, 5000)
 
 
+class TestRegistration(unittest.TestCase):
+    """Test Claugger registration in ContentRegistry."""
+
+    def test_claugger_importable(self):
+        """run_claugger function is importable."""
+        from atari_style.demos.games.claugger import run_claugger
+        self.assertTrue(callable(run_claugger))
+
+    def test_claugger_in_registry(self):
+        """Claugger appears in the content registry."""
+        from atari_style.main import _build_registry
+        reg = _build_registry()
+        entry = reg.get("claugger")
+        self.assertIsNotNone(entry)
+        self.assertEqual(entry.title, "Claugger")
+
+
 if __name__ == "__main__":
     unittest.main()
