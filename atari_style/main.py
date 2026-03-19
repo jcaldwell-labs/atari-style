@@ -41,63 +41,56 @@ def _build_registry() -> ContentRegistry:
             description=desc, run_module=module, run_function_name=func,
         ))
 
-    # Visualizers
-    from .demos.visualizers.flux_control import run_flux_control
-    from .demos.visualizers.flux_control_patterns import run_pattern_flux
-    from .demos.visualizers.flux_control_rhythm import run_rhythm_flux
-    from .demos.visualizers.flux_control_zen import run_flux_zen
-    from .demos.visualizers.flux_control_explorer import run_flux_explorer
-    from .demos.visualizers.starfield import run_starfield
-    from .demos.visualizers.screensaver import run_screensaver
-    from .demos.visualizers.gl_mandelbrot import run_gl_mandelbrot
-    from .demos.visualizers.platonic_solids import run_platonic_solids
-    from .demos.visualizers.educational import run_lissajous_explorer
+    # --- Visualizers: string-based lazy resolution ---
+    _viz = "atari_style.demos.visualizers"
+    for viz_id, title, desc, module_suffix, func in [
+        ("flux-control", "Flux Control",
+         "Parametric visual controller", "flux_control", "run_flux_control"),
+        ("flux-patterns", "Flux Control: Patterns",
+         "Pattern-based flux modes", "flux_control_patterns", "run_pattern_flux"),
+        ("flux-rhythm", "Flux Control: Rhythm",
+         "Rhythm-driven flux modes", "flux_control_rhythm", "run_rhythm_flux"),
+        ("flux-zen", "Flux Control: Zen",
+         "Meditative flux modes", "flux_control_zen", "run_flux_zen"),
+        ("flux-explorer", "Flux Control: Explorer",
+         "Interactive flux parameter explorer",
+         "flux_control_explorer", "run_flux_explorer"),
+        ("starfield", "Starfield",
+         "3D space flight with parallax layers", "starfield", "run_starfield"),
+        ("screensaver", "Screen Saver",
+         "8 parametric animations", "screensaver", "run_screensaver"),
+        ("gl-mandelbrot", "GPU Mandelbrot",
+         "GPU-accelerated Mandelbrot explorer",
+         "gl_mandelbrot", "run_gl_mandelbrot"),
+        ("lissajous", "Lissajous Explorer",
+         "Educational Lissajous curve explorer",
+         "educational", "run_lissajous_explorer"),
+        ("platonic-solids", "Platonic Solids",
+         "Interactive 3D geometry viewer",
+         "platonic_solids", "run_platonic_solids"),
+    ]:
+        reg.register_metadata(ContentMetadata(
+            id=viz_id, title=title, category=ContentCategory.VISUALIZER,
+            description=desc, run_module=f"{_viz}.{module_suffix}",
+            run_function_name=func,
+        ))
 
-    reg.register_callable("flux-control", "Flux Control",
-                          ContentCategory.VISUALIZER,
-                          "Parametric visual controller", run_flux_control)
-    reg.register_callable("flux-patterns", "Flux Control: Patterns",
-                          ContentCategory.VISUALIZER,
-                          "Pattern-based flux modes", run_pattern_flux)
-    reg.register_callable("flux-rhythm", "Flux Control: Rhythm",
-                          ContentCategory.VISUALIZER,
-                          "Rhythm-driven flux modes", run_rhythm_flux)
-    reg.register_callable("flux-zen", "Flux Control: Zen",
-                          ContentCategory.VISUALIZER,
-                          "Meditative flux modes", run_flux_zen)
-    reg.register_callable("flux-explorer", "Flux Control: Explorer",
-                          ContentCategory.VISUALIZER,
-                          "Interactive flux parameter explorer", run_flux_explorer)
-    reg.register_callable("starfield", "Starfield",
-                          ContentCategory.VISUALIZER,
-                          "3D space flight with parallax layers", run_starfield)
-    reg.register_callable("screensaver", "Screen Saver",
-                          ContentCategory.VISUALIZER,
-                          "8 parametric animations", run_screensaver)
-    reg.register_callable("gl-mandelbrot", "GPU Mandelbrot",
-                          ContentCategory.VISUALIZER,
-                          "GPU-accelerated Mandelbrot explorer", run_gl_mandelbrot)
-    reg.register_callable("lissajous", "Lissajous Explorer",
-                          ContentCategory.VISUALIZER,
-                          "Educational Lissajous curve explorer", run_lissajous_explorer)
-    reg.register_callable("platonic-solids", "Platonic Solids",
-                          ContentCategory.VISUALIZER,
-                          "Interactive 3D geometry viewer", run_platonic_solids)
-
-    # Tools
-    from .demos.tools.ascii_painter import run_ascii_painter
-    from .demos.tools.joystick_test import run_joystick_test
-    from .demos.tools.canvas_explorer import run_canvas_explorer
-
-    reg.register_callable("ascii-painter", "ASCII Painter",
-                          ContentCategory.TOOL,
-                          "Full-featured drawing program", run_ascii_painter)
-    reg.register_callable("canvas-explorer", "Canvas Explorer",
-                          ContentCategory.TOOL,
-                          "Canvas exploration tool", run_canvas_explorer)
-    reg.register_callable("joystick-test", "Joystick Test",
-                          ContentCategory.TOOL,
-                          "Connection verification and axis testing", run_joystick_test)
+    # --- Tools: string-based lazy resolution ---
+    _tools = "atari_style.demos.tools"
+    for tool_id, title, desc, module_suffix, func in [
+        ("ascii-painter", "ASCII Painter",
+         "Full-featured drawing program", "ascii_painter", "run_ascii_painter"),
+        ("canvas-explorer", "Canvas Explorer",
+         "Canvas exploration tool", "canvas_explorer", "run_canvas_explorer"),
+        ("joystick-test", "Joystick Test",
+         "Connection verification and axis testing",
+         "joystick_test", "run_joystick_test"),
+    ]:
+        reg.register_metadata(ContentMetadata(
+            id=tool_id, title=title, category=ContentCategory.TOOL,
+            description=desc, run_module=f"{_tools}.{module_suffix}",
+            run_function_name=func,
+        ))
 
     # --- Auto-discovery from terminal_arcade/games/ ---
     # Scans for metadata.json files in per-game subdirectories.
@@ -128,9 +121,12 @@ def _registry_to_menu_items(registry: ContentRegistry) -> list:
     items = []
     for category in display_order:
         for content in registry.get_by_category(category):
+            run_fn = content.run_function
+            if run_fn is None:
+                continue
             items.append(MenuItem(
                 content.title,
-                content.run_function,
+                run_fn,
                 content.description,
             ))
 

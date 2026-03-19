@@ -117,6 +117,23 @@ class TestContentMetadata(unittest.TestCase):
 
         self.assertIsNone(result)
 
+    @patch("atari_style.core.registry.importlib.import_module")
+    def test_lazy_resolution_attribute_error(self, mock_import):
+        """Missing function name on module should return None and warn."""
+        fake_module = MagicMock(spec=[])  # no attributes
+        mock_import.return_value = fake_module
+
+        m = ContentMetadata(
+            id="t", title="T", category=ContentCategory.GAME,
+            description="", run_module="good.module",
+            run_function_name="nonexistent_func",
+        )
+
+        with self.assertLogs("atari_style.core.registry", level="WARNING"):
+            result = m.run_function
+
+        self.assertIsNone(result)
+
     def test_preresolved_callable(self):
         """If _resolved_callable is set, run_function returns it directly."""
         fn = lambda: None
@@ -275,6 +292,19 @@ class TestScanDirectory(unittest.TestCase):
             reg = ContentRegistry()
             count = reg.scan_directory(Path(tmpdir))
             self.assertEqual(count, 0)
+
+    def test_non_dict_run_function(self):
+        """A string run_function value should result in None module/name."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._write_metadata(Path(tmpdir) / "oddgame", {
+                "title": "Odd", "description": "d",
+                "run_function": "some.module.run_game"
+            })
+            reg = ContentRegistry()
+            reg.scan_directory(Path(tmpdir))
+            m = reg.get("oddgame")
+            self.assertIsNone(m.run_module)
+            self.assertIsNone(m.run_function_name)
 
     def test_malformed_json_warning(self):
         with tempfile.TemporaryDirectory() as tmpdir:
