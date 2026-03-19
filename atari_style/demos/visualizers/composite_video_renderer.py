@@ -4,7 +4,8 @@ import os
 import time
 import subprocess
 import math
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
+from atari_style.utils.fonts import load_monospace_font
 
 
 # ANSI color to RGB mapping (Dracula-like theme)
@@ -86,13 +87,7 @@ class CompositeVideoRenderer:
         self.mock_renderer = MockRenderer(width, height)
 
         # Load monospace font
-        try:
-            self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 22)
-        except:
-            try:
-                self.font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf", 22)
-            except:
-                self.font = ImageFont.load_default()
+        self.font = load_monospace_font(22)
 
         # Background color (Dracula)
         self.bg_color = (40, 42, 54)

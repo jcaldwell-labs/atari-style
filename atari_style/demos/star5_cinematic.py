@@ -65,7 +65,7 @@ def get_morphed_palette(progress: float) -> List[Tuple[int, int, int]]:
     # Smooth easing
     eased_t = (1 - math.cos(local_t * math.pi)) / 2
 
-    return [lerp_color(palette1[i], palette2[i], eased_t) for i in range(len(palette1))]
+    return [lerp_color(c1, c2, eased_t) for c1, c2 in zip(palette1, palette2)]
 
 
 # =============================================================================
@@ -359,7 +359,7 @@ def find_monospace_font(size: int):
     for p in paths:
         try:
             return ImageFont.truetype(p, size)
-        except:
+        except (IOError, OSError):
             pass
     return ImageFont.load_default()
 

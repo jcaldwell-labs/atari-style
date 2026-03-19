@@ -18,6 +18,7 @@ import shutil
 import platform
 from typing import Tuple, List, Generator
 from dataclasses import dataclass
+from functools import lru_cache
 from PIL import Image, ImageDraw, ImageFont
 
 
@@ -74,8 +75,9 @@ PATTERNS = {
 }
 
 
+@lru_cache(maxsize=8)
 def find_monospace_font(size: int):
-    """Find a suitable monospace font."""
+    """Find a suitable monospace font (cached to avoid repeated filesystem lookups)."""
     paths = []
     if platform.system() == 'Windows':
         paths = [
@@ -92,7 +94,7 @@ def find_monospace_font(size: int):
     for p in paths:
         try:
             return ImageFont.truetype(p, size)
-        except:
+        except (IOError, OSError):
             pass
     return ImageFont.load_default()
 

@@ -8,7 +8,8 @@ import os
 import time
 import math
 import subprocess
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
+from atari_style.utils.fonts import load_monospace_font
 
 from .interestingness_tracker import InterestingnessTracker, InterestingnessBounds
 
@@ -74,12 +75,8 @@ class ExplorerRenderer:
         self.img_width = width * self.cell_width
         self.img_height = height * self.cell_height
 
-        try:
-            self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 20)
-            self.font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 16)
-        except:
-            self.font = ImageFont.load_default()
-            self.font_small = self.font
+        self.font = load_monospace_font(20)
+        self.font_small = load_monospace_font(16)
 
         self.bg_color = (40, 42, 54)
 
@@ -90,12 +87,10 @@ class ExplorerRenderer:
         draw = ImageDraw.Draw(img)
 
         # Draw source layer (dimmed)
-        for y in range(len(source_buffer)):
-            for x in range(len(source_buffer[0])):
-                char = source_buffer[y][x]
+        for y, (row, color_row) in enumerate(zip(source_buffer, source_colors)):
+            for x, (char, color) in enumerate(zip(row, color_row)):
                 if char == ' ':
                     continue
-                color = source_colors[y][x]
                 rgb = COLOR_MAP.get(color, (100, 100, 100))
                 # Dim the source layer
                 rgb = tuple(int(c * 0.3) for c in rgb)
@@ -104,12 +99,10 @@ class ExplorerRenderer:
                 draw.text((px, py), char, font=self.font, fill=rgb)
 
         # Draw target layer (full brightness)
-        for y in range(len(target_buffer)):
-            for x in range(len(target_buffer[0])):
-                char = target_buffer[y][x]
+        for y, (row, color_row) in enumerate(zip(target_buffer, target_colors)):
+            for x, (char, color) in enumerate(zip(row, color_row)):
                 if char == ' ':
                     continue
-                color = target_colors[y][x]
                 rgb = COLOR_MAP.get(color, (248, 248, 242))
                 px = x * self.cell_width
                 py = y * self.cell_height

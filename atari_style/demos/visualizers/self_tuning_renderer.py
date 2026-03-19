@@ -8,7 +8,8 @@ import os
 import time
 import math
 import subprocess
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
+from atari_style.utils.fonts import load_monospace_font
 
 from .interestingness_tracker import (
     InterestingnessTracker, InterestingnessBounds,
@@ -83,13 +84,7 @@ class SelfTuningVideoRenderer:
         self.mock_renderer = MockRenderer(width, height)
 
         # Load font
-        try:
-            self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 22)
-        except:
-            try:
-                self.font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf", 22)
-            except:
-                self.font = ImageFont.load_default()
+        self.font = load_monospace_font(22)
 
         self.bg_color = (40, 42, 54)
 

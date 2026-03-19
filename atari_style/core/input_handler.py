@@ -159,7 +159,7 @@ class InputHandler:
                 if self.joystick:
                     try:
                         self.joystick.quit()
-                    except:
+                    except (pygame.error, OSError):
                         pass  # Ignore joystick.quit() errors during reconnection cleanup
                     self.joystick = None
 

@@ -1,16 +1,24 @@
 """Terminal Arcade - Main Entry Point.
 
-Launches the main menu system for games, tools, and demos.
+.. deprecated::
+    Use ``python -m atari_style.main`` or ``python run.py`` instead.
 """
 
 import sys
+import warnings
 from pathlib import Path
 from .launcher.game_registry import GameRegistry, GameCategory
 from .launcher.main_menu import EnhancedMenu
 
 
 def main():
-    """Main entry point for Terminal Arcade."""
+    """Main entry point for Terminal Arcade (deprecated)."""
+    warnings.warn(
+        "terminal_arcade.main is deprecated. Use 'python run.py' or "
+        "'python -m atari_style.main' instead. See issue #155.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     base_path = Path(__file__).parent
 
     # Initialize game registry
