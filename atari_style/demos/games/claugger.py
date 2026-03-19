@@ -22,6 +22,22 @@ TARGET_FPS = 30
 SCREEN_WIDTH = 80        # Working column count
 
 # ---------------------------------------------------------------------------
+# Chicken sprite constants
+# ---------------------------------------------------------------------------
+
+CHICKEN_WIDTH = 3        # Character width of each sprite row
+
+# Each entry is a list of 2 strings (top row, bottom row), each exactly
+# CHICKEN_WIDTH characters wide.
+CHICKEN_SPRITES = {
+    "up":    [">^<", "/|\\"],
+    "down":  ["\\|/", ">v<"],
+    "left":  ["<(^", " )>"],
+    "right": ["^)>", "<( "],
+    "idle":  [">Q<", " ^ "],
+}
+
+# ---------------------------------------------------------------------------
 # Vehicle / river-object ASCII art constants
 # ---------------------------------------------------------------------------
 
@@ -125,6 +141,13 @@ class Claugger:
         self.lanes: List[Lane] = self._build_lanes(level=1)
         self.last_time: float = time.time()
         self.running: bool = True
+
+        # Chicken state
+        self.chicken_x: int = (SCREEN_WIDTH - CHICKEN_WIDTH) // 2
+        self.chicken_lane: int = 0
+        self.chicken_facing: str = "up"
+        self.chicken_frame: int = 0
+        self.chicken_hop_timer: float = 0.0
 
     # ------------------------------------------------------------------
     # Lane construction
@@ -256,6 +279,48 @@ class Claugger:
             x += random.uniform(8, 16)
 
     # ------------------------------------------------------------------
+    # Chicken movement
+    # ------------------------------------------------------------------
+
+    def move_chicken(self, dx: int, dy: int) -> None:
+        """Move the chicken by (dx, dy) steps, clamping to valid bounds.
+
+        Lane numbers run 0 (bottom/start) to 12 (top/goal).  Moving up
+        (toward the goal) passes dy=+1; moving down passes dy=-1.
+        Horizontal steps move by CHICKEN_WIDTH characters.
+
+        Args:
+            dx: Horizontal direction: +1 right, -1 left, 0 no change.
+            dy: Vertical direction: +1 up (higher lane), -1 down, 0 no change.
+        """
+        moved = False
+
+        if dy != 0:
+            new_lane = self.chicken_lane + dy
+            new_lane = max(0, min(LANE_COUNT - 1, new_lane))
+            if new_lane != self.chicken_lane:
+                self.chicken_lane = new_lane
+                moved = True
+            if dy > 0:
+                self.chicken_facing = "up"
+            else:
+                self.chicken_facing = "down"
+
+        if dx != 0:
+            new_x = self.chicken_x + dx * CHICKEN_WIDTH
+            new_x = max(0, min(SCREEN_WIDTH - CHICKEN_WIDTH, new_x))
+            if new_x != self.chicken_x:
+                self.chicken_x = new_x
+                moved = True
+            if dx > 0:
+                self.chicken_facing = "right"
+            else:
+                self.chicken_facing = "left"
+
+        if moved:
+            self.chicken_hop_timer = 0.1
+
+    # ------------------------------------------------------------------
     # Game loop helpers
     # ------------------------------------------------------------------
 
@@ -359,6 +424,21 @@ class Claugger:
         # Top border
         self.renderer.draw_text(0, 0, "─" * SCREEN_WIDTH, Color.BRIGHT_WHITE)
 
+        # --- Chicken sprite ---
+        sprite_rows = CHICKEN_SPRITES.get(self.chicken_facing, CHICKEN_SPRITES["idle"])
+        # Calculate terminal row for the chicken's lane (same formula as lanes above)
+        visual_lane = LANE_COUNT - 1 - self.chicken_lane
+        lane_row_start = field_top + visual_lane * ROWS_PER_LANE
+        # Center sprite vertically within the 3 rows of the lane (row offset 0 = top row,
+        # 1 = middle row used for the bottom sprite row so both rows fit neatly)
+        sprite_top_row = lane_row_start  # top row of sprite
+        sprite_bot_row = lane_row_start + 1  # bottom row of sprite
+        chicken_color = Color.BRIGHT_YELLOW
+        if sprite_top_row < term_height - HUD_ROWS - 1:
+            self.renderer.draw_text(self.chicken_x, sprite_top_row, sprite_rows[0], chicken_color)
+        if sprite_bot_row < term_height - HUD_ROWS - 1:
+            self.renderer.draw_text(self.chicken_x, sprite_bot_row, sprite_rows[1], chicken_color)
+
         # HUD rows at the bottom
         hud_y = term_height - HUD_ROWS
         self.renderer.draw_text(0, hud_y, "─" * SCREEN_WIDTH, Color.BRIGHT_WHITE)
@@ -436,6 +516,14 @@ class Claugger:
                 input_type = self.input_handler.get_input(timeout=0.001)
                 if input_type in (InputType.BACK, InputType.QUIT):
                     running = False
+                elif input_type == InputType.UP:
+                    self.move_chicken(0, 1)
+                elif input_type == InputType.DOWN:
+                    self.move_chicken(0, -1)
+                elif input_type == InputType.LEFT:
+                    self.move_chicken(-1, 0)
+                elif input_type == InputType.RIGHT:
+                    self.move_chicken(1, 0)
 
                 self.update(dt)
                 self.draw()

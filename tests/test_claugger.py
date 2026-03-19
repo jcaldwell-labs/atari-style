@@ -50,5 +50,48 @@ class TestTerminalSize(unittest.TestCase):
         self.assertEqual(MIN_TERM_WIDTH, 80)
 
 
+class TestChicken(unittest.TestCase):
+    """Test chicken sprite and movement."""
+
+    def test_chicken_starts_at_lane_0(self):
+        """Chicken starts in the henhouse (lane 0, bottom)."""
+        game = Claugger()
+        self.assertEqual(game.chicken_lane, 0)
+
+    def test_chicken_moves_up(self):
+        """Moving up increments lane by 1."""
+        game = Claugger()
+        game.move_chicken(0, 1)
+        self.assertEqual(game.chicken_lane, 1)
+
+    def test_chicken_cannot_move_below_start(self):
+        """Chicken cannot move below lane 0."""
+        game = Claugger()
+        game.move_chicken(0, -1)
+        self.assertEqual(game.chicken_lane, 0)
+
+    def test_chicken_cannot_move_above_goal(self):
+        """Chicken cannot move above lane 12."""
+        game = Claugger()
+        game.chicken_lane = 12
+        game.move_chicken(0, 1)
+        self.assertEqual(game.chicken_lane, 12)
+
+    def test_chicken_horizontal_movement(self):
+        """Chicken can move left and right within screen bounds."""
+        game = Claugger()
+        start_x = game.chicken_x
+        game.move_chicken(1, 0)
+        self.assertGreater(game.chicken_x, start_x)
+
+    def test_chicken_has_facing_direction(self):
+        """Chicken facing changes with movement."""
+        game = Claugger()
+        game.move_chicken(0, 1)
+        self.assertEqual(game.chicken_facing, "up")
+        game.move_chicken(1, 0)
+        self.assertEqual(game.chicken_facing, "right")
+
+
 if __name__ == "__main__":
     unittest.main()
