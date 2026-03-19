@@ -62,6 +62,15 @@ MOTORCYCLE_SPRITES: List[str] = [
 LOG_CHAR = "="
 TURTLE_CHAR = "@"
 
+DEATH_MESSAGES = [
+    "Fowl play!",
+    "Chicken tender!",
+    "Poultry in motion... denied!",
+    "That's not how you cross the road!",
+    "Hen-ded!",
+    "Clucked out!",
+]
+
 # ---------------------------------------------------------------------------
 # Lane type enum
 # ---------------------------------------------------------------------------
@@ -135,6 +144,14 @@ class Claugger:
     this skeleton provides the world the chicken will inhabit.
     """
 
+    # Game state constants
+    STATE_TITLE = 0
+    STATE_PLAYING = 1
+    STATE_DYING = 2
+    STATE_GAME_OVER = 3
+    STATE_LEVEL_COMPLETE = 4
+    STATE_READY = 5
+
     def __init__(self) -> None:
         self.renderer = Renderer()
         self.input_handler = InputHandler()
@@ -142,12 +159,20 @@ class Claugger:
         self.last_time: float = time.time()
         self.running: bool = True
 
+        # Game state
+        self.state: int = Claugger.STATE_PLAYING
+
         # Chicken state
         self.chicken_x: int = (SCREEN_WIDTH - CHICKEN_WIDTH) // 2
         self.chicken_lane: int = 0
         self.chicken_facing: str = "up"
         self.chicken_frame: int = 0
         self.chicken_hop_timer: float = 0.0
+
+        # Death animation state
+        self.death_type: str = ""
+        self.death_timer: float = 0.0
+        self.death_message: str = ""
 
     # ------------------------------------------------------------------
     # Lane construction
@@ -321,15 +346,150 @@ class Claugger:
             self.chicken_hop_timer = 0.1
 
     # ------------------------------------------------------------------
-    # Game loop helpers
+    # Collision detection
     # ------------------------------------------------------------------
 
-    def update(self, dt: float) -> None:
-        """Advance all scrolling lane objects and tick turtle dive timers.
+    def check_collisions(self) -> None:
+        """Check for collisions between the chicken and lane objects.
+
+        Road lanes: any bounding-box overlap with a vehicle → STATE_DYING (squash).
+        River lanes: chicken must overlap a non-diving object; if not → STATE_DYING
+        (drown). Overlapping a diving turtle also → STATE_DYING (drown).
+        Safe, Start, and Goal lanes have no hazard.
+        """
+        if self.state != Claugger.STATE_PLAYING:
+            return
+
+        lane = self.lanes[self.chicken_lane]
+        chicken_left = self.chicken_x
+        chicken_right = self.chicken_x + CHICKEN_WIDTH
+
+        if lane.lane_type == LaneType.ROAD:
+            for obj in lane.objects:
+                obj_left = obj.x
+                obj_right = obj.x + obj.width
+                # Bounding box overlap: intervals overlap when left < other_right and right > other_left
+                if chicken_left < obj_right and chicken_right > obj_left:
+                    self.state = Claugger.STATE_DYING
+                    self.death_type = "squash"
+                    self.death_timer = 1.5
+                    self.death_message = random.choice(DEATH_MESSAGES)
+                    return
+
+        elif lane.lane_type == LaneType.RIVER:
+            # Check each object for overlap
+            for obj in lane.objects:
+                obj_left = obj.x
+                obj_right = obj.x + obj.width
+                if chicken_left < obj_right and chicken_right > obj_left:
+                    # Overlapping an object — check if it's a diving turtle
+                    if obj.is_diving:
+                        self.state = Claugger.STATE_DYING
+                        self.death_type = "drown"
+                        self.death_timer = 1.5
+                        self.death_message = random.choice(DEATH_MESSAGES)
+                    # Otherwise safe — found a valid platform
+                    return
+            # No overlap with any object → drown
+            self.state = Claugger.STATE_DYING
+            self.death_type = "drown"
+            self.death_timer = 1.5
+            self.death_message = random.choice(DEATH_MESSAGES)
+
+    # ------------------------------------------------------------------
+    # River riding
+    # ------------------------------------------------------------------
+
+    def update_river_riding(self, dt: float) -> None:
+        """Shift the chicken along with any log or non-diving turtle it rides.
+
+        Called only during STATE_PLAYING. If the chicken is in a RIVER lane
+        and overlaps a non-diving object, the chicken is moved by the lane's
+        scroll velocity for this frame.
 
         Args:
             dt: Delta time in seconds since the last update.
         """
+        if self.state != Claugger.STATE_PLAYING:
+            return
+
+        lane = self.lanes[self.chicken_lane]
+        if lane.lane_type != LaneType.RIVER:
+            return
+
+        chicken_left = self.chicken_x
+        chicken_right = self.chicken_x + CHICKEN_WIDTH
+
+        for obj in lane.objects:
+            obj_left = obj.x
+            obj_right = obj.x + obj.width
+            if chicken_left < obj_right and chicken_right > obj_left and not obj.is_diving:
+                drift = lane.speed * lane.direction * dt
+                self.chicken_x += drift
+                # Clamp to screen bounds
+                self.chicken_x = max(0, min(SCREEN_WIDTH - CHICKEN_WIDTH, self.chicken_x))
+                return
+
+    # ------------------------------------------------------------------
+    # Turtle dive updates
+    # ------------------------------------------------------------------
+
+    def update_turtle_dives(self, dt: float) -> None:
+        """Advance turtle dive timers and toggle diving state when phases expire.
+
+        Each turtle object toggles between surfaced (4 s default) and diving
+        (2 s default) phases. The phase durations are fixed so tests can
+        predict transitions reliably.
+
+        Args:
+            dt: Delta time in seconds since the last update.
+        """
+        for lane in self.lanes:
+            if lane.lane_type != LaneType.RIVER:
+                continue
+            for obj in lane.objects:
+                if TURTLE_CHAR not in obj.chars:
+                    continue
+                if obj.dive_phase <= 0:
+                    continue
+                obj.dive_timer += dt
+                if obj.dive_timer >= obj.dive_phase:
+                    obj.is_diving = not obj.is_diving
+                    obj.dive_timer = 0.0
+                    obj.dive_phase = 2.0 if obj.is_diving else 4.0
+
+    # ------------------------------------------------------------------
+    # Game loop helpers
+    # ------------------------------------------------------------------
+
+    def _respawn_chicken(self) -> None:
+        """Reset the chicken to the starting position."""
+        self.chicken_x = (SCREEN_WIDTH - CHICKEN_WIDTH) // 2
+        self.chicken_lane = 0
+        self.chicken_facing = "up"
+
+    def update(self, dt: float) -> None:
+        """Advance game state for one frame.
+
+        During STATE_PLAYING: scrolls lane objects, runs turtle dive timers,
+        river riding, and collision detection.
+        During STATE_DYING: counts down the death animation timer and
+        transitions back to STATE_PLAYING (respawn) when it expires.
+
+        Args:
+            dt: Delta time in seconds since the last update.
+        """
+        if self.state == Claugger.STATE_DYING:
+            self.death_timer -= dt
+            if self.death_timer <= 0.0:
+                self._respawn_chicken()
+                self.state = Claugger.STATE_PLAYING
+            return
+
+        if self.state != Claugger.STATE_PLAYING:
+            return
+
+        # Scroll lane objects
         for lane in self.lanes:
             if lane.speed == 0.0:
                 continue
@@ -348,18 +508,10 @@ class Claugger:
                     if obj.x + obj.width <= 0:
                         obj.x = float(SCREEN_WIDTH)
 
-                # Turtle dive timer
-                if obj.chars.startswith(TURTLE_CHAR) and obj.dive_phase > 0:
-                    obj.dive_timer += dt
-                    if obj.dive_timer >= obj.dive_phase:
-                        obj.dive_timer = 0.0
-                        obj.is_diving = not obj.is_diving
-                        # Swap phase length for the next state
-                        obj.dive_phase = (
-                            random.uniform(1.5, 3.0)
-                            if obj.is_diving
-                            else random.uniform(3.0, 6.0)
-                        )
+        # Update turtle dives, river riding, then collisions
+        self.update_turtle_dives(dt)
+        self.update_river_riding(dt)
+        self.check_collisions()
 
     def draw(self) -> None:
         """Render all lanes and their scrolling objects to the terminal buffer.
@@ -425,19 +577,34 @@ class Claugger:
         self.renderer.draw_text(0, 0, "─" * SCREEN_WIDTH, Color.BRIGHT_WHITE)
 
         # --- Chicken sprite ---
-        sprite_rows = CHICKEN_SPRITES.get(self.chicken_facing, CHICKEN_SPRITES["idle"])
-        # Calculate terminal row for the chicken's lane (same formula as lanes above)
         visual_lane = LANE_COUNT - 1 - self.chicken_lane
         lane_row_start = field_top + visual_lane * ROWS_PER_LANE
-        # Center sprite vertically within the 3 rows of the lane (row offset 0 = top row,
-        # 1 = middle row used for the bottom sprite row so both rows fit neatly)
-        sprite_top_row = lane_row_start  # top row of sprite
-        sprite_bot_row = lane_row_start + 1  # bottom row of sprite
-        chicken_color = Color.BRIGHT_YELLOW
-        if sprite_top_row < term_height - HUD_ROWS - 1:
-            self.renderer.draw_text(self.chicken_x, sprite_top_row, sprite_rows[0], chicken_color)
-        if sprite_bot_row < term_height - HUD_ROWS - 1:
-            self.renderer.draw_text(self.chicken_x, sprite_bot_row, sprite_rows[1], chicken_color)
+        sprite_top_row = lane_row_start
+        sprite_bot_row = lane_row_start + 1
+
+        if self.state == Claugger.STATE_DYING:
+            # Death animation: show a flattened/splashed sprite
+            if self.death_type == "squash":
+                death_sprite = ["%X%", "~~~"]
+            else:
+                death_sprite = ["~o~", "~~~"]
+            death_color = Color.BRIGHT_RED if self.death_type == "squash" else Color.CYAN
+            if sprite_top_row < term_height - HUD_ROWS - 1:
+                self.renderer.draw_text(int(self.chicken_x), sprite_top_row, death_sprite[0], death_color)
+            if sprite_bot_row < term_height - HUD_ROWS - 1:
+                self.renderer.draw_text(int(self.chicken_x), sprite_bot_row, death_sprite[1], death_color)
+            # Centered death message
+            if self.death_message:
+                msg_x = max(0, (SCREEN_WIDTH - len(self.death_message)) // 2)
+                msg_y = term_height // 2
+                self.renderer.draw_text(msg_x, msg_y, self.death_message, Color.BRIGHT_YELLOW)
+        else:
+            sprite_rows = CHICKEN_SPRITES.get(self.chicken_facing, CHICKEN_SPRITES["idle"])
+            chicken_color = Color.BRIGHT_YELLOW
+            if sprite_top_row < term_height - HUD_ROWS - 1:
+                self.renderer.draw_text(int(self.chicken_x), sprite_top_row, sprite_rows[0], chicken_color)
+            if sprite_bot_row < term_height - HUD_ROWS - 1:
+                self.renderer.draw_text(int(self.chicken_x), sprite_bot_row, sprite_rows[1], chicken_color)
 
         # HUD rows at the bottom
         hud_y = term_height - HUD_ROWS
