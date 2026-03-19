@@ -77,7 +77,7 @@ class ExplorerRenderer:
         try:
             self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 20)
             self.font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 16)
-        except:
+        except (IOError, OSError):
             self.font = ImageFont.load_default()
             self.font_small = self.font
 

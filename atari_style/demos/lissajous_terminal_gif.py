@@ -92,7 +92,7 @@ def find_monospace_font(size: int):
     for p in paths:
         try:
             return ImageFont.truetype(p, size)
-        except:
+        except (IOError, OSError):
             pass
     return ImageFont.load_default()
 

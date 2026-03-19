@@ -129,7 +129,7 @@ def render_demo_video(
                 try:
                     font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 32)
                     small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 24)
-                except:
+                except (IOError, OSError):
                     font = ImageFont.load_default()
                     small_font = font
 
@@ -186,7 +186,7 @@ def render_demo_video(
                     draw = ImageDraw.Draw(img)
                     try:
                         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 32)
-                    except:
+                    except (IOError, OSError):
                         font = ImageFont.load_default()
                     draw.text((20, 20), "GPU Mandelbrot", fill=(255, 255, 255), font=font)
 

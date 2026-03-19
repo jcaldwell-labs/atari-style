@@ -94,7 +94,7 @@ class ThemedVideoRenderer:
 
         try:
             self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 22)
-        except:
+        except (IOError, OSError):
             self.font = ImageFont.load_default()
 
     def render_frame(self) -> Image.Image:
