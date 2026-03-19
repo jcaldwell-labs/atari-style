@@ -8,7 +8,10 @@ from .flux_control_patterns import run_pattern_flux
 from .flux_control_rhythm import run_rhythm_flux
 from .flux_control_zen import run_flux_zen
 from .flux_control_explorer import run_flux_explorer
-from .gl_mandelbrot import run_gl_mandelbrot
+try:
+    from .gl_mandelbrot import run_gl_mandelbrot
+except ImportError:
+    run_gl_mandelbrot = None  # type: ignore[assignment]
 
 __all__ = [
     'run_screensaver',
