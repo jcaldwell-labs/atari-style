@@ -4,7 +4,7 @@ import time
 import random
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 from ...core.renderer import Renderer, Color
 from ...core.input_handler import InputHandler, InputType
 
@@ -69,6 +69,14 @@ DEATH_MESSAGES = [
     "That's not how you cross the road!",
     "Hen-ded!",
     "Clucked out!",
+]
+
+KONAMI_SEQUENCE = [
+    InputType.UP, InputType.UP,
+    InputType.DOWN, InputType.DOWN,
+    InputType.LEFT, InputType.RIGHT,
+    InputType.LEFT, InputType.RIGHT,
+    InputType.SELECT, InputType.BACK,
 ]
 
 # ---------------------------------------------------------------------------
@@ -194,7 +202,7 @@ class Claugger:
         self.lanes: List[Lane] = self._build_lanes(level=1)
 
         # Game state
-        self.state: int = Claugger.STATE_PLAYING
+        self.state: int = Claugger.STATE_TITLE
 
         # Chicken state
         self.chicken_x: int = (SCREEN_WIDTH - CHICKEN_WIDTH) // 2
@@ -215,6 +223,45 @@ class Claugger:
         # Egg system
         self.eggs: List[Egg] = []
         self.total_eggs_laid: int = 0
+
+        # Konami Code / Easter eggs
+        self.input_buffer: list = []
+        self.golden_rooster_active: bool = False
+        self.golden_rooster_used: bool = False
+        self.golden_rooster_timer: float = 5.0
+
+        # Road Scholar achievement
+        self.consecutive_deathless_levels: int = 0
+        self.deaths_this_level: int = 0
+        self.road_scholar_triggered: bool = False
+
+    # ------------------------------------------------------------------
+    # Easter egg helpers
+    # ------------------------------------------------------------------
+
+    def record_input(self, input_type: InputType) -> None:
+        """Record an input into the Konami Code rolling buffer.
+
+        Appends the input to a rolling buffer of the last 10 inputs. If the
+        buffer matches the Konami sequence and the golden rooster has not been
+        used this session, the golden rooster mode is activated.
+
+        Args:
+            input_type: The InputType value to record.
+        """
+        self.input_buffer.append(input_type)
+        if len(self.input_buffer) > len(KONAMI_SEQUENCE):
+            self.input_buffer = self.input_buffer[-len(KONAMI_SEQUENCE):]
+
+        if (
+            self.input_buffer == KONAMI_SEQUENCE
+            and not self.golden_rooster_used
+        ):
+            self.golden_rooster_active = True
+            self.golden_rooster_used = True
+            self.golden_rooster_timer = 5.0
+            self._hud_message = "COCKA-DOODLE-CHEAT!"
+            self._hud_message_timer = 3.0
 
     # ------------------------------------------------------------------
     # Lane construction
@@ -508,6 +555,22 @@ class Claugger:
     # Collision detection
     # ------------------------------------------------------------------
 
+    def _trigger_death(self, death_type: str) -> None:
+        """Transition to STATE_DYING and track death count.
+
+        Skip collision effects when golden rooster is active (invincibility).
+
+        Args:
+            death_type: "squash", "drown", or "timeout".
+        """
+        if self.golden_rooster_active:
+            return
+        self.state = Claugger.STATE_DYING
+        self.death_type = death_type
+        self.death_timer = 1.5
+        self.death_message = random.choice(DEATH_MESSAGES)
+        self.deaths_this_level += 1
+
     def check_collisions(self) -> None:
         """Check for collisions between the chicken and lane objects.
 
@@ -529,10 +592,7 @@ class Claugger:
                 obj_right = obj.x + obj.width
                 # Bounding box overlap: intervals overlap when left < other_right and right > other_left
                 if chicken_left < obj_right and chicken_right > obj_left:
-                    self.state = Claugger.STATE_DYING
-                    self.death_type = "squash"
-                    self.death_timer = 1.5
-                    self.death_message = random.choice(DEATH_MESSAGES)
+                    self._trigger_death("squash")
                     return
 
         elif lane.lane_type == LaneType.RIVER:
@@ -543,17 +603,11 @@ class Claugger:
                 if chicken_left < obj_right and chicken_right > obj_left:
                     # Overlapping an object — check if it's a diving turtle
                     if obj.is_diving:
-                        self.state = Claugger.STATE_DYING
-                        self.death_type = "drown"
-                        self.death_timer = 1.5
-                        self.death_message = random.choice(DEATH_MESSAGES)
+                        self._trigger_death("drown")
                     # Otherwise safe — found a valid platform
                     return
             # No overlap with any object → drown
-            self.state = Claugger.STATE_DYING
-            self.death_type = "drown"
-            self.death_timer = 1.5
-            self.death_message = random.choice(DEATH_MESSAGES)
+            self._trigger_death("drown")
 
     # ------------------------------------------------------------------
     # Nest filling and level progression
@@ -590,7 +644,23 @@ class Claugger:
 
         Increments the level counter, rebuilds lane objects scaled to the new
         level, resets nest state, resets the timer, and respawns the chicken.
+        Also checks the Road Scholar achievement: 3 consecutive deathless levels
+        award 5000 bonus points.
         """
+        # Road Scholar tracking
+        if self.deaths_this_level == 0:
+            self.consecutive_deathless_levels += 1
+        else:
+            self.consecutive_deathless_levels = 0
+
+        if self.consecutive_deathless_levels >= 3 and not self.road_scholar_triggered:
+            self.road_scholar_triggered = True
+            self.score += 5000
+            self._hud_message = "Why did the chicken cross the road? To get to the other SIDE of knowledge!"
+            self._hud_message_timer = 4.0
+
+        self.deaths_this_level = 0
+
         self.level += 1
         self.lanes = self._build_lanes(self.level)
         self.nests = [False] * 5
@@ -686,8 +756,12 @@ class Claugger:
         if self.state == Claugger.STATE_DYING:
             self.death_timer -= dt
             if self.death_timer <= 0.0:
-                self._respawn_chicken()
-                self.state = Claugger.STATE_PLAYING
+                self.lives -= 1
+                if self.lives <= 0:
+                    self.state = Claugger.STATE_GAME_OVER
+                else:
+                    self._respawn_chicken()
+                    self.state = Claugger.STATE_PLAYING
             return
 
         if self.state == Claugger.STATE_LEVEL_COMPLETE:
@@ -696,17 +770,23 @@ class Claugger:
                 self.next_level()
             return
 
+        if self.state in (Claugger.STATE_TITLE, Claugger.STATE_GAME_OVER):
+            return
+
         if self.state != Claugger.STATE_PLAYING:
             return
+
+        # Golden rooster countdown (invincibility timer)
+        if self.golden_rooster_active:
+            self.golden_rooster_timer -= dt
+            if self.golden_rooster_timer <= 0.0:
+                self.golden_rooster_active = False
 
         # Count down egg timer
         self.timer -= dt
         if self.timer <= 0.0:
             self.timer = 0.0
-            self.state = Claugger.STATE_DYING
-            self.death_type = "timeout"
-            self.death_timer = 1.5
-            self.death_message = random.choice(DEATH_MESSAGES)
+            self._trigger_death("timeout")
             return
 
         # Decay HUD message timer
@@ -744,6 +824,109 @@ class Claugger:
         if self.state == Claugger.STATE_PLAYING and self.chicken_lane == LANE_COUNT - 1:
             self.fill_nest()
 
+    def _draw_title_screen(self) -> None:
+        """Render the title screen with ASCII art and prompt."""
+        self.renderer.clear_buffer()
+        term_height = self.renderer.height
+        term_width = self.renderer.width
+
+        title_art = [
+            " ██████╗██╗      █████╗ ██╗   ██╗ ██████╗  ██████╗ ███████╗██████╗ ",
+            "██╔════╝██║     ██╔══██╗██║   ██║██╔════╝ ██╔════╝ ██╔════╝██╔══██╗",
+            "██║     ██║     ███████║██║   ██║██║  ███╗██║  ███╗█████╗  ██████╔╝",
+            "██║     ██║     ██╔══██║██║   ██║██║   ██║██║   ██║██╔══╝  ██╔══██╗",
+            "╚██████╗███████╗██║  ██║╚██████╔╝╚██████╔╝╚██████╔╝███████╗██║  ██║",
+            " ╚═════╝╚══════╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝  ╚═════╝╚══════╝╚═╝  ╚═╝",
+        ]
+        chicken_art = [
+            "   >Q<   ",
+            "   /|\\   ",
+            "  / | \\  ",
+        ]
+        start_y = max(1, term_height // 2 - 8)
+
+        for i, line in enumerate(title_art):
+            x = max(0, (term_width - len(line)) // 2)
+            self.renderer.draw_text(x, start_y + i, line, Color.BRIGHT_YELLOW)
+
+        chk_y = start_y + len(title_art) + 1
+        for i, line in enumerate(chicken_art):
+            x = max(0, (term_width - len(line)) // 2)
+            self.renderer.draw_text(x, chk_y + i, line, Color.BRIGHT_GREEN)
+
+        tagline = "Why did the chicken cross the road?"
+        press_enter = "Press ENTER to start"
+        quit_hint = "Press Q to quit"
+
+        tl_x = max(0, (term_width - len(tagline)) // 2)
+        pe_x = max(0, (term_width - len(press_enter)) // 2)
+        qi_x = max(0, (term_width - len(quit_hint)) // 2)
+
+        self.renderer.draw_text(tl_x, chk_y + len(chicken_art) + 1, tagline, Color.CYAN)
+        self.renderer.draw_text(pe_x, chk_y + len(chicken_art) + 3, press_enter, Color.BRIGHT_WHITE)
+        self.renderer.draw_text(qi_x, chk_y + len(chicken_art) + 4, quit_hint, Color.BRIGHT_BLACK)
+
+        self.renderer.render()
+
+    def _draw_game_over_screen(self) -> None:
+        """Render the game over screen with final stats."""
+        self.renderer.clear_buffer()
+        term_height = self.renderer.height
+        term_width = self.renderer.width
+
+        header = "THE ROOST IS COOKED"
+        start_y = max(1, term_height // 2 - 6)
+
+        h_x = max(0, (term_width - len(header)) // 2)
+        self.renderer.draw_text(h_x, start_y, header, Color.BRIGHT_RED)
+
+        stats = [
+            f"Final Score:  {self.score:,}",
+            f"Level Reached: {self.level}",
+            f"Eggs Laid:    {self.total_eggs_laid}",
+            f"Nests Filled: {self.nests_filled}",
+        ]
+        for i, stat in enumerate(stats):
+            sx = max(0, (term_width - len(stat)) // 2)
+            self.renderer.draw_text(sx, start_y + 2 + i, stat, Color.BRIGHT_WHITE)
+
+        play_again = "Press ENTER to play again"
+        pa_x = max(0, (term_width - len(play_again)) // 2)
+        self.renderer.draw_text(pa_x, start_y + 2 + len(stats) + 2, play_again, Color.BRIGHT_GREEN)
+
+        self.renderer.render()
+
+    def _reset_game(self) -> None:
+        """Reset all game state for a fresh playthrough."""
+        self.score = 0
+        self.lives = 3
+        self.level = 1
+        self.timer = 60.0
+        self.nests_filled = 0
+        self.nests = [False] * 5
+        self.highest_lane_this_life = 0
+        self._level_complete_timer = 0.0
+        self.lanes = self._build_lanes(level=1)
+        self.chicken_x = (SCREEN_WIDTH - CHICKEN_WIDTH) // 2
+        self.chicken_lane = 0
+        self.chicken_facing = "up"
+        self.chicken_frame = 0
+        self.chicken_hop_timer = 0.0
+        self.death_type = ""
+        self.death_timer = 0.0
+        self.death_message = ""
+        self._hud_message = ""
+        self._hud_message_timer = 0.0
+        self.eggs = []
+        self.total_eggs_laid = 0
+        self.input_buffer = []
+        self.golden_rooster_active = False
+        self.golden_rooster_used = False
+        self.golden_rooster_timer = 5.0
+        self.consecutive_deathless_levels = 0
+        self.deaths_this_level = 0
+        self.road_scholar_triggered = False
+
     def draw(self) -> None:
         """Render all lanes and their scrolling objects to the terminal buffer.
 
@@ -751,6 +934,14 @@ class Claugger:
         playing field; lane 12 (GOAL) is at the top.  A 1-row border and the
         HUD occupy the remaining rows.
         """
+        if self.state == Claugger.STATE_TITLE:
+            self._draw_title_screen()
+            return
+
+        if self.state == Claugger.STATE_GAME_OVER:
+            self._draw_game_over_screen()
+            return
+
         self.renderer.clear_buffer()
 
         term_height = self.renderer.height
@@ -941,16 +1132,29 @@ class Claugger:
                 dt = min(dt, 0.1)  # Cap to avoid spiral of death
 
                 input_type = self.input_handler.get_input(timeout=0.001)
+
+                # Always record input for Konami Code detection
+                if input_type not in (InputType.NONE, None):
+                    self.record_input(input_type)
+
                 if input_type in (InputType.BACK, InputType.QUIT):
                     running = False
-                elif input_type == InputType.UP:
-                    self.move_chicken(0, 1)
-                elif input_type == InputType.DOWN:
-                    self.move_chicken(0, -1)
-                elif input_type == InputType.LEFT:
-                    self.move_chicken(-1, 0)
-                elif input_type == InputType.RIGHT:
-                    self.move_chicken(1, 0)
+                elif self.state == Claugger.STATE_TITLE:
+                    if input_type == InputType.SELECT:
+                        self.state = Claugger.STATE_PLAYING
+                elif self.state == Claugger.STATE_GAME_OVER:
+                    if input_type == InputType.SELECT:
+                        self._reset_game()
+                        self.state = Claugger.STATE_TITLE
+                elif self.state == Claugger.STATE_PLAYING:
+                    if input_type == InputType.UP:
+                        self.move_chicken(0, 1)
+                    elif input_type == InputType.DOWN:
+                        self.move_chicken(0, -1)
+                    elif input_type == InputType.LEFT:
+                        self.move_chicken(-1, 0)
+                    elif input_type == InputType.RIGHT:
+                        self.move_chicken(1, 0)
 
                 self.update(dt)
                 self.draw()

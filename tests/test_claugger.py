@@ -6,6 +6,7 @@ from atari_style.demos.games.claugger import (
     Lane, LaneType, LaneObject, Egg, Claugger,
     LANE_COUNT, ROWS_PER_LANE, TURTLE_CHAR,
 )
+from atari_style.core.input_handler import InputType
 
 
 class TestLaneModel(unittest.TestCase):
@@ -317,6 +318,56 @@ class TestEggs(unittest.TestCase):
         game.lay_egg_at(lane=2, x=20.0)
         points = game.score_eggs()
         self.assertEqual(points, 400)
+
+
+class TestEasterEggs(unittest.TestCase):
+    """Test easter egg triggers."""
+
+    def test_konami_code_detection(self):
+        """Konami sequence activates golden rooster."""
+        game = Claugger()
+        sequence = [
+            InputType.UP, InputType.UP,
+            InputType.DOWN, InputType.DOWN,
+            InputType.LEFT, InputType.RIGHT,
+            InputType.LEFT, InputType.RIGHT,
+            InputType.SELECT, InputType.BACK,
+        ]
+        for inp in sequence:
+            game.record_input(inp)
+        self.assertTrue(game.golden_rooster_active)
+
+    def test_konami_code_single_use(self):
+        """Golden rooster can only be triggered once per session."""
+        game = Claugger()
+        game.golden_rooster_used = True
+        sequence = [
+            InputType.UP, InputType.UP,
+            InputType.DOWN, InputType.DOWN,
+            InputType.LEFT, InputType.RIGHT,
+            InputType.LEFT, InputType.RIGHT,
+            InputType.SELECT, InputType.BACK,
+        ]
+        for inp in sequence:
+            game.record_input(inp)
+        self.assertFalse(game.golden_rooster_active)
+
+    def test_road_scholar_triggers_after_3_deathless_levels(self):
+        """Road Scholar triggers after completing 3 levels without dying."""
+        game = Claugger()
+        game.consecutive_deathless_levels = 2
+        game.deaths_this_level = 0
+        game.next_level()
+        self.assertTrue(game.road_scholar_triggered)
+
+    def test_road_scholar_awards_bonus(self):
+        """Road Scholar awards 5000 points."""
+        game = Claugger()
+        game.consecutive_deathless_levels = 2
+        game.deaths_this_level = 0
+        score_before = game.score
+        game.next_level()
+        self.assertEqual(game.score - score_before, 5000)
 
 
 if __name__ == "__main__":
