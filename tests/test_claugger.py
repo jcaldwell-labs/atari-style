@@ -193,5 +193,73 @@ class TestCollision(unittest.TestCase):
         self.assertTrue(turtle.is_diving)
 
 
+class TestScoring(unittest.TestCase):
+    """Test scoring, lives, and level progression."""
+
+    def test_initial_score_is_zero(self):
+        game = Claugger()
+        self.assertEqual(game.score, 0)
+
+    def test_initial_lives_is_three(self):
+        game = Claugger()
+        self.assertEqual(game.lives, 3)
+
+    def test_forward_hop_awards_points(self):
+        """Moving forward awards 10 points per new lane."""
+        game = Claugger()
+        game.state = Claugger.STATE_PLAYING
+        game.move_chicken(0, 1)
+        self.assertEqual(game.score, 10)
+
+    def test_reaching_nest_awards_bonus(self):
+        """Filling a nest awards 50 points + time bonus."""
+        game = Claugger()
+        game.state = Claugger.STATE_PLAYING
+        game.chicken_lane = 12
+        game.fill_nest()
+        self.assertGreater(game.score, 50)
+
+    def test_five_nests_completes_level(self):
+        """Filling all 5 nests triggers level complete."""
+        game = Claugger()
+        game.state = Claugger.STATE_PLAYING
+        game.nests_filled = 4
+        game.chicken_lane = 12
+        game.fill_nest()
+        self.assertEqual(game.state, Claugger.STATE_LEVEL_COMPLETE)
+
+    def test_timer_resets_on_death(self):
+        """Timer resets when chicken respawns."""
+        game = Claugger()
+        game.timer = 30.0
+        game._respawn_chicken()
+        self.assertEqual(game.timer, 60.0)
+
+    def test_timer_does_not_reset_on_nest_fill(self):
+        """Timer keeps running when a nest is filled mid-level."""
+        game = Claugger()
+        game.state = Claugger.STATE_PLAYING
+        game.timer = 30.0
+        game.chicken_lane = 12
+        game.fill_nest()
+        self.assertLessEqual(game.timer, 30.0)
+
+    def test_timer_expiry_kills_chicken(self):
+        """Chicken dies when timer reaches zero."""
+        game = Claugger()
+        game.state = Claugger.STATE_PLAYING
+        game.timer = 0.01
+        game.update(0.02)
+        self.assertEqual(game.state, Claugger.STATE_DYING)
+
+    def test_level_progression_increases_speed(self):
+        """Higher levels have faster lane speeds."""
+        game = Claugger()
+        level1_speeds = [l.speed for l in game.lanes if l.lane_type == LaneType.ROAD]
+        game.next_level()
+        level2_speeds = [l.speed for l in game.lanes if l.lane_type == LaneType.ROAD]
+        self.assertTrue(all(s2 > s1 for s1, s2 in zip(level1_speeds, level2_speeds)))
+
+
 if __name__ == "__main__":
     unittest.main()

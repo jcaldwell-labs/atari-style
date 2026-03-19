@@ -155,9 +155,24 @@ class Claugger:
     def __init__(self) -> None:
         self.renderer = Renderer()
         self.input_handler = InputHandler()
-        self.lanes: List[Lane] = self._build_lanes(level=1)
         self.last_time: float = time.time()
         self.running: bool = True
+
+        # Scoring / progression
+        self.score: int = 0
+        self.lives: int = 3
+        self.level: int = 1
+        self.timer: float = 60.0
+        self.nests_filled: int = 0
+        self.nests: List[bool] = [False] * 5
+
+        # Tracks the highest lane reached this life (prevents re-scoring same lane)
+        self.highest_lane_this_life: int = 0
+
+        # Level-complete display timer
+        self._level_complete_timer: float = 0.0
+
+        self.lanes: List[Lane] = self._build_lanes(level=1)
 
         # Game state
         self.state: int = Claugger.STATE_PLAYING
@@ -173,6 +188,10 @@ class Claugger:
         self.death_type: str = ""
         self.death_timer: float = 0.0
         self.death_message: str = ""
+
+        # HUD message (level complete, etc.)
+        self._hud_message: str = ""
+        self._hud_message_timer: float = 0.0
 
     # ------------------------------------------------------------------
     # Lane construction
@@ -326,6 +345,11 @@ class Claugger:
             if new_lane != self.chicken_lane:
                 self.chicken_lane = new_lane
                 moved = True
+                # Award 10 points per new highest lane reached
+                if dy > 0 and self.chicken_lane > self.highest_lane_this_life:
+                    points = (self.chicken_lane - self.highest_lane_this_life) * 10
+                    self.score += points
+                    self.highest_lane_this_life = self.chicken_lane
             if dy > 0:
                 self.chicken_facing = "up"
             else:
@@ -397,6 +421,48 @@ class Claugger:
             self.death_message = random.choice(DEATH_MESSAGES)
 
     # ------------------------------------------------------------------
+    # Nest filling and level progression
+    # ------------------------------------------------------------------
+
+    def fill_nest(self) -> None:
+        """Fill the current nest when the chicken reaches the GOAL lane.
+
+        Awards 50 base points plus a time bonus equal to twice the remaining
+        timer seconds.  After filling, the chicken respawns at lane 0 without
+        resetting the timer.  When all 5 nests are filled the game transitions
+        to STATE_LEVEL_COMPLETE.
+        """
+        time_bonus = int(self.timer * 2)
+        self.score += 50 + time_bonus
+
+        self.nests[self.nests_filled] = True
+        self.nests_filled += 1
+
+        if self.nests_filled >= 5:
+            self.state = Claugger.STATE_LEVEL_COMPLETE
+            self._level_complete_timer = 2.0
+            self._hud_message = f"EGG-cellent! Level {self.level} complete!"
+            self._hud_message_timer = 2.0
+        else:
+            # Respawn without resetting the timer
+            _saved_timer = self.timer
+            self._respawn_chicken()
+            self.timer = _saved_timer
+
+    def next_level(self) -> None:
+        """Advance to the next level, rebuilding lanes with increased speed.
+
+        Increments the level counter, rebuilds lane objects scaled to the new
+        level, resets nest state, resets the timer, and respawns the chicken.
+        """
+        self.level += 1
+        self.lanes = self._build_lanes(self.level)
+        self.nests = [False] * 5
+        self.nests_filled = 0
+        self._respawn_chicken()
+        self.state = Claugger.STATE_PLAYING
+
+    # ------------------------------------------------------------------
     # River riding
     # ------------------------------------------------------------------
 
@@ -463,10 +529,12 @@ class Claugger:
     # ------------------------------------------------------------------
 
     def _respawn_chicken(self) -> None:
-        """Reset the chicken to the starting position."""
+        """Reset the chicken to the starting position and restore the timer."""
         self.chicken_x = (SCREEN_WIDTH - CHICKEN_WIDTH) // 2
         self.chicken_lane = 0
         self.chicken_facing = "up"
+        self.timer = 60.0
+        self.highest_lane_this_life = 0
 
     def update(self, dt: float) -> None:
         """Advance game state for one frame.
@@ -486,8 +554,30 @@ class Claugger:
                 self.state = Claugger.STATE_PLAYING
             return
 
+        if self.state == Claugger.STATE_LEVEL_COMPLETE:
+            self._level_complete_timer -= dt
+            if self._level_complete_timer <= 0.0:
+                self.next_level()
+            return
+
         if self.state != Claugger.STATE_PLAYING:
             return
+
+        # Count down egg timer
+        self.timer -= dt
+        if self.timer <= 0.0:
+            self.timer = 0.0
+            self.state = Claugger.STATE_DYING
+            self.death_type = "timeout"
+            self.death_timer = 1.5
+            self.death_message = random.choice(DEATH_MESSAGES)
+            return
+
+        # Decay HUD message timer
+        if self._hud_message_timer > 0.0:
+            self._hud_message_timer -= dt
+            if self._hud_message_timer <= 0.0:
+                self._hud_message = ""
 
         # Scroll lane objects
         for lane in self.lanes:
@@ -512,6 +602,10 @@ class Claugger:
         self.update_turtle_dives(dt)
         self.update_river_riding(dt)
         self.check_collisions()
+
+        # Auto-fill nest when chicken reaches the GOAL lane
+        if self.state == Claugger.STATE_PLAYING and self.chicken_lane == LANE_COUNT - 1:
+            self.fill_nest()
 
     def draw(self) -> None:
         """Render all lanes and their scrolling objects to the terminal buffer.
@@ -609,11 +703,29 @@ class Claugger:
         # HUD rows at the bottom
         hud_y = term_height - HUD_ROWS
         self.renderer.draw_text(0, hud_y, "─" * SCREEN_WIDTH, Color.BRIGHT_WHITE)
-        self.renderer.draw_text(
-            2, hud_y + 1,
-            "CLAUGGER  |  Arrows/WASD: Move  |  Q/ESC: Quit",
-            Color.BRIGHT_YELLOW,
-        )
+
+        # Row 1: Score (left), Level (center), Lives (right)
+        score_text = f"EGGS-cellent: {self.score:,}"
+        level_text = f"Crossing #{self.level}"
+        lives_text = ">Q< " * self.lives
+
+        level_x = max(0, (SCREEN_WIDTH - len(level_text)) // 2)
+        lives_x = max(0, SCREEN_WIDTH - len(lives_text))
+
+        self.renderer.draw_text(2, hud_y + 1, score_text, Color.BRIGHT_YELLOW)
+        self.renderer.draw_text(level_x, hud_y + 1, level_text, Color.BRIGHT_CYAN)
+        self.renderer.draw_text(lives_x, hud_y + 1, lives_text, Color.BRIGHT_GREEN)
+
+        # Row 2: Egg timer bar + HUD message
+        bar_width = 40
+        filled = int(bar_width * max(0.0, self.timer) / 60.0)
+        timer_bar = "█" * filled + "░" * (bar_width - filled)
+        timer_label = f"Egg Timer: [{timer_bar}]"
+        self.renderer.draw_text(2, hud_y + 2, timer_label, Color.BRIGHT_RED)
+
+        if self._hud_message:
+            msg_x = max(0, SCREEN_WIDTH - len(self._hud_message) - 2)
+            self.renderer.draw_text(msg_x, hud_y + 2, self._hud_message, Color.BRIGHT_MAGENTA)
 
         self.renderer.render()
 
