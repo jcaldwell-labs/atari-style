@@ -3,7 +3,7 @@
 import random
 import unittest
 from atari_style.demos.games.claugger import (
-    Lane, LaneType, LaneObject, Claugger,
+    Lane, LaneType, LaneObject, Egg, Claugger,
     LANE_COUNT, ROWS_PER_LANE, TURTLE_CHAR,
 )
 
@@ -259,6 +259,64 @@ class TestScoring(unittest.TestCase):
         game.next_level()
         level2_speeds = [l.speed for l in game.lanes if l.lane_type == LaneType.ROAD]
         self.assertTrue(all(s2 > s1 for s1, s2 in zip(level1_speeds, level2_speeds)))
+
+
+class TestEggs(unittest.TestCase):
+    """Test egg-laying bonus system."""
+
+    def test_egg_not_laid_on_safe_median(self):
+        """No eggs on safe zones."""
+        game = Claugger()
+        game.chicken_lane = 6  # Safe median
+        game.try_lay_egg()
+        self.assertEqual(len(game.eggs), 0)
+
+    def test_egg_laid_on_road(self):
+        """Eggs can be laid on road lanes."""
+        game = Claugger()
+        game.chicken_lane = 1
+        game.lay_egg()
+        self.assertEqual(len(game.eggs), 1)
+        self.assertEqual(game.eggs[0].lane, 1)
+
+    def test_egg_on_river_has_attached_object(self):
+        """Eggs on river objects are attached to the object."""
+        game = Claugger()
+        game.chicken_lane = 7
+        # Place chicken on a log
+        log = game.lanes[7].objects[0]
+        log.x = float(game.chicken_x)
+        log.is_diving = False
+        game.lay_egg()
+        self.assertEqual(len(game.eggs), 1)
+        self.assertIsNotNone(game.eggs[0].attached_object)
+
+    def test_egg_squashed_by_vehicle(self):
+        """Vehicles destroy eggs on road lanes."""
+        game = Claugger()
+        game.chicken_lane = 1
+        game.lay_egg()
+        egg = game.eggs[0]
+        # Move a vehicle onto the egg
+        game.lanes[1].objects[0].x = egg.x
+        game.lanes[1].objects[0].width = 4
+        game.update_eggs(0.1)
+        self.assertTrue(egg.squashed)
+
+    def test_ten_eggs_award_extra_life(self):
+        """Collecting 10 eggs gives an extra life."""
+        game = Claugger()
+        game.total_eggs_laid = 9
+        game.lay_egg()
+        self.assertEqual(game.lives, 4)  # Started with 3
+
+    def test_eggs_award_points_on_level_complete(self):
+        """Surviving eggs are worth 200 points each on level complete."""
+        game = Claugger()
+        game.lay_egg_at(lane=1, x=10.0)
+        game.lay_egg_at(lane=2, x=20.0)
+        points = game.score_eggs()
+        self.assertEqual(points, 400)
 
 
 if __name__ == "__main__":

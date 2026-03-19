@@ -131,6 +131,25 @@ class Lane:
     objects: List[LaneObject] = field(default_factory=list)
 
 
+@dataclass
+class Egg:
+    """An egg laid by the chicken on a lane.
+
+    Args:
+        x: Horizontal position of the egg.
+        lane: Lane index where the egg was laid.
+        attached_object: The river object this egg rides on, or None for road eggs.
+        squashed: True when a vehicle has run over this egg.
+        splat_timer: Elapsed time since squashing (for removal delay).
+    """
+
+    x: float
+    lane: int
+    attached_object: LaneObject = None
+    squashed: bool = False
+    splat_timer: float = 0.0
+
+
 # ---------------------------------------------------------------------------
 # Main game class
 # ---------------------------------------------------------------------------
@@ -192,6 +211,10 @@ class Claugger:
         # HUD message (level complete, etc.)
         self._hud_message: str = ""
         self._hud_message_timer: float = 0.0
+
+        # Egg system
+        self.eggs: List[Egg] = []
+        self.total_eggs_laid: int = 0
 
     # ------------------------------------------------------------------
     # Lane construction
@@ -368,6 +391,118 @@ class Claugger:
 
         if moved:
             self.chicken_hop_timer = 0.1
+            self.try_lay_egg()
+
+    # ------------------------------------------------------------------
+    # Egg system
+    # ------------------------------------------------------------------
+
+    def try_lay_egg(self) -> None:
+        """Attempt to lay an egg with a 5% chance per hop.
+
+        Eggs are not laid on SAFE, START, or GOAL lanes.
+        """
+        lane = self.lanes[self.chicken_lane]
+        if lane.lane_type in (LaneType.SAFE, LaneType.START, LaneType.GOAL):
+            return
+        if random.random() < 0.05:
+            self.lay_egg()
+
+    def lay_egg(self) -> None:
+        """Lay an egg at the chicken's current position.
+
+        For RIVER lanes, the egg is attached to whichever object the chicken
+        is standing on (so it scrolls with the object).  Increments
+        total_eggs_laid and awards an extra life every 10 eggs.
+        """
+        lane = self.lanes[self.chicken_lane]
+        attached: LaneObject = None
+
+        if lane.lane_type == LaneType.RIVER:
+            chicken_left = self.chicken_x
+            chicken_right = self.chicken_x + CHICKEN_WIDTH
+            for obj in lane.objects:
+                obj_left = obj.x
+                obj_right = obj.x + obj.width
+                if chicken_left < obj_right and chicken_right > obj_left and not obj.is_diving:
+                    attached = obj
+                    break
+
+        egg = Egg(x=float(self.chicken_x), lane=self.chicken_lane, attached_object=attached)
+        self.eggs.append(egg)
+        self.total_eggs_laid += 1
+
+        if self.total_eggs_laid % 10 == 0:
+            self.lives += 1
+            self._hud_message = "EGGS-tra life!"
+            self._hud_message_timer = 2.0
+
+    def lay_egg_at(self, lane: int, x: float) -> None:
+        """Place an egg deterministically at a given lane and x position.
+
+        This helper is used by tests and special game events. It does not
+        increment total_eggs_laid or check for extra-life milestones.
+
+        Args:
+            lane: Lane index for the egg.
+            x: Horizontal position of the egg.
+        """
+        egg = Egg(x=x, lane=lane)
+        self.eggs.append(egg)
+
+    def update_eggs(self, dt: float) -> None:
+        """Update all eggs: check for vehicle squashing and river scrolling.
+
+        Road eggs: destroyed when a vehicle bounding box overlaps the egg x.
+        River eggs: x position follows their attached_object; removed when the
+        object scrolls off-screen.
+        Squashed eggs linger for 0.5 s (splat animation) then are removed.
+
+        Args:
+            dt: Delta time in seconds since the last update.
+        """
+        eggs_to_remove = []
+
+        for egg in self.eggs:
+            if egg.squashed:
+                egg.splat_timer += dt
+                if egg.splat_timer >= 0.5:
+                    eggs_to_remove.append(egg)
+                continue
+
+            lane = self.lanes[egg.lane]
+
+            if lane.lane_type == LaneType.ROAD:
+                for obj in lane.objects:
+                    obj_left = obj.x
+                    obj_right = obj.x + obj.width
+                    # Egg is a single-character point; check if egg.x falls inside obj
+                    if obj_left <= egg.x < obj_right:
+                        egg.squashed = True
+                        break
+
+            elif lane.lane_type == LaneType.RIVER and egg.attached_object is not None:
+                obj = egg.attached_object
+                egg.x = obj.x
+                # Remove if object scrolled fully off-screen
+                if obj.x + obj.width < 0 or obj.x >= SCREEN_WIDTH:
+                    eggs_to_remove.append(egg)
+
+        for egg in eggs_to_remove:
+            if egg in self.eggs:
+                self.eggs.remove(egg)
+
+    def score_eggs(self) -> int:
+        """Score all surviving (non-squashed) eggs at 200 points each.
+
+        Clears the egg list after scoring.
+
+        Returns:
+            Total points awarded for surviving eggs.
+        """
+        points = sum(200 for egg in self.eggs if not egg.squashed)
+        self.eggs.clear()
+        return points
 
     # ------------------------------------------------------------------
     # Collision detection
@@ -439,6 +574,7 @@ class Claugger:
         self.nests_filled += 1
 
         if self.nests_filled >= 5:
+            self.score += self.score_eggs()
             self.state = Claugger.STATE_LEVEL_COMPLETE
             self._level_complete_timer = 2.0
             self._hud_message = f"EGG-cellent! Level {self.level} complete!"
@@ -601,6 +737,7 @@ class Claugger:
         # Update turtle dives, river riding, then collisions
         self.update_turtle_dives(dt)
         self.update_river_riding(dt)
+        self.update_eggs(dt)
         self.check_collisions()
 
         # Auto-fill nest when chicken reaches the GOAL lane
@@ -699,6 +836,17 @@ class Claugger:
                 self.renderer.draw_text(int(self.chicken_x), sprite_top_row, sprite_rows[0], chicken_color)
             if sprite_bot_row < term_height - HUD_ROWS - 1:
                 self.renderer.draw_text(int(self.chicken_x), sprite_bot_row, sprite_rows[1], chicken_color)
+
+        # Draw eggs
+        for egg in self.eggs:
+            visual_lane = LANE_COUNT - 1 - egg.lane
+            egg_row = field_top + visual_lane * ROWS_PER_LANE + 1
+            egg_x = int(egg.x)
+            if 0 <= egg_x < SCREEN_WIDTH and egg_row < term_height - HUD_ROWS - 1:
+                if egg.squashed:
+                    self.renderer.set_pixel(egg_x, egg_row, "*", Color.BRIGHT_RED)
+                else:
+                    self.renderer.set_pixel(egg_x, egg_row, "o", Color.YELLOW)
 
         # HUD rows at the bottom
         hud_y = term_height - HUD_ROWS
