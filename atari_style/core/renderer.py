@@ -18,8 +18,12 @@ class Renderer:
 
     def clear_buffer(self):
         """Clear the rendering buffer."""
-        self.buffer = [[' ' for _ in range(self.width)] for _ in range(self.height)]
-        self.color_buffer = [[None for _ in range(self.width)] for _ in range(self.height)]
+        for row in self.buffer:
+            for i in range(len(row)):
+                row[i] = ' '
+        for row in self.color_buffer:
+            for i in range(len(row)):
+                row[i] = None
 
     def set_pixel(self, x: int, y: int, char: str = '█', color: Optional[str] = None):
         """Set a character in the buffer at the given position."""
