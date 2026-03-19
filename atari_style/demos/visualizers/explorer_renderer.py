@@ -90,12 +90,10 @@ class ExplorerRenderer:
         draw = ImageDraw.Draw(img)
 
         # Draw source layer (dimmed)
-        for y in range(len(source_buffer)):
-            for x in range(len(source_buffer[0])):
-                char = source_buffer[y][x]
+        for y, (row, color_row) in enumerate(zip(source_buffer, source_colors)):
+            for x, (char, color) in enumerate(zip(row, color_row)):
                 if char == ' ':
                     continue
-                color = source_colors[y][x]
                 rgb = COLOR_MAP.get(color, (100, 100, 100))
                 # Dim the source layer
                 rgb = tuple(int(c * 0.3) for c in rgb)
@@ -104,12 +102,10 @@ class ExplorerRenderer:
                 draw.text((px, py), char, font=self.font, fill=rgb)
 
         # Draw target layer (full brightness)
-        for y in range(len(target_buffer)):
-            for x in range(len(target_buffer[0])):
-                char = target_buffer[y][x]
+        for y, (row, color_row) in enumerate(zip(target_buffer, target_colors)):
+            for x, (char, color) in enumerate(zip(row, color_row)):
                 if char == ' ':
                     continue
-                color = target_colors[y][x]
                 rgb = COLOR_MAP.get(color, (248, 248, 242))
                 px = x * self.cell_width
                 py = y * self.cell_height
