@@ -25,6 +25,10 @@ CONFIG_FILE = CONFIG_DIR / 'config.json'
 DEFAULT_CHAR_ASPECT = 0.5  # Width/height ratio (char height is ~2x char width)
 
 
+CHAR_ASPECT_MIN = 0.2
+CHAR_ASPECT_MAX = 1.0
+
+
 @dataclass
 class Config:
     """Application configuration settings.
@@ -32,9 +36,22 @@ class Config:
     Attributes:
         char_aspect: Terminal character aspect ratio (width/height).
                     Default is 0.5 meaning chars are ~2x taller than wide.
+                    Valid range: 0.2 to 1.0.
     """
 
     char_aspect: float = DEFAULT_CHAR_ASPECT
+
+    def __post_init__(self) -> None:
+        """Validate field values after initialization."""
+        if not isinstance(self.char_aspect, (int, float)):
+            raise TypeError(
+                f"char_aspect must be a number, got {type(self.char_aspect).__name__}"
+            )
+        if not (CHAR_ASPECT_MIN <= self.char_aspect <= CHAR_ASPECT_MAX):
+            raise ValueError(
+                f"char_aspect must be {CHAR_ASPECT_MIN}-{CHAR_ASPECT_MAX}, "
+                f"got {self.char_aspect}"
+            )
 
     @classmethod
     def load(cls) -> 'Config':
@@ -55,7 +72,7 @@ class Config:
                     if not isinstance(filtered_data['char_aspect'], (int, float)):
                         return cls()  # Return defaults for invalid type
                 return cls(**filtered_data)
-            except (json.JSONDecodeError, TypeError):
+            except (json.JSONDecodeError, TypeError, ValueError):
                 pass
         return cls()
 
