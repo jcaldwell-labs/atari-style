@@ -18,7 +18,7 @@ def _build_registry() -> ContentRegistry:
     Content unique to atari_style/ (flux control variants, tools) stays as
     register_callable() since those directories lack metadata.json.
     """
-    reg = ContentRegistry(expected_minimum=17)
+    reg = ContentRegistry(expected_minimum=18)
 
     # --- Games: registered with string-based lazy resolution ---
     # These use run_module/run_function_name strings so no eager import happens.
@@ -35,6 +35,9 @@ def _build_registry() -> ContentRegistry:
          "atari_style.demos.games.grandprix", "run_grandprix"),
         ("breakout", "Breakout", "Paddle and ball physics game",
          "atari_style.demos.games.breakout", "run_breakout"),
+        ("claugger", "Claugger",
+         "Why did the chicken cross the road? A Frogger tribute.",
+         "atari_style.demos.games.claugger", "run_claugger"),
     ]:
         reg.register_metadata(ContentMetadata(
             id=game_id, title=title, category=ContentCategory.GAME,
