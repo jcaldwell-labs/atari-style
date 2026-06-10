@@ -91,6 +91,16 @@ COMPOSITES: Dict[str, CompositeConfig] = {
         recommended_duration=30.0,
         default_color_mode=0
     ),
+    'fractal_terrain': CompositeConfig(
+        name='Fractal Terrain',
+        shader_path='atari_style/shaders/effects/fractal_terrain.frag',
+        description='Low-altitude perspective flight through Mandelbrot/Julia mountains with sky, sun, and distance fog',
+        default_params=(0.4, 0.35, 0.25, 0.5),
+        param_names=('flight_speed', 'altitude', 'morph_speed', 'fog'),
+        param_ranges=((0.1, 1.0), (0.05, 1.0), (0.05, 1.0), (0.0, 1.0)),
+        recommended_duration=30.0,
+        default_color_mode=0
+    ),
 }
 
 
