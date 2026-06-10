@@ -82,8 +82,11 @@ float computeWaveEnergy(vec2 uv, float freq, float t) {
         float dist = length(uv - dropPos);
         float wave = sin(dist * 20.0 * freq - dropTime * 10.0);
         float decay = exp(-dist * 3.0) * exp(-dropTime * 0.8);
+        // Ramp each drop in so cycle resets (dropPos jump + decay reset)
+        // fade in instead of popping
+        float rampIn = smoothstep(0.0, 0.35, dropTime);
 
-        energy += abs(wave * decay);
+        energy += abs(wave * decay) * rampIn;
     }
 
     return clamp(energy, 0.0, 1.0);
@@ -108,9 +111,6 @@ void main() {
     // Get wave energy modulation
     float waveEnergy = getGlobalWaveEnergy(waveFreq, iTime);
 
-    // Modulate rotation speed based on wave energy
-    float rotationSpeed = baseRotation + waveEnergy * modStrength * 3.0;
-
     // Center coordinate system
     vec2 uv = fragCoord - 0.5;
     uv.x *= iResolution.x / iResolution.y;
@@ -119,9 +119,14 @@ void main() {
     float r = length(uv);
     float theta = atan(uv.y, uv.x);
 
-    // Calculate spiral with modulated rotation
+    // Calculate spiral rotation. The angle must be C1-continuous in time:
+    // multiplying iTime by a time-varying speed makes the accumulated angle
+    // jump whenever the speed changes (jerky motion). Instead use a constant
+    // base angular velocity plus a bounded phase wobble from slow sines —
+    // smooth by construction, still feels fluid-reactive via modStrength.
     float tightness = 8.0;
-    float rotation = iTime * rotationSpeed;
+    float wobble = sin(iTime * 0.7) * 1.2 + sin(iTime * 0.23 + 1.7) * 2.1;
+    float rotation = iTime * baseRotation + wobble * modStrength;
     float spiral = sin(theta * numSpirals + r * tightness - rotation);
     float spiralVal = spiral * 0.5 + 0.5;
 
