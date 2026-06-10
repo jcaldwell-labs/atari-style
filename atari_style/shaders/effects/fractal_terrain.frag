@@ -2,23 +2,30 @@
 /*
  * Fractal Terrain Composite Fragment Shader
  *
- * Low-altitude flight THROUGH a Mandelbrot/Julia mountain landscape —
- * the perspective sibling of fractal_flight (which looks straight down).
+ * Low-altitude flight THROUGH raymarched Mandelbrot/Julia mountains.
  *
- * Construction (classic demoscene terrain flyover):
- *   - A camera flies above the fractal plane along the main cardioid
- *     boundary, heading aligned with the path tangent (windshield view,
- *     not map view).
- *   - Each pixel casts a ray; rays pointing below the horizon intersect
- *     the ground plane and sample the fractal escape-time height field
- *     there. Rays above the horizon render sky + sun.
- *   - Relief lighting from screen-space finite differences, distance fog
- *     blending terrain into the sky at the horizon.
- *   - Banking is COUPLED to the turns: each pulsedPhase quick-turn rolls
- *     the camera into the curve like a coordinated banked turn.
+ * Unlike a flat-plane projection with relief shading (which reads as
+ * "flat mountains"), this raymarches the escape-time height field as
+ * REAL displaced geometry: peaks rise, ridges occlude one another and
+ * layer into the fog, and summits can break the horizon.
  *
- * Motion stays C1-continuous throughout (no time*varyingSpeed products —
- * see flux_spiral jerkiness fix).
+ * Construction:
+ *   - terrainH() maps the smooth escape-time of the morphing fractal
+ *     z' = z^2 + mix(p, c_julia, morph) to a height in [0, H_AMP].
+ *   - Each pixel marches its ray with distance-growing steps until it
+ *     dips below the terrain, then bisects for a crisp hit.
+ *   - Hit points get finite-difference normals, sun diffuse + specular,
+ *     height-banded palette color with snow caps, and water below the
+ *     shoreline. Distance fog blends everything into the sky.
+ *   - The camera flies the main cardioid boundary, heading aligned to
+ *     the path tangent, banking into the periodic quick turns.
+ *
+ * Motion stays C1-continuous (no time*varyingSpeed products — see the
+ * flux_spiral jerkiness fix).
+ *
+ * Performance: tuned for llvmpipe (software GL). MAX_ITER is low (the
+ * mountain SHAPE doesn't need deep iteration), march steps grow with
+ * distance, and sky rays exit after a few steps once above peak height.
  *
  * Uniforms:
  *   iTime       - Animation time
@@ -36,8 +43,10 @@ in vec2 fragCoord;
 out vec4 fragColor;
 
 const float TAU = 6.28318530717958647692;
-const int MAX_ITER = 80;
-const float T_MAX = 6.0;   // far clip in fractal-plane units
+const int MAX_ITER = 36;       // shape detail; low keeps marching affordable
+const int MARCH_STEPS = 44;
+const float T_MAX = 4.5;       // far clip in fractal-plane units
+const float H_AMP = 0.17;      // world height of the tallest peaks
 
 vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
     return a + b * cos(TAU * (c * t + d));
@@ -69,7 +78,7 @@ float pulsedPhase(float t, float period, float pulseLen) {
     return n + smoothstep(0.0, pulseLen, f);
 }
 
-// Bell-shaped window over each pulse, used to couple banking to the turn
+// Bell-shaped window over each pulse: couples banking to the turn
 float pulseWindow(float t, float period, float pulseLen) {
     float f = t - floor(t / period) * period;
     return smoothstep(0.0, pulseLen * 0.45, f)
@@ -87,28 +96,42 @@ vec2 cardioidTangent(float a) {
                            0.5 * cos(a) - 0.5 * cos(2.0 * a)));
 }
 
-// Smooth escape-time height for the morphing fractal (0 = interior sea)
-float fractalHeight(vec2 p, vec2 cJulia, float morph) {
+// Terrain height in [0,1] from smooth escape time of the morphing fractal
+float terrainH(vec2 p, vec2 cJulia, float morph) {
     vec2 z = p;
     vec2 c = mix(p, cJulia, morph);
     float m2 = 0.0;
+    float trap = 1e9;
     int i;
     for (i = 0; i < MAX_ITER; i++) {
         z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
         m2 = dot(z, z);
+        trap = min(trap, m2);
         if (m2 > 64.0) break;
     }
-    if (i >= MAX_ITER) return 0.0;
-    // Clamp: points that escape on the first iteration with large |z|^2
-    // make the smooth-iteration term negative -> sqrt(NaN) -> black ring
-    // at the horizon. Clamping to 0 reads as sea level in the far field.
+    if (i >= MAX_ITER) {
+        // Interior: not a flat mesa — carve it with the orbit trap so the
+        // high plateaus read as ridged highlands, not blank snowfields
+        return 0.80 + 0.20 * exp(-sqrt(trap) * 1.5);
+    }
+    // Clamped smooth iteration (first-iteration escapes go negative ->
+    // sqrt(NaN) -> black artifacts; clamp reads as sea level far out)
     float si = max(0.0, float(i) + 1.0 - log2(log(m2) * 0.5));
     return sqrt(si / float(MAX_ITER));
 }
 
+// Geometry height in world units: soft-cap the tallest ridges and mesas so
+// the camera's clearance band stays inside the range (summits reach near,
+// and occasionally above, eye level — but never swallow the camera)
+float worldH(vec2 p, vec2 cJulia, float morph) {
+    float h = terrainH(p, cJulia, morph);
+    h = (h < 0.75) ? h : 0.75 + (h - 0.75) * 0.6;
+    return h * H_AMP;
+}
+
 void main() {
     float flightSpeed = iParams.x;   // journey speed (default ~0.4)
-    float altitude    = iParams.y;   // camera height above plane (~0.35)
+    float altitude    = iParams.y;   // camera height (~0.35)
     float morphSpeed  = iParams.z;   // Mandelbrot<->Julia morph rate (~0.25)
     float fogAmt      = iParams.w;   // fog density (~0.5)
 
@@ -118,27 +141,31 @@ void main() {
     float a = t * 0.05 * flightSpeed * 2.5
             + 0.4 * pulsedPhase(t, 12.0, 2.0)
             + 2.1;
-    vec2 pathPos = cardioid(a) * 1.10;          // skim the filament zone
+    vec2 pathPos = cardioid(a) * 1.18;          // ride the filament zone
     vec2 tangent = cardioidTangent(a);
 
-    // Julia parameter rides the same boundary, slightly behind the camera
     vec2 cJulia = cardioid(a - 0.35);
     float mraw = 0.5 + 0.5 * sin(t * morphSpeed * 0.6 - 1.2);
     float morph = smoothstep(0.1, 0.9, mraw);
 
-    // --- Camera basis -------------------------------------------------------
-    // World: x/y = fractal plane, z = up. Heading follows the path tangent.
+    // --- Camera -------------------------------------------------------------
     float heading = atan(tangent.y, tangent.x);
-    float camH = 0.12 + altitude * 0.5;
 
-    // Gentle altitude bob + slight extra climb during turns
-    camH += 0.02 * sin(t * 0.4) + 0.05 * pulseWindow(t, 12.0, 2.0);
+    // Terrain-following flight: hold a clearance band above the ground at
+    // the camera, with a look-ahead sample so we climb before cliff walls
+    // instead of into them. Ridges beside and ahead can still rise above
+    // eye level — that's the "through the mountains" drama.
+    float gHere  = worldH(pathPos, cJulia, morph);
+    float gAhead = worldH(pathPos + tangent * 0.10, cJulia, morph);
+    float camH = max(gHere, gAhead)
+               + 0.035 + altitude * 0.12
+               + 0.012 * sin(t * 0.4)
+               + 0.03 * pulseWindow(t, 12.0, 2.0);
 
-    // Pitch: looking ahead and down toward the terrain
-    float pitch = -0.30 - 0.10 * sin(t * 0.13);
+    // Mild downward pitch keeps the horizon high in frame
+    float pitch = -0.14 - 0.06 * sin(t * 0.13);
 
-    // Bank coupled to the quick turns (roll into the curve), plus tiny sway
-    float bank = 0.55 * pulseWindow(t, 12.0, 2.0) + 0.06 * sin(t * 0.31);
+    float bank = 0.50 * pulseWindow(t, 12.0, 2.0) + 0.05 * sin(t * 0.31);
 
     float ch = cos(heading), sh = sin(heading);
     float cp = cos(pitch),   sp = sin(pitch);
@@ -149,67 +176,87 @@ void main() {
     vec3 right = right0 * cb + up0 * sb;
     vec3 up = -right0 * sb + up0 * cb;
 
-    // --- Ray for this pixel -------------------------------------------------
     vec2 uv = fragCoord - 0.5;
     uv.x *= iResolution.x / iResolution.y;
-    vec3 ray = normalize(fwd + uv.x * right * 1.2 + uv.y * up * 1.2);
+    vec3 ray = normalize(fwd + uv.x * right * 1.15 + uv.y * up * 1.15);
 
     vec3 camPos = vec3(pathPos, camH);
 
-    // Sun direction: low ahead-left of the flight path
-    vec3 sunDir = normalize(vec3(ch * 0.7 - sh * 0.4, sh * 0.7 + ch * 0.4, 0.35));
+    // Sun low ahead-left
+    vec3 sunDir = normalize(vec3(ch * 0.7 - sh * 0.4, sh * 0.7 + ch * 0.4, 0.30));
 
     // Sky (also the fog tint)
-    float horizon = smoothstep(-0.12, 0.45, ray.z);
-    vec3 skyLow  = getColor(0.78, iColorMode) * 0.9;
-    vec3 skyHigh = getColor(0.55, iColorMode) * 0.45;
+    float horizon = smoothstep(-0.10, 0.45, ray.z);
+    vec3 skyLow  = getColor(0.78, iColorMode) * 0.95;
+    vec3 skyHigh = getColor(0.55, iColorMode) * 0.40;
     vec3 sky = mix(skyLow, skyHigh, horizon);
     float sunDot = max(dot(ray, sunDir), 0.0);
     sky += vec3(1.0, 0.9, 0.7) * (pow(sunDot, 48.0) * 0.9 + pow(sunDot, 6.0) * 0.18);
 
+    // --- Raymarch the height field ------------------------------------------
+    float tRay = 0.035;
+    float tHit = -1.0;
+    float tPrev = tRay;
+    for (int s = 0; s < MARCH_STEPS; s++) {
+        vec3 pos = camPos + ray * tRay;
+        // Climbing rays that clear the peaks can never hit again
+        if (pos.z > H_AMP + 0.01 && ray.z >= 0.0) break;
+        if (pos.z < worldH(pos.xy, cJulia, morph)) {
+            tHit = tRay;
+            break;
+        }
+        tPrev = tRay;
+        tRay += 0.014 + tRay * 0.055;     // steps grow with distance
+        if (tRay > T_MAX) break;
+    }
+
     vec3 color;
-    if (ray.z > -0.015) {
-        // Above (or skimming) the horizon: pure sky
+    if (tHit < 0.0) {
         color = sky;
     } else {
-        // Intersect the ground plane z = 0
-        float dist = camH / -ray.z;
-        if (dist > T_MAX) {
-            color = sky;
-        } else {
-            vec2 ground = camPos.xy + ray.xy * dist;
-
-            // Height + screen-space normal; widen eps with distance to
-            // soften far-field shimmer
-            float eps = max(0.0015, dist * 2.2 / iResolution.y);
-            float h  = fractalHeight(ground, cJulia, morph);
-            float hx = fractalHeight(ground + vec2(eps, 0.0), cJulia, morph);
-            float hy = fractalHeight(ground + vec2(0.0, eps), cJulia, morph);
-
-            float hscale = 22.0;
-            vec3 normal = normalize(vec3((h - hx) * hscale, (h - hy) * hscale, 1.0));
-
-            float diffuse = max(dot(normal, sunDir), 0.0);
-            float spec = pow(max(dot(reflect(-sunDir, normal), -ray), 0.0), 20.0);
-
-            float colorT = fract(h * 2.8 + t * 0.02);
-            vec3 base = getColor(colorT, iColorMode);
-
-            if (h <= 0.0) {
-                // Interior "sea": dark mirror picking up sky + sun glints
-                color = getColor(0.12, iColorMode) * 0.10 + sky * 0.25
-                      + vec3(1.0, 0.9, 0.7) * spec * 0.45;
-            } else {
-                color = base * (0.30 + 0.80 * diffuse)
-                      + vec3(1.0, 0.95, 0.85) * spec * 0.35;
-                // Glowing surf line where terrain meets the sea
-                color += getColor(0.9, iColorMode) * smoothstep(0.22, 0.0, h) * 0.30;
-            }
-
-            // Distance fog into the sky color
-            float fog = 1.0 - exp(-dist * dist * (0.25 + fogAmt * 0.55));
-            color = mix(color, sky, clamp(fog, 0.0, 1.0));
+        // Bisect [tPrev, tHit] for a crisp surface
+        float lo = tPrev, hi = tHit;
+        for (int b = 0; b < 5; b++) {
+            float mid = 0.5 * (lo + hi);
+            vec3 pos = camPos + ray * mid;
+            if (pos.z < worldH(pos.xy, cJulia, morph)) hi = mid;
+            else lo = mid;
         }
+        float dist = 0.5 * (lo + hi);
+        vec3 hitPos = camPos + ray * dist;
+        float h = terrainH(hitPos.xy, cJulia, morph);
+
+        // Finite-difference normal; eps widens with distance (anti-shimmer)
+        float eps = max(0.0025, dist * 0.006);
+        float hW  = worldH(hitPos.xy, cJulia, morph);
+        float hx = worldH(hitPos.xy + vec2(eps, 0.0), cJulia, morph);
+        float hy = worldH(hitPos.xy + vec2(0.0, eps), cJulia, morph);
+        vec3 normal = normalize(vec3((hW - hx) / eps, (hW - hy) / eps, 1.0));
+
+        float diffuse = max(dot(normal, sunDir), 0.0);
+        float spec = pow(max(dot(reflect(-sunDir, normal), -ray), 0.0), 18.0);
+
+        if (h < 0.04) {
+            // Water: mirror of the sky with sun glints
+            color = sky * 0.45 + getColor(0.12, iColorMode) * 0.15
+                  + vec3(1.0, 0.9, 0.7) * spec * 0.8;
+        } else {
+            // Height-banded terrain color, brighter and snowier up high
+            float colorT = fract(h * 1.7 + 0.05);
+            vec3 base = getColor(colorT, iColorMode);
+            color = base * (0.22 + 0.85 * diffuse)
+                  + vec3(1.0, 0.95, 0.85) * spec * 0.30;
+            // Snow caps only on the genuinely high, gentle ridges
+            float snow = smoothstep(0.88, 0.985, h) * smoothstep(0.55, 0.85, normal.z);
+            color = mix(color, vec3(0.92, 0.94, 0.98) * (0.45 + 0.6 * diffuse), snow);
+            // Glowing shoreline
+            color += getColor(0.9, iColorMode) * smoothstep(0.10, 0.04, h) * 0.25;
+        }
+
+        // Distance fog into the sky; valleys hold a touch more haze
+        float fog = 1.0 - exp(-dist * dist * (0.30 + fogAmt * 0.70));
+        fog = clamp(fog + (1.0 - h) * 0.08 * fogAmt, 0.0, 1.0);
+        color = mix(color, sky, fog);
     }
 
     // Gentle vignette
