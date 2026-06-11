@@ -23,19 +23,28 @@
  *    (basilica-family Julias), so successive Julia phases look different.
  *    The swap happens while morph == 0, where c_julia has no influence.
  *
- * 3. FULL-FRAME INTEREST — the camera drifts along the cardioid coast on the
- *    Mandelbrot side (biased slightly outside, into the filament zone) and
- *    settles to the origin as morph -> 1; zoom eases in log space between a
- *    coastline close-up and a structure-filling Julia view (~1.4 view height,
- *    so boundary filaments dominate the frame rather than a small silhouette).
- *    A derivative is carried through the iteration for distance estimation:
- *    DE contour bands texture the far exterior (angularly warped and faded in
- *    wide views so they never read as concentric rings) and a warm glow hugs
- *    the boundary. Interior pixels use orbit traps + contour bands.
+ * 3. JOURNEY CAMERA — the camera TRAVELS: it cruises along the cardioid coast
+ *    with a steady heading (biased slightly outside, into the filament zone),
+ *    so coastline features stream across the frame (~6 s to cross at default
+ *    drift_speed) and new geography keeps arriving. Zoom serves the journey:
+ *    medium-zoom cruise, easing DOWN toward the cusp's elephant valley and
+ *    the seahorse valley as they are approached, climbing back out in transit
+ *    (a gentle terrain-following swell rides on top) — descent/ascent over
+ *    places, not in-place breathing. During high-morph (Julia) phases the
+ *    camera keeps moving, panning orbit-like across the structure at a
+ *    structure-filling view (~1.4 view height, never a postage-stamp
+ *    silhouette). A subtle heading-coupled bank leans the frame through the
+ *    coast's bends. A derivative is carried through the iteration for
+ *    distance estimation: DE contour bands texture the far exterior
+ *    (angularly warped and faded in wide views so they never read as
+ *    concentric rings) and a warm glow hugs the boundary. Interior pixels
+ *    use orbit traps + contour bands.
  *
- * Motion design: all terms are bounded, C1-continuous functions of time —
- * no speed*time products. The per-cycle orbit step is the only discrete
- * change and it occurs exactly while the morph is clamped to 0.
+ * Motion design: every camera term is a C1-continuous function of time —
+ * the travel parameter advances monotonically and all modulations are
+ * smooth (sin / exp-of-cos / smoothstep), so velocity never steps. The
+ * per-cycle orbit step is the only discrete change and it occurs exactly
+ * while the morph is clamped to 0.
  *
  * Uniforms:
  *   iTime       - Animation time
@@ -120,23 +129,46 @@ void main() {
     float orbitSel = mod(floor(t / period), 2.0);
     vec2 cJulia = mix(cA, cB, orbitSel);
 
-    // --- Camera ----------------------------------------------------------------
-    // Mandelbrot phase: hug the cardioid coast, biased slightly OUTSIDE the
-    // boundary (into the filament zone) so the frame shows coastline detail.
-    // Julia phase: settle to the origin, where Julia structure lives.
-    vec2 outward = cA * 1.18 + vec2(0.025, 0.0);
-    vec2 center = mix(outward, vec2(0.0), morph);
+    // --- Camera: a JOURNEY along the coast ---------------------------------------
+    // Travel parameter: a steady heading around the cardioid, decoupled from
+    // the Julia target path so c_julia can drift slowly while the camera
+    // cruises (full coastline lap ~16 s at default drift_speed).
+    float aCam = t * 0.8 * driftSpeed + 2.1;
+    vec2 camCard = vec2(0.5 * cos(aCam) - 0.25 * cos(2.0 * aCam),
+                        0.5 * sin(aCam) - 0.25 * sin(2.0 * aCam));
+    // Biased slightly OUTSIDE the boundary, into the filament zone, so the
+    // frame shows coastline detail streaming past.
+    vec2 travel = camCard * 1.18 + vec2(0.025, 0.0);
 
-    // Zoom (log space): coastline close-up at the Mandelbrot end, a
-    // structure-filling view at the Julia end (view height ~1.4 — the Julia
-    // set overflows the frame so its boundary filaments dominate, never a
-    // postage-stamp silhouette). Gentle breathing, damped at the Julia peak.
-    float lz = mix(-0.35, 0.50, morph)
-             + zoomAmp * 0.55 * sin(t * 0.075 + 0.7) * (1.0 - 0.6 * morph);
+    // Julia phases travel too: an orbit-like pan across the structure rather
+    // than sitting centered on the origin.
+    float ja = t * 0.55 + 1.3;
+    vec2 juliaPan = 0.38 * vec2(cos(ja), sin(ja));
+    vec2 center = mix(travel, juliaPan, morph);
+
+    // Zoom arcs serve the journey (log space): cruise at medium zoom along
+    // the coast, descend toward the cusp's elephant valley (deep) and the
+    // seahorse valley (shallower) as the path approaches them, climb back
+    // out in transit. exp(k*(cos-1)) bumps are smooth, periodic with the
+    // lap, and peak exactly at aCam = 0 (cusp) / pi (seahorse) — so zoom
+    // changes read as arriving at and leaving places, not breathing.
+    float dipCusp = exp(2.5 * (cos(aCam) - 1.0));
+    float dipSea  = exp(2.5 * (-cos(aCam) - 1.0));
+    float lzM = -0.40
+              - zoomAmp * (1.9 * dipCusp + 0.8 * dipSea)
+              + zoomAmp * 0.30 * sin(aCam + 0.6);   // terrain-following swell
+    // Julia end: structure-filling view (height <= ~1.45 — the set overflows
+    // the frame so boundary filaments dominate, never a small silhouette),
+    // with a slight rise/fall coupled to the pan.
+    float lzJ = 0.46 + 0.08 * sin(ja + 1.0);
+    float lz = mix(lzM, lzJ, morph);
     float viewScale = exp2(lz);    // frame height on the complex plane
 
-    // Slow continuous plane rotation keeps the 2D frame alive
-    float rot = 0.10 * sin(t * 0.05) + t * 0.012;
+    // Slow continuous plane rotation plus a heading-coupled bank: the
+    // cardioid tangent angle is 1.5*aCam, so a small lean keyed to it reads
+    // as banking through the coast's bends (faded out during Julia phases).
+    float rot = 0.10 * sin(t * 0.05) + t * 0.012
+              + 0.12 * sin(1.5 * aCam + 0.4) * (1.0 - morph);
 
     // --- Screen to fractal plane -------------------------------------------------
     vec2 uv = fragCoord - 0.5;
