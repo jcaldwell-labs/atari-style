@@ -101,6 +101,16 @@ COMPOSITES: Dict[str, CompositeConfig] = {
         recommended_duration=60.0,
         default_color_mode=0
     ),
+    'quaternion_julia': CompositeConfig(
+        name='Quaternion Julia — 3D Fractal Flight',
+        shader_path='atari_style/shaders/effects/quaternion_julia.frag',
+        description='Raymarched 3D quaternion Julia set whose limbs grow, split and twist as c rides the Mandelbrot cardioid; the camera orbits around, swoops over, and threads through the morphing structure',
+        default_params=(0.5, 0.5, 0.5, 0.5),
+        param_names=('flight_speed', 'morph_speed', 'detail', 'fog_glow'),
+        param_ranges=((0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, 1.0)),
+        recommended_duration=45.0,
+        default_color_mode=0
+    ),
     'fractal_terrain': CompositeConfig(
         name='Fractal Terrain',
         shader_path='atari_style/shaders/effects/fractal_terrain.frag',
