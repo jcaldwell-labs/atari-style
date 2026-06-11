@@ -21,7 +21,17 @@
  *    like the original terminal demo. Camera center and log2(zoom) are
  *    interpolated with smoothstep easing (C1-continuous: zero velocity at
  *    every waypoint, no time*speed products). Zoom interpolation happens
- *    in LOG space. The loop is ~63 s, then wraps seamlessly.
+ *    in LOG space. The loop is ~110 s, then wraps seamlessly.
+ *
+ * 4. EXPLORE AT DEPTH - each deep destination is a 3-waypoint cluster:
+ *    arrive, dwell, then TRAVERSE the local boundary structure at depth
+ *    (seahorse: down the narrowing valley; elephant: march the herd into
+ *    the cusp tip; spiral: pan northwest through neighboring double
+ *    spirals) before leaving. Between destinations the camera pulls back
+ *    only part way (lz ~ -1.7, never overview scale) and arcs over the
+ *    NORTHERN boundary of the set, so transit frames keep the glowing
+ *    edge in frame instead of crossing the flat interior. The only full
+ *    overview is the loop start/end wrap.
  *
  * Precision: deepest scale is 0.006 (~270x magnification) - comfortably
  * inside float32 precision at 1080p (pixel size ~1e-5 vs eps ~1e-7).
@@ -45,28 +55,35 @@ const float TAU = 6.28318530717958647692;
 const int MAX_ITER = 350;
 
 // ---------------------------------------------------------------------------
-// Tour waypoints (ported from terminal_arcade TOUR_LOCATIONS).
+// Tour waypoints (ported from terminal_arcade TOUR_LOCATIONS, then extended
+// with 3-waypoint exploration clusters at each deep destination).
 // WP_C  = camera center on the complex plane
 // WP_LZ = log2(view scale); view height = 2 * scale
 // WP_T  = arrival time (seconds); WP_D = dwell (hold) time at the waypoint
-// Entry 12 duplicates entry 0 so the loop wraps without a jump.
+// Entry 18 duplicates entry 0 so the loop wraps without a jump.
 // ---------------------------------------------------------------------------
-const int NUM_WP = 13;
+const int NUM_WP = 19;
 
 const vec2 WP_C[NUM_WP] = vec2[NUM_WP](
     vec2(-0.5000,  0.0000),   //  0 overview of the whole set
     vec2(-0.7450,  0.1860),   //  1 approach seahorse valley along the edge
     vec2(-0.7450,  0.1860),   //  2 dive (zoom only)
     vec2(-0.7453,  0.1127),   //  3 EDGE PAN at constant zoom down the valley
-    vec2(-0.7453,  0.1127),   //  4 deep seahorse
-    vec2(-0.5000,  0.0000),   //  5 pull back across the set
-    vec2( 0.2850,  0.0000),   //  6 approach elephant valley (east cusp)
-    vec2( 0.2855,  0.0120),   //  7 EDGE PAN at constant zoom along the trunks
-    vec2( 0.2855,  0.0120),   //  8 deep elephant
-    vec2(-0.5500,  0.1200),   //  9 pull back, drifting northwest
-    vec2(-0.7269,  0.1889),   // 10 approach the spiral region
-    vec2(-0.7269,  0.1889),   // 11 deep spiral
-    vec2(-0.5000,  0.0000)    // 12 = waypoint 0 (wrap)
+    vec2(-0.7453,  0.1127),   //  4 deep seahorse: arrive + dwell
+    vec2(-0.7483,  0.0890),   //  5 TRAVERSE down the valley between the walls
+    vec2(-0.7515,  0.0480),   //  6 valley narrows: seahorse beads both sides
+    vec2(-0.1800,  0.5400),   //  7 transit: arc over the NORTHERN boundary
+    vec2( 0.2850,  0.0000),   //  8 approach elephant valley (east cusp)
+    vec2( 0.2855,  0.0120),   //  9 EDGE PAN at constant zoom along the trunks
+    vec2( 0.2855,  0.0120),   // 10 deep elephant: arrive + dwell
+    vec2( 0.2770,  0.0075),   // 11 TRAVERSE: march with the herd toward cusp
+    vec2( 0.2651,  0.0027),   // 12 cusp tip: elephants converge on the point
+    vec2(-0.1000,  0.5800),   // 13 transit: back over the top, heading NW
+    vec2(-0.7269,  0.1889),   // 14 approach the spiral region
+    vec2(-0.7269,  0.1889),   // 15 deep spiral: arrive + dwell
+    vec2(-0.7310,  0.1910),   // 16 TRAVERSE northwest along the spiral arms
+    vec2(-0.7350,  0.1940),   // 17 neighboring double-spiral cluster
+    vec2(-0.5000,  0.0000)    // 18 = waypoint 0 (wrap: the ONE full overview)
 );
 
 const float WP_LZ[NUM_WP] = float[NUM_WP](
@@ -75,49 +92,67 @@ const float WP_LZ[NUM_WP] = float[NUM_WP](
     -2.943,   //  2 scale 0.130
     -2.943,   //  3 scale 0.130 (constant-zoom pan)
     -6.059,   //  4 scale 0.015
-    0.138,    //  5 scale 1.100
-    -3.059,   //  6 scale 0.120
-    -3.059,   //  7 scale 0.120 (constant-zoom pan)
-    -6.381,   //  8 scale 0.012
-    -0.152,   //  9 scale 0.900
-    -4.059,   // 10 scale 0.060
-    -7.381,   // 11 scale 0.006
-    0.678     // 12 scale 1.600 (wrap)
+    -6.300,   //  5 scale 0.0127 (traverse, slight deepen as valley narrows)
+    -6.600,   //  6 scale 0.0103
+    -1.800,   //  7 scale 0.287 (PARTIAL pullback, not overview)
+    -3.059,   //  8 scale 0.120
+    -3.059,   //  9 scale 0.120 (constant-zoom pan)
+    -6.381,   // 10 scale 0.012
+    -6.550,   // 11 scale 0.0107 (traverse, elephants shrink toward cusp)
+    -6.850,   // 12 scale 0.0087
+    -1.700,   // 13 scale 0.308 (PARTIAL pullback, not overview)
+    -4.059,   // 14 scale 0.060
+    -7.381,   // 15 scale 0.006 (deepest point of the tour)
+    -7.050,   // 16 scale 0.0075 (ease out a touch to show adjacent arms)
+    -7.300,   // 17 scale 0.0063 (re-deepen onto the neighbor spiral)
+    0.678     // 18 scale 1.600 (wrap)
 );
 
 const float WP_T[NUM_WP] = float[NUM_WP](
-    0.0,   //  0
-    7.0,   //  1
-    11.0,  //  2
-    16.0,  //  3
-    21.0,  //  4
-    27.0,  //  5
-    32.0,  //  6
-    36.0,  //  7
-    42.0,  //  8
-    48.0,  //  9
-    52.0,  // 10
-    57.0,  // 11
-    63.0   // 12 (= total loop length)
+    0.0,     //  0
+    5.5,     //  1
+    9.0,     //  2
+    12.5,    //  3
+    17.0,    //  4 seahorse cluster: 17.0 - 36.0 at depth
+    24.5,    //  5
+    32.0,    //  6
+    41.0,    //  7
+    45.5,    //  8
+    49.0,    //  9
+    53.5,    // 10 elephant cluster: 53.5 - 72.5 at depth
+    61.0,    // 11
+    68.5,    // 12
+    77.5,    // 13
+    82.0,    // 14
+    87.0,    // 15 spiral cluster: 87.0 - 104.5 at depth
+    94.0,    // 16
+    100.5,   // 17
+    110.0    // 18 (= total loop length)
 );
 
 const float WP_D[NUM_WP] = float[NUM_WP](
     2.0,   //  0 hold the overview
-    0.5,   //  1
-    0.5,   //  2
-    0.5,   //  3
-    2.5,   //  4 linger at deep seahorse
-    0.5,   //  5
-    0.5,   //  6
-    0.5,   //  7
-    2.5,   //  8 linger at deep elephant
-    0.5,   //  9
-    0.5,   // 10
-    2.5,   // 11 linger at deep spiral
-    0.0    // 12 (unused)
+    0.3,   //  1
+    0.3,   //  2
+    0.3,   //  3
+    2.5,   //  4 dwell at deep seahorse before the traverse begins
+    2.0,   //  5 pause mid-valley
+    4.0,   //  6 long look at the narrowing valley before leaving
+    0.0,   //  7 crest the transit arc without stopping
+    0.3,   //  8
+    0.3,   //  9
+    2.5,   // 10 dwell at deep elephant before the traverse begins
+    2.0,   // 11 pause along the herd
+    4.0,   // 12 long look into the cusp tip before leaving
+    0.0,   // 13 crest the transit arc without stopping
+    0.5,   // 14
+    2.5,   // 15 dwell at the deep spiral before the traverse begins
+    2.0,   // 16 pause among the arms
+    4.0,   // 17 long look at the neighbor double-spiral
+    0.0    // 18 (unused)
 );
 
-const float TOUR_TOTAL = 63.0;
+const float TOUR_TOTAL = 110.0;
 
 // Cosine-based color palette (Inigo Quilez)
 vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {

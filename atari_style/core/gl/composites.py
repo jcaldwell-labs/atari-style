@@ -98,7 +98,7 @@ COMPOSITES: Dict[str, CompositeConfig] = {
         default_params=(0.5, 0.5, 0.5, 0.5),
         param_names=('tour_speed', 'palette_speed', 'trap_strength', 'detail_mix'),
         param_ranges=((0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, 1.0)),
-        recommended_duration=60.0,
+        recommended_duration=110.0,
         default_color_mode=0
     ),
     'quaternion_julia': CompositeConfig(
