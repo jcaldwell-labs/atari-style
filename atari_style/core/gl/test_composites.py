@@ -1,6 +1,7 @@
 """Test script for GPU composite animations (Phase 5).
 
-Tests composite shaders: plasma_lissajous, flux_spiral, lissajous_plasma.
+Tests composite shaders: plasma_lissajous, flux_spiral, lissajous_plasma,
+fractal_morph, mandelbrot_enhanced, fractal_terrain.
 
 Usage:
     python -m atari_style.core.gl.test_composites
