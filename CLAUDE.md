@@ -32,6 +32,11 @@ The project now includes:
 
 This project is similar to "terminal-stars" but expanded with a menu system and multiple playable demos.
 
+### Legacy Archive
+
+- The legacy `terminal_arcade/` package is archived at `docs/archive/terminal-arcade-legacy/`. Its mandelbrot `TOUR_LOCATIONS` boundary tour was ported to `atari_style/shaders/effects/mandelbrot_enhanced.frag` before archiving. The menu no longer scans it; all content is registered directly in `atari_style/main.py`.
+- Root-level test files were archived to `docs/archive/legacy-tests/`, except `test_visual_regression.py`, which CI still runs.
+
 ### Project Philosophy
 
 See [PHILOSOPHY.md](./PHILOSOPHY.md) for core principles guiding development decisions:
@@ -290,6 +295,11 @@ python -c "from atari_style.demos.visualizers.platonic_solids import run_platoni
 # Utilities
 python -c "from atari_style.demos.tools.joystick_test import run_joystick_test; run_joystick_test()"
 ```
+
+### Shader Demos and Video Rendering
+
+- GPU shader demos (composite animations) are registered in `atari_style/core/gl/composites.py`; fragment shaders live in `atari_style/shaders/`.
+- YouTube videos are rendered with the generalized renderer at `../youtube/render_shader.py` (supports `--start` and `--motion-blur`).
 
 ## Adding New Demos
 

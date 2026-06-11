@@ -25,8 +25,8 @@ class TestContentCategory(unittest.TestCase):
         self.assertEqual(ContentCategory.TOOL.value, "tool")
         self.assertEqual(ContentCategory.SHADER_DEMO.value, "shader_demo")
 
-    def test_category_string_map_covers_terminal_arcade_strings(self):
-        """All known terminal_arcade category strings should map."""
+    def test_category_string_map_covers_legacy_strings(self):
+        """All known legacy (terminal-arcade) category strings should map."""
         ta_strings = ["arcade_game", "visual_demo", "creative_tool", "utility"]
         for s in ta_strings:
             self.assertIn(s, CATEGORY_STRING_MAP, f"Missing mapping for '{s}'")

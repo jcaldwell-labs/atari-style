@@ -29,7 +29,7 @@ class ContentCategory(Enum):
     SHADER_DEMO = "shader_demo"
 
 
-# Map terminal_arcade metadata.json category strings to ContentCategory
+# Map metadata.json category strings (incl. legacy spellings) to ContentCategory
 CATEGORY_STRING_MAP: Dict[str, ContentCategory] = {
     "arcade_game": ContentCategory.GAME,
     "game": ContentCategory.GAME,
