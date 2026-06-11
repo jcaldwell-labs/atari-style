@@ -2,21 +2,28 @@
 /*
  * Fractal Terrain Composite Fragment Shader
  *
- * Low-altitude flight THROUGH raymarched Mandelbrot/Julia mountains.
+ * Low-altitude flight THROUGH raymarched Mandelbrot/Julia structure.
  *
- * Unlike a flat-plane projection with relief shading (which reads as
- * "flat mountains"), this raymarches the escape-time height field as
- * REAL displaced geometry: peaks rise, ridges occlude one another and
- * layer into the fog, and summits can break the horizon.
+ * v2: the escape dynamics ARE the landscape. Instead of smoothing the
+ * escape time into dune-like mountains, the height field exposes the
+ * raw structure of the iteration:
+ *   - iteration level-sets become stepped TERRACES with sharp risers,
+ *   - the set boundary filaments rise into tall SPINE WALLS,
+ *   - orbit-trap pinches ridge the filament dendrites,
+ *   - the non-escaping interior drops to a sunken, trap-ribbed floor.
  *
  * Construction:
- *   - terrainH() maps the smooth escape-time of the morphing fractal
- *     z' = z^2 + mix(p, c_julia, morph) to a height in [0, H_AMP].
+ *   - fractalField() iterates z' = z^2 + mix(p, c_julia, morph) and
+ *     returns (height, normalized smooth-iteration, orbit-trap dist).
  *   - Each pixel marches its ray with distance-growing steps until it
  *     dips below the terrain, then bisects for a crisp hit.
- *   - Hit points get finite-difference normals, sun diffuse + specular,
- *     height-banded palette color with snow caps, and water below the
- *     shoreline. Distance fog blends everything into the sky.
+ *   - Surface color comes from the MATH, not altitude: the palette
+ *     cycles with the smooth iteration count so escape contours stripe
+ *     the terrain like strata, orbit trap modulates the detail, and
+ *     thin bright contour lines mark each iteration band edge.
+ *   - Near-boundary ground glows emissively (strongest on steep walls
+ *     and in crevasses) — skimming a living fractal circuit — while a
+ *     dark moody sky and distance fog keep the depth reading.
  *   - The camera flies the main cardioid boundary, heading aligned to
  *     the path tangent, banking into the periodic quick turns.
  *
@@ -96,8 +103,11 @@ vec2 cardioidTangent(float a) {
                            0.5 * cos(a) - 0.5 * cos(2.0 * a)));
 }
 
-// Terrain height in [0,1] from smooth escape time of the morphing fractal
-float terrainH(vec2 p, vec2 cJulia, float morph) {
+// The fractal field that drives EVERYTHING:
+//   .x  height in [0,1]   — terraces + boundary spines + sunken interior
+//   .y  normalized smooth iteration in [0,1] (1.0 = interior / boundary)
+//   .z  orbit-trap distance (filament proximity)
+vec3 fractalField(vec2 p, vec2 cJulia, float morph) {
     vec2 z = p;
     vec2 c = mix(p, cJulia, morph);
     float m2 = 0.0;
@@ -109,22 +119,45 @@ float terrainH(vec2 p, vec2 cJulia, float morph) {
         trap = min(trap, m2);
         if (m2 > 64.0) break;
     }
+    float trapD = sqrt(trap);
     if (i >= MAX_ITER) {
-        // Interior: not a flat mesa — carve it with the orbit trap so the
-        // high plateaus read as ridged highlands, not blank snowfields
-        return 0.80 + 0.20 * exp(-sqrt(trap) * 1.5);
+        // Interior: sunken basin floor ribbed by CONCENTRIC orbit-trap
+        // contour ridges (a plain exp() here swells like smooth dunes —
+        // the cosine snaps it into circuit-board rings)
+        float ribs = exp(-trapD * 2.0) * (0.5 + 0.5 * cos(TAU * trapD * 5.0));
+        return vec3(0.05 + 0.11 * ribs, 1.0, trapD);
     }
     // Clamped smooth iteration (first-iteration escapes go negative ->
     // sqrt(NaN) -> black artifacts; clamp reads as sea level far out)
     float si = max(0.0, float(i) + 1.0 - log2(log(m2) * 0.5));
-    return sqrt(si / float(MAX_ITER));
+    float n = si / float(MAX_ITER);
+    // Stepped terraces: plateaus on iteration level-sets, sharp risers
+    float sStep = floor(si) + smoothstep(0.55, 0.95, fract(si));
+    float terrace = sStep / float(MAX_ITER);
+    // Boundary spine walls: filaments shoot up hard near the set — driven
+    // by the STEPPED iteration so they climb as discrete ziggurat cliffs,
+    // and the ramp is a pure cubic (NOT smoothstep: its saturating top
+    // rounds the summits into dunes — exactly what we're killing). The
+    // cliff size per iteration band GROWS toward the boundary.
+    float wall = pow(max(terrace - 0.30, 0.0) / 0.70, 3.0);
+    // Dendrite ridges: orbit-trap pinches trace the filament arms
+    float dendrite = exp(-trapD * 4.0) * smoothstep(0.35, 0.75, n);
+    float h = terrace * 0.40 + wall * 0.50 + dendrite * 0.22;
+    // Alternating-parity ridges: every OTHER iteration band rides higher,
+    // so each escape level-set is a real cliff edge. The per-band steps of
+    // the ramp alone are ~0.005 world units — invisible; this corduroy is
+    // what makes the slopes read as contour terraces instead of dunes.
+    float parity = mod(floor(si), 2.0) * 2.0 - 1.0;
+    h += parity * (0.035 + 0.09 * smoothstep(0.30, 0.85, n))
+       * smoothstep(0.08, 0.35, n);
+    return vec3(clamp(h, 0.0, 1.0), n, trapD);
 }
 
-// Geometry height in world units: full range, no soft-cap — summits tower
+// Geometry height in world units: full range, no soft-cap — spines tower
 // above eye level and break the horizon (the camera's terrain-following
 // clearance band keeps it out of the rock)
 float worldH(vec2 p, vec2 cJulia, float morph) {
-    return terrainH(p, cJulia, morph) * H_AMP;
+    return fractalField(p, cJulia, morph).x * H_AMP;
 }
 
 void main() {
@@ -153,10 +186,13 @@ void main() {
     // the camera, with a look-ahead sample so we climb before cliff walls
     // instead of into them. Ridges beside and ahead can still rise above
     // eye level — that's the "through the mountains" drama.
+    // (v2 terrain is spikier — a mid look-ahead sample catches the thin
+    // spine walls the two endpoint samples used to straddle)
     float gHere  = worldH(pathPos, cJulia, morph);
+    float gMid   = worldH(pathPos + tangent * 0.05, cJulia, morph);
     float gAhead = worldH(pathPos + tangent * 0.10, cJulia, morph);
-    float camH = max(gHere, gAhead)
-               + 0.035 + altitude * 0.15
+    float camH = max(gHere, max(gMid, gAhead))
+               + 0.045 + altitude * 0.15
                + 0.012 * sin(t * 0.4)
                + 0.03 * pulseWindow(t, 12.0, 2.0);
 
@@ -185,13 +221,15 @@ void main() {
     // Sun low ahead-left
     vec3 sunDir = normalize(vec3(ch * 0.7 - sh * 0.4, sh * 0.7 + ch * 0.4, 0.30));
 
-    // Sky (also the fog tint)
+    // Sky (also the fog tint): dark and moody so the glowing structure
+    // carries the frame — a dim band of palette color at the horizon
+    // fading to near-black overhead
     float horizon = smoothstep(-0.10, 0.45, ray.z);
-    vec3 skyLow  = getColor(0.78, iColorMode) * 0.95;
-    vec3 skyHigh = getColor(0.55, iColorMode) * 0.40;
+    vec3 skyLow  = getColor(0.78, iColorMode) * 0.28;
+    vec3 skyHigh = vec3(0.012, 0.014, 0.035);
     vec3 sky = mix(skyLow, skyHigh, horizon);
     float sunDot = max(dot(ray, sunDir), 0.0);
-    sky += vec3(1.0, 0.9, 0.7) * (pow(sunDot, 48.0) * 0.9 + pow(sunDot, 6.0) * 0.18);
+    sky += vec3(1.0, 0.85, 0.6) * (pow(sunDot, 64.0) * 0.30 + pow(sunDot, 12.0) * 0.03);
 
     // --- Raymarch the height field ------------------------------------------
     float tRay = 0.035;
@@ -224,11 +262,15 @@ void main() {
         }
         float dist = 0.5 * (lo + hi);
         vec3 hitPos = camPos + ray * dist;
-        float h = terrainH(hitPos.xy, cJulia, morph);
+        vec3 fld = fractalField(hitPos.xy, cJulia, morph);
+        float h = fld.x;
+        float n = fld.y;                       // boundary proximity
+        float si = n * float(MAX_ITER);        // smooth iteration count
+        float trapD = fld.z;
 
         // Finite-difference normal; eps widens with distance (anti-shimmer)
         float eps = max(0.0025, dist * 0.006);
-        float hW  = worldH(hitPos.xy, cJulia, morph);
+        float hW = h * H_AMP;
         float hx = worldH(hitPos.xy + vec2(eps, 0.0), cJulia, morph);
         float hy = worldH(hitPos.xy + vec2(0.0, eps), cJulia, morph);
         vec3 normal = normalize(vec3((hW - hx) / eps, (hW - hy) / eps, 1.0));
@@ -236,27 +278,55 @@ void main() {
         float diffuse = max(dot(normal, sunDir), 0.0);
         float spec = pow(max(dot(reflect(-sunDir, normal), -ray), 0.0), 18.0);
 
-        if (h < 0.04) {
-            // Water: mirror of the sky with sun glints
-            color = sky * 0.45 + getColor(0.12, iColorMode) * 0.15
-                  + vec3(1.0, 0.9, 0.7) * spec * 0.8;
-        } else {
-            // Height-banded terrain color, brighter and snowier up high
-            float colorT = fract(h * 1.7 + 0.05);
-            vec3 base = getColor(colorT, iColorMode);
-            color = base * (0.22 + 0.85 * diffuse)
-                  + vec3(1.0, 0.95, 0.85) * spec * 0.30;
-            // Snow caps only on the genuinely high, gentle ridges
-            float snow = smoothstep(0.88, 0.985, h) * smoothstep(0.55, 0.85, normal.z);
-            color = mix(color, vec3(0.92, 0.94, 0.98) * (0.45 + 0.6 * diffuse), snow);
-            // Glowing shoreline
-            color += getColor(0.9, iColorMode) * smoothstep(0.10, 0.04, h) * 0.25;
-        }
+        // --- Color from the MATH, not the altitude --------------------------
+        // Each iteration band gets ONE palette color (quantized on floor(si))
+        // so the terrain is striped by discrete escape-contour strata, not a
+        // smooth rainbow. Orbit trap shifts the hue along the dendrites.
+        float band = floor(si);
+        float colorT = fract(band * 0.17 + exp(-trapD * 2.0) * 0.15);
+        vec3 base = getColor(colorT, iColorMode);
+        // Alternate-band brightness striping survives even where distant
+        // bands get narrower than the march sampling can resolve
+        base *= 0.74 + 0.26 * mod(band, 2.0);
+        // Brightness ramps across each terrace, snapping at the riser, and a
+        // thin bright contour line marks every iteration level-set
+        base *= 0.75 + 0.25 * fract(si);
+        float bandEdge = smoothstep(0.44, 0.5, abs(fract(si) - 0.5));
+        base += getColor(fract(colorT + 0.5), iColorMode) * bandEdge * 0.30;
+        // Fine sub-band contour ripple: even the wide low-iteration strata
+        // stay visibly wrapped by level-sets of the escape field (kills any
+        // residual "smooth dune" reading on the lowland plateaus)
+        base *= 0.87 + 0.13 * cos(TAU * si * 3.0);
+        // Spine rock near the boundary darkens so the glow reads as edges
+        base *= mix(1.0, 0.40, smoothstep(0.70, 0.95, n));
+        // Dark riser faces between terraces give the steps definition
+        float facet = mix(0.45, 1.0, smoothstep(0.2, 0.9, normal.z));
+        color = base * (0.14 + 0.62 * diffuse) * facet
+              + vec3(1.0, 0.95, 0.85) * spec * 0.10;
+        // Far-exterior lowlands fall to a dark abyssal floor
+        color = mix(sky * 0.35, color, smoothstep(0.015, 0.05, h));
 
-        // Distance fog into the sky; valleys hold a touch more haze
+        // --- Emissive boundary glow ------------------------------------------
+        // Ground hugging the set boundary (highest iterations / interior) and
+        // the tightest orbit-trap filaments runs hot — strongest on steep
+        // walls and crevasse edges, like circuitry under the rock
+        float boundary = smoothstep(0.86, 0.995, n);
+        float filament = exp(-trapD * 5.0) * smoothstep(0.50, 0.90, n);
+        float crevasse = 0.4 + 0.9 * (1.0 - normal.z);
+        vec3 glowC = getColor(0.92, iColorMode) * 1.25;
+        vec3 emissive = glowC * (boundary * 0.55 + filament * 0.40) * crevasse;
+        // Interior basin floors (n==1 everywhere) must NOT wash out into a
+        // uniform glow-dune: gate their glow to THIN orbit-trap veins so the
+        // floor stays dark with bright circuitry running through it
+        emissive *= mix(1.0, exp(-trapD * 10.0), step(0.9995, n));
+
+        // Distance fog into the dark sky; basins hold a touch more haze.
+        // The glow is added after fog (attenuated, not erased) so distant
+        // boundary walls still smoulder through the murk.
         float fog = 1.0 - exp(-dist * dist * (0.30 + fogAmt * 0.70));
         fog = clamp(fog + (1.0 - h) * 0.08 * fogAmt, 0.0, 1.0);
         color = mix(color, sky, fog);
+        color += emissive * (1.0 - fog * 0.65);
     }
 
     // Gentle vignette
