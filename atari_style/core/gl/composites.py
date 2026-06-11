@@ -81,6 +81,46 @@ COMPOSITES: Dict[str, CompositeConfig] = {
         recommended_duration=15.0,
         default_color_mode=0
     ),
+    'fractal_morph': CompositeConfig(
+        name='Fractal Morph',
+        shader_path='atari_style/shaders/effects/fractal_morph.frag',
+        description='Continuous Mandelbrot-to-Julia metamorphosis: the set visibly transforms while the camera drifts along the cardioid coast, with a different Julia target each cycle',
+        default_params=(0.5, 0.5, 0.5, 0.5),
+        param_names=('drift_speed', 'morph_speed', 'texture_amt', 'zoom_amp'),
+        param_ranges=((0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, 1.0)),
+        recommended_duration=45.0,
+        default_color_mode=0
+    ),
+    'mandelbrot_enhanced': CompositeConfig(
+        name='Mandelbrot Enhanced',
+        shader_path='atari_style/shaders/effects/mandelbrot_enhanced.frag',
+        description='Cinematic Mandelbrot boundary tour (seahorse, elephant, spiral) with orbit-trap interior texture and distance-estimation exterior glow',
+        default_params=(0.5, 0.5, 0.5, 0.5),
+        param_names=('tour_speed', 'palette_speed', 'trap_strength', 'detail_mix'),
+        param_ranges=((0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, 1.0)),
+        recommended_duration=110.0,
+        default_color_mode=0
+    ),
+    'quaternion_julia': CompositeConfig(
+        name='Quaternion Julia — 3D Fractal Flight',
+        shader_path='atari_style/shaders/effects/quaternion_julia.frag',
+        description='Raymarched 3D quaternion Julia set whose limbs grow, split and twist as c rides the Mandelbrot cardioid; the camera orbits around, swoops over, and threads through the morphing structure',
+        default_params=(0.5, 0.5, 0.5, 0.5),
+        param_names=('flight_speed', 'morph_speed', 'detail', 'fog_glow'),
+        param_ranges=((0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, 1.0)),
+        recommended_duration=45.0,
+        default_color_mode=0
+    ),
+    'fractal_terrain': CompositeConfig(
+        name='Fractal Terrain',
+        shader_path='atari_style/shaders/effects/fractal_terrain.frag',
+        description='Low-altitude perspective flight through Mandelbrot/Julia mountains with sky, sun, and distance fog',
+        default_params=(0.4, 0.35, 0.25, 0.5),
+        param_names=('flight_speed', 'altitude', 'morph_speed', 'fog'),
+        param_ranges=((0.1, 1.0), (0.05, 1.0), (0.05, 1.0), (0.0, 1.0)),
+        recommended_duration=30.0,
+        default_color_mode=0
+    ),
 }
 
 

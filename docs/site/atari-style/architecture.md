@@ -69,7 +69,7 @@ The registry is the bridge between the main entry point and the demos. It stores
 2. `register_callable()` — wraps an already-imported callable; no lazy import needed
 3. `scan_directory()` — scans a directory for subdirectories containing `metadata.json` files
 
-**Auto-discovery**: The `terminal_arcade/games/` directory (if present) is scanned automatically. Games in that directory that share IDs with hardcoded entries (pacman, galaga, etc.) overwrite the hardcoded entries, taking over launch responsibility.
+**Auto-discovery**: `scan_directory()` can register any directory of `metadata.json`-bearing subdirectories. The legacy `terminal_arcade/` package that used this at startup is archived at `docs/archive/terminal-arcade-legacy/`.
 
 **Categories**: `ContentCategory` has four values: `GAME`, `VISUALIZER`, `TOOL`, `SHADER_DEMO`. The menu displays categories in that order.
 

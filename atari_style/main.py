@@ -1,7 +1,6 @@
 """Main entry point for Atari-style terminal demos."""
 
 import sys
-from pathlib import Path
 from .core.menu import Menu, MenuItem
 from .core.registry import ContentCategory, ContentRegistry
 
@@ -9,21 +8,13 @@ from .core.registry import ContentCategory, ContentRegistry
 def _build_registry() -> ContentRegistry:
     """Populate the content registry with all available demos.
 
-    Registration order matters: register_callable() entries for atari_style/
-    demos are registered first, then scan_directory() discovers terminal_arcade/
-    games. Since register_metadata() overwrites on duplicate id, the scanned
-    entries for shared games (pacman, galaga, etc.) will replace the callable
-    entries — giving them lazy resolution instead of eager imports.
-
-    Content unique to atari_style/ (flux control variants, tools) stays as
-    register_callable() since those directories lack metadata.json.
+    All entries are registered with string-based lazy resolution
+    (run_module/run_function_name), so no eager imports happen at
+    registry-build time.
     """
     reg = ContentRegistry(expected_minimum=18)
 
     # --- Games: registered with string-based lazy resolution ---
-    # These use run_module/run_function_name strings so no eager import happens.
-    # If terminal_arcade/games/ exists, scan_directory() will overwrite shared
-    # entries with its own module paths.
     from .core.registry import ContentMetadata
 
     for game_id, title, desc, module, func in [
@@ -94,16 +85,6 @@ def _build_registry() -> ContentRegistry:
             description=desc, run_module=f"{_tools}.{module_suffix}",
             run_function_name=func,
         ))
-
-    # --- Auto-discovery from terminal_arcade/games/ ---
-    # Scans for metadata.json files in per-game subdirectories.
-    # Games that share ids with register_callable() entries above (pacman,
-    # galaga, breakout, grandprix) will overwrite them, gaining lazy
-    # resolution. Games unique to terminal_arcade/ (spaceship, targetshooter,
-    # mandelbrot, oscilloscope) are added as new entries.
-    ta_games = Path(__file__).resolve().parent.parent / "terminal_arcade" / "games"
-    if ta_games.is_dir():
-        reg.scan_directory(ta_games, default_category=ContentCategory.GAME)
 
     return reg
 

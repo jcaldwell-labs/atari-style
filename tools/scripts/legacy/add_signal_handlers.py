@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""Add signal handlers to all game run() methods."""
+"""Add signal handlers to all game run() methods.
+
+Legacy one-off script; the package it targeted is archived at
+docs/archive/terminal-arcade-legacy/.
+"""
 
 import re
 
 games = [
-    'terminal_arcade/games/pacman/game.py',
-    'terminal_arcade/games/galaga/game.py',
-    'terminal_arcade/games/grandprix/game.py',
-    'terminal_arcade/games/breakout/game.py',
-    'terminal_arcade/demos/starfield/game.py',
-    'terminal_arcade/demos/platonic/game.py',
-    'terminal_arcade/tools/asciipainter/game.py',
+    'docs/archive/terminal-arcade-legacy/games/pacman/game.py',
+    'docs/archive/terminal-arcade-legacy/games/galaga/game.py',
+    'docs/archive/terminal-arcade-legacy/games/grandprix/game.py',
+    'docs/archive/terminal-arcade-legacy/games/breakout/game.py',
+    'docs/archive/terminal-arcade-legacy/demos/starfield/game.py',
+    'docs/archive/terminal-arcade-legacy/demos/platonic/game.py',
+    'docs/archive/terminal-arcade-legacy/tools/asciipainter/game.py',
 ]
 
 for filepath in games:

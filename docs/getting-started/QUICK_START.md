@@ -1,6 +1,6 @@
 # Terminal Arcade - Quick Start Guide
 
-**Launch**: `./run_terminal_arcade.py`
+**Launch**: `python run.py`
 
 ---
 
