@@ -26,10 +26,12 @@
  * 3. FULL-FRAME INTEREST — the camera drifts along the cardioid coast on the
  *    Mandelbrot side (biased slightly outside, into the filament zone) and
  *    settles to the origin as morph -> 1; zoom eases in log space between a
- *    coastline close-up and the full Julia silhouette. A derivative is
- *    carried through the iteration for distance estimation: DE contour
- *    bands texture the far exterior and a warm glow hugs the boundary.
- *    Interior pixels use orbit traps + contour bands (never flat black).
+ *    coastline close-up and a structure-filling Julia view (~1.4 view height,
+ *    so boundary filaments dominate the frame rather than a small silhouette).
+ *    A derivative is carried through the iteration for distance estimation:
+ *    DE contour bands texture the far exterior (angularly warped and faded in
+ *    wide views so they never read as concentric rings) and a warm glow hugs
+ *    the boundary. Interior pixels use orbit traps + contour bands.
  *
  * Motion design: all terms are bounded, C1-continuous functions of time —
  * no speed*time products. The per-cycle orbit step is the only discrete
@@ -125,10 +127,11 @@ void main() {
     vec2 outward = cA * 1.18 + vec2(0.025, 0.0);
     vec2 center = mix(outward, vec2(0.0), morph);
 
-    // Zoom (log space): coastline close-up at the Mandelbrot end, full
-    // dendrite silhouette at the Julia end. Gentle breathing, damped during
-    // the Julia phase so the silhouette stays framed.
-    float lz = mix(-0.35, 1.45, morph)
+    // Zoom (log space): coastline close-up at the Mandelbrot end, a
+    // structure-filling view at the Julia end (view height ~1.4 — the Julia
+    // set overflows the frame so its boundary filaments dominate, never a
+    // postage-stamp silhouette). Gentle breathing, damped at the Julia peak.
+    float lz = mix(-0.35, 0.50, morph)
              + zoomAmp * 0.55 * sin(t * 0.075 + 0.7) * (1.0 - 0.6 * morph);
     float viewScale = exp2(lz);    // frame height on the complex plane
 
@@ -213,11 +216,21 @@ void main() {
 
         // Micro-texture: two families of log-spaced DE contour bands fill
         // the far field so wide views never collapse to a smooth gradient.
+        // In wide views the contours of d are near-circles around the set,
+        // so: (a) warp their phase angularly (integer angular frequency keeps
+        // it continuous across the atan branch cut) so they read as lobed,
+        // flame-like texture instead of a bullseye, and (b) fade their
+        // amplitude as the view widens.
         float ld = log2(max(d, 1e-14));
-        float band = 0.5 + 0.5 * sin(ld * 4.2 - t * 0.15);
-        float band2 = 0.5 + 0.5 * sin(ld * 19.0 + t * 0.1);
-        color *= mix(1.0, 0.55 + 0.62 * band + 0.28 * band2, textureAmt);
-        color += vec3(0.06, 0.10, 0.16) * band * textureAmt;
+        float wide = smoothstep(0.6, 1.3, viewScale);
+        float ang = atan(uv.y, uv.x);
+        float wob = (0.6 + 2.4 * wide) * sin(3.0 * ang + ld * 0.8 + t * 0.06)
+                  + 1.1 * wide * sin(5.0 * ang - ld * 0.5 - t * 0.045);
+        float band = 0.5 + 0.5 * sin(ld * 4.2 - t * 0.15 + wob);
+        float band2 = 0.5 + 0.5 * sin(ld * 19.0 + t * 0.1 + 0.6 * wob);
+        float bandAmt = textureAmt * (1.0 - 0.55 * wide);
+        color *= mix(1.0, 0.55 + 0.62 * band + 0.28 * band2, bandAmt);
+        color += vec3(0.06, 0.10, 0.16) * band * bandAmt;
 
         // Warm glow hugging the boundary filaments
         float glow = exp2(-d / (px * 30.0));
