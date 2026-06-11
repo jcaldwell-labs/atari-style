@@ -44,9 +44,9 @@ out vec4 fragColor;
 
 const float TAU = 6.28318530717958647692;
 const int MAX_ITER = 36;       // shape detail; low keeps marching affordable
-const int MARCH_STEPS = 44;
+const int MARCH_STEPS = 32;
 const float T_MAX = 4.5;       // far clip in fractal-plane units
-const float H_AMP = 0.17;      // world height of the tallest peaks
+const float H_AMP = 0.28;      // world height of the tallest peaks
 
 vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
     return a + b * cos(TAU * (c * t + d));
@@ -120,13 +120,11 @@ float terrainH(vec2 p, vec2 cJulia, float morph) {
     return sqrt(si / float(MAX_ITER));
 }
 
-// Geometry height in world units: soft-cap the tallest ridges and mesas so
-// the camera's clearance band stays inside the range (summits reach near,
-// and occasionally above, eye level — but never swallow the camera)
+// Geometry height in world units: full range, no soft-cap — summits tower
+// above eye level and break the horizon (the camera's terrain-following
+// clearance band keeps it out of the rock)
 float worldH(vec2 p, vec2 cJulia, float morph) {
-    float h = terrainH(p, cJulia, morph);
-    h = (h < 0.75) ? h : 0.75 + (h - 0.75) * 0.6;
-    return h * H_AMP;
+    return terrainH(p, cJulia, morph) * H_AMP;
 }
 
 void main() {
@@ -158,12 +156,14 @@ void main() {
     float gHere  = worldH(pathPos, cJulia, morph);
     float gAhead = worldH(pathPos + tangent * 0.10, cJulia, morph);
     float camH = max(gHere, gAhead)
-               + 0.035 + altitude * 0.12
+               + 0.035 + altitude * 0.15
                + 0.012 * sin(t * 0.4)
                + 0.03 * pulseWindow(t, 12.0, 2.0);
 
-    // Mild downward pitch keeps the horizon high in frame
-    float pitch = -0.14 - 0.06 * sin(t * 0.13);
+    // Dynamic pitch: deeper base with slow dive/climb cycles (two slow
+    // incommensurate sines, C1-continuous) — dives near -0.30 rad, eases
+    // up to about -0.08 rad on climbs so the horizon visibly travels
+    float pitch = -0.19 + 0.08 * sin(t * 0.11) + 0.03 * sin(t * 0.23 + 1.0);
 
     float bank = 0.50 * pulseWindow(t, 12.0, 2.0) + 0.05 * sin(t * 0.31);
 
@@ -206,7 +206,7 @@ void main() {
             break;
         }
         tPrev = tRay;
-        tRay += 0.014 + tRay * 0.055;     // steps grow with distance
+        tRay += 0.014 + tRay * 0.085;     // steps grow with distance
         if (tRay > T_MAX) break;
     }
 
@@ -216,7 +216,7 @@ void main() {
     } else {
         // Bisect [tPrev, tHit] for a crisp surface
         float lo = tPrev, hi = tHit;
-        for (int b = 0; b < 5; b++) {
+        for (int b = 0; b < 8; b++) {
             float mid = 0.5 * (lo + hi);
             vec3 pos = camPos + ray * mid;
             if (pos.z < worldH(pos.xy, cJulia, morph)) hi = mid;
