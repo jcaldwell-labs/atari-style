@@ -81,14 +81,14 @@ COMPOSITES: Dict[str, CompositeConfig] = {
         recommended_duration=15.0,
         default_color_mode=0
     ),
-    'fractal_flight': CompositeConfig(
-        name='Fractal Flight',
-        shader_path='atari_style/shaders/effects/fractal_flight.frag',
-        description='Aerial journey over a morphing Mandelbrot/Julia terrain with pseudo-3D relief lighting',
-        default_params=(0.4, 0.3, 0.7, 0.5),
-        param_names=('flight_speed', 'morph_speed', 'relief', 'zoom_amp'),
-        param_ranges=((0.1, 1.0), (0.05, 1.0), (0.0, 1.0), (0.0, 1.0)),
-        recommended_duration=30.0,
+    'fractal_morph': CompositeConfig(
+        name='Fractal Morph',
+        shader_path='atari_style/shaders/effects/fractal_morph.frag',
+        description='Continuous Mandelbrot-to-Julia metamorphosis: the set visibly transforms while the camera drifts along the cardioid coast, with a different Julia target each cycle',
+        default_params=(0.5, 0.5, 0.5, 0.5),
+        param_names=('drift_speed', 'morph_speed', 'texture_amt', 'zoom_amp'),
+        param_ranges=((0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, 1.0)),
+        recommended_duration=45.0,
         default_color_mode=0
     ),
     'mandelbrot_enhanced': CompositeConfig(
