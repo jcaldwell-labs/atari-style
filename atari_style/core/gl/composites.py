@@ -91,6 +91,16 @@ COMPOSITES: Dict[str, CompositeConfig] = {
         recommended_duration=30.0,
         default_color_mode=0
     ),
+    'mandelbrot_enhanced': CompositeConfig(
+        name='Mandelbrot Enhanced',
+        shader_path='atari_style/shaders/effects/mandelbrot_enhanced.frag',
+        description='Cinematic Mandelbrot boundary tour (seahorse, elephant, spiral) with orbit-trap interior texture and distance-estimation exterior glow',
+        default_params=(0.5, 0.5, 0.5, 0.5),
+        param_names=('tour_speed', 'palette_speed', 'trap_strength', 'detail_mix'),
+        param_ranges=((0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, 1.0)),
+        recommended_duration=60.0,
+        default_color_mode=0
+    ),
     'fractal_terrain': CompositeConfig(
         name='Fractal Terrain',
         shader_path='atari_style/shaders/effects/fractal_terrain.frag',
